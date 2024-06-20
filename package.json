@@ -1,0 +1,23 @@
+{
+  "name": "@inf-monkeys/monkeys",
+  "version": "0.0.1",
+  "description": "Monkeys JS SDK",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "repository": "git@github.com:inf-monkeys/monkeys-js-sdk.git",
+  "author": "codevoyager1984 <codevoyager.jay@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "build:types": "node scripts/build-all-types.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@io-orkes/conductor-javascript": "^2.1.0"
+  }
+}
