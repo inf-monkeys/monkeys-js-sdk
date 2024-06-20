@@ -17,6 +17,7 @@ import type {
     WorkflowDef,
   } from "@io-orkes/conductor-javascript";
 import { ToolProperty } from "./tool";
+import { I18nValue } from "./i18n";
   
   export type DeepPartial<T> = {
     [P in keyof T]?: T[P] extends Array<infer U>
@@ -94,9 +95,9 @@ import { ToolProperty } from "./tool";
   
   export interface MonkeyWorkflow {
     workflowId: string;
-    displayName: string;
+    displayName: string | I18nValue;
     version: number;
-    description?: string;
+    description?: string | I18nValue;
     iconUrl?: string;
     validated: boolean;
     creatorUserId: string;
