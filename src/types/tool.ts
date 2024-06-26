@@ -112,7 +112,9 @@ export type AssetType =
   | "workflow-version"
   | "comfyui-server"
   | "tools"
-  | "comfyui-workflow";
+  | "comfyui-workflow"
+  | 'llm-channel'
+  ;
 
 export interface ToolProperty {
   displayName: string | I18nValue;
