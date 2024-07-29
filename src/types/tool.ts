@@ -114,6 +114,7 @@ export type AssetType =
   | "tools"
   | "comfyui-workflow"
   | 'llm-channel'
+  | 'conversation-app'
   ;
 
 export interface ToolProperty {
