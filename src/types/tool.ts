@@ -110,9 +110,11 @@ export type AssetType =
   | "workflow-template"
   | "fork-join-branch"
   | "workflow-version"
-  | "comfyui-server"
   | "tools"
+  | "comfyui-server"
   | "comfyui-workflow"
+  | "comfyui-model-type"
+  | "comfyui-model"
   | 'llm-channel'
   | 'conversation-app'
   ;
