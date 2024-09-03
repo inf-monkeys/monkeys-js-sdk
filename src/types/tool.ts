@@ -117,6 +117,7 @@ export type AssetType =
   | "comfyui-model"
   | 'llm-channel'
   | 'conversation-app'
+  | 'oneapi-model'
   ;
 
 export interface ToolProperty {
