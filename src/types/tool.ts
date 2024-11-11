@@ -13,7 +13,8 @@ export type ToolPropertyTypes =
   | "boolean"
   | "options"
   | "json"
-  | "notice";
+  | "notice"
+  | "canvas-assist";
 
 export const CODE_LANGUAGES = ["javaScript", "json", "python", "sql"] as const;
 
