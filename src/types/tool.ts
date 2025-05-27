@@ -102,6 +102,8 @@ export type AssetType =
   | "llm-model"
   | "sd-model"
   | "workflow"
+  | "design-project"
+  | "design-board"
   | "workflow-view"
   | "media-file"
   | "sql-knowledge-base-table"
