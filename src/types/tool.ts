@@ -118,10 +118,10 @@ export type AssetType =
   | "comfyui-workflow"
   | "comfyui-model-type"
   | "comfyui-model"
-  | 'llm-channel'
-  | 'conversation-app'
-  | 'oneapi-model'
-  ;
+  | "llm-channel"
+  | "conversation-app"
+  | "oneapi-model"
+  | "leaderboard";
 
 export interface ToolProperty {
   displayName: string | I18nValue;
