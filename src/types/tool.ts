@@ -141,6 +141,7 @@ export interface ToolProperty {
   extractValue?: ToolPropertyValueExtractorRegex;
   properties?: ToolProperty[];
   assetType?: AssetType;
+  flag?: boolean;
 }
 
 export type ToolCategory =

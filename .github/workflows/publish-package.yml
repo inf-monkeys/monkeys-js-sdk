@@ -10,7 +10,13 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      build_status: ${{ job.status }}
+      build_time: ${{ steps.calc_time.outputs.duration }}
     steps:
+      - name: Start timer
+        id: start_time
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
       - uses: actions/checkout@v3
       # Setup .npmrc file to publish to GitHub Packages
       - uses: actions/setup-node@v3
@@ -25,3 +31,29 @@ jobs:
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+
+      - name: Calculate build duration
+        id: calc_time
+        if: always()
+        run: |
+          end_time=$(date +%s)
+          start_time=${{ steps.start_time.outputs.start_time }}
+          duration=$((end_time - start_time))
+          echo "duration=$duration" >> $GITHUB_OUTPUT
+
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: colour93/ci-notify-feishu@main
+        with:
+          feishu_template_id: ${{ vars.FEISHU_NOTIFY_TEMPLATE_ID }}
+          feishu_template_version_name: ${{ vars.FEISHU_NOTIFY_TEMPLATE_VERSION }}
+          feishu_webhook_url: ${{ secrets.FEISHU_NOTIFY_WEBHOOK_URL }}
+          build_result: ${{ needs.build.result }}
+          ci_target: JS SDK
+          ci_target_image: infmonkeys/monkeys-js-sdk
+          ci_target_tag: ${GITHUB_REF#refs/tags/}
+          build_time: ${{ needs.build.outputs.build_time }} 
