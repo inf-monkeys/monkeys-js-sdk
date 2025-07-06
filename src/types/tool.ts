@@ -104,7 +104,7 @@ export type AssetType =
   | "workflow"
   | "workflow-association"
   | "design-project"
-  | "design-project-association"
+  | "design-association"
   | "design-board"
   | "workflow-view"
   | "media-file"
