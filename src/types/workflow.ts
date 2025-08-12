@@ -123,5 +123,6 @@ import { I18nValue } from "./i18n";
     openaiModelName?: string;
     notAuthorized?: boolean;
     shortcutsFlow?: string | null;
+    preferAppId?: string;
   }
   
