@@ -123,7 +123,8 @@ export type AssetType =
   | "llm-channel"
   | "conversation-app"
   | "oneapi-model"
-  | "leaderboard";
+  | "leaderboard"
+  | "model-training";
 
 export interface ToolProperty {
   displayName: string | I18nValue;
