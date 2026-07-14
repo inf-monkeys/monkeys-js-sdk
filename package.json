@@ -1,15 +1,49 @@
 {
   "name": "@inf-monkeys/monkeys",
-  "version": "0.0.16",
+  "version": "0.1.0",
   "description": "Monkeys JS SDK",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "require": "./lib/index.js",
+      "default": "./lib/index.js"
+    },
+    "./contracts": {
+      "types": "./lib/contracts/index.d.ts",
+      "require": "./lib/contracts/index.js",
+      "default": "./lib/contracts/index.js"
+    },
+    "./schemas": {
+      "types": "./lib/schemas/index.d.ts",
+      "require": "./lib/schemas/index.js",
+      "default": "./lib/schemas/index.js"
+    },
+    "./migrations": {
+      "types": "./lib/migrations/index.d.ts",
+      "require": "./lib/migrations/index.js",
+      "default": "./lib/migrations/index.js"
+    },
+    "./json-schema/*": "./lib/json-schema/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "README.md"
+  ],
+  "bin": {
+    "monkeys-contract-migrate": "scripts/migrate-contract.cjs"
+  },
   "repository": "git@github.com:inf-monkeys/monkeys-js-sdk.git",
   "author": "codevoyager1984 <codevoyager.jay@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
-    "build:types": "node scripts/build-all-types.js"
+    "clean": "node scripts/clean.cjs",
+    "typecheck": "tsc --noEmit",
+    "build": "yarn clean && tsc && node scripts/generate-json-schemas.cjs",
+    "test": "yarn build && node --test test/*.test.cjs",
+    "pack:check": "yarn build && npm pack --dry-run"
   },
   "publishConfig": {
     "access": "public"
@@ -18,6 +52,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@io-orkes/conductor-javascript": "^2.1.0"
+    "@io-orkes/conductor-javascript": "^2.1.0",
+    "zod": "4.1.9"
   }
 }
