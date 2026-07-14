@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { ContractPortV1Schema } from './capability';
+import { ContractPortSchema } from './capability';
 import {
   ContractIdentifierSchema,
   ContractMetadataSchema,
   JsonValueSchema,
 } from './common';
 
-export const WorkflowNodeV2Schema = z
+export const WorkflowNodeSchema = z
   .object({
     id: ContractIdentifierSchema,
     referenceName: ContractIdentifierSchema,
@@ -15,9 +15,9 @@ export const WorkflowNodeV2Schema = z
     inputBindings: z.record(z.string(), JsonValueSchema).default({}),
     configuration: z.record(z.string(), JsonValueSchema).default({}),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const WorkflowEdgeV2Schema = z
+export const WorkflowEdgeSchema = z
   .object({
     from: ContractIdentifierSchema,
     to: ContractIdentifierSchema,
@@ -25,30 +25,29 @@ export const WorkflowEdgeV2Schema = z
     inputPort: ContractIdentifierSchema.optional(),
     condition: z.string().optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const WorkflowDefinitionV2Schema = z
+export const WorkflowDefinitionSchema = z
   .object({
     contract: z.literal('WorkflowDefinition'),
-    version: z.literal(2),
     metadata: ContractMetadataSchema.extend({
       role: z.enum(['workflow', 'template']),
       teamId: ContractIdentifierSchema.optional(),
       creatorRef: ContractIdentifierSchema.optional(),
       tags: z.array(ContractIdentifierSchema).default([]),
-    }).catchall(JsonValueSchema),
+    }).strict(),
     ports: z
       .object({
-        inputs: z.array(ContractPortV1Schema).default([]),
-        outputs: z.array(ContractPortV1Schema).default([]),
+        inputs: z.array(ContractPortSchema).default([]),
+        outputs: z.array(ContractPortSchema).default([]),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     graph: z
       .object({
-        nodes: z.array(WorkflowNodeV2Schema),
-        edges: z.array(WorkflowEdgeV2Schema).default([]),
+        nodes: z.array(WorkflowNodeSchema),
+        edges: z.array(WorkflowEdgeSchema).default([]),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     execution: z
       .object({
         timeoutMs: z.number().int().positive().optional(),
@@ -62,7 +61,7 @@ export const WorkflowDefinitionV2Schema = z
           })
           .optional(),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     triggers: z
       .array(
         z
@@ -71,7 +70,7 @@ export const WorkflowDefinitionV2Schema = z
             type: z.enum(['manual', 'schedule', 'webhook', 'event']),
             configuration: z.record(z.string(), JsonValueSchema).default({}),
           })
-          .catchall(JsonValueSchema),
+          .strict(),
       )
       .default([]),
     views: z
@@ -81,7 +80,7 @@ export const WorkflowDefinitionV2Schema = z
             pageRef: ContractIdentifierSchema,
             placement: ContractIdentifierSchema.optional(),
           })
-          .catchall(JsonValueSchema),
+          .strict(),
       )
       .default([]),
     dataContracts: z
@@ -90,9 +89,9 @@ export const WorkflowDefinitionV2Schema = z
         writes: z.array(ContractIdentifierSchema).default([]),
         emits: z.array(ContractIdentifierSchema).default([]),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
   })
-  .catchall(JsonValueSchema)
+  .strict()
   .superRefine((definition, context) => {
     const nodeIds = new Set(definition.graph.nodes.map((node) => node.id));
     if (nodeIds.size !== definition.graph.nodes.length) {
@@ -114,7 +113,6 @@ export const WorkflowDefinitionV2Schema = z
     });
   });
 
-export type WorkflowNodeV2 = z.infer<typeof WorkflowNodeV2Schema>;
-export type WorkflowEdgeV2 = z.infer<typeof WorkflowEdgeV2Schema>;
-export type WorkflowDefinitionV2 = z.infer<typeof WorkflowDefinitionV2Schema>;
-
+export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>;
+export type WorkflowEdge = z.infer<typeof WorkflowEdgeSchema>;
+export type WorkflowDefinition = z.infer<typeof WorkflowDefinitionSchema>;

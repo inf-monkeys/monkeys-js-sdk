@@ -1,11 +1,10 @@
 import { z } from 'zod';
 import {
   ContractIdentifierSchema,
-  EntityRefV1Schema,
-  JsonValueSchema,
+  EntityRefSchema,
 } from './common';
 
-export const ContractPortV1Schema = z
+export const ContractPortSchema = z
   .object({
     name: ContractIdentifierSchema,
     schemaRef: ContractIdentifierSchema,
@@ -13,12 +12,11 @@ export const ContractPortV1Schema = z
     multiple: z.boolean().default(false),
     description: z.string().optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const CapabilityManifestV1Schema = z
+export const CapabilityManifestSchema = z
   .object({
     contract: z.literal('CapabilityManifest'),
-    version: z.literal(1),
     id: ContractIdentifierSchema,
     capabilityVersion: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
@@ -27,22 +25,22 @@ export const CapabilityManifestV1Schema = z
     description: z.string().optional(),
     ports: z
       .object({
-        inputs: z.array(ContractPortV1Schema).default([]),
-        outputs: z.array(ContractPortV1Schema).default([]),
+        inputs: z.array(ContractPortSchema).default([]),
+        outputs: z.array(ContractPortSchema).default([]),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     runtime: z
       .object({
-        providerRef: EntityRefV1Schema,
+        providerRef: EntityRefSchema,
         loading: z.enum(['eager', 'lazy', 'viewport', 'on-activation']),
-        fallbackCapabilityRef: EntityRefV1Schema.optional(),
+        fallbackCapabilityRef: EntityRefSchema.optional(),
         stateOwner: z.enum(['host', 'provider', 'external']),
         stateSchemaRef: ContractIdentifierSchema.optional(),
         sideEffects: z
           .array(z.enum(['network', 'storage', 'navigation', 'worker', 'websocket']))
           .default([]),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     placement: z
       .object({
         surfaces: z.array(ContractIdentifierSchema).min(1),
@@ -50,14 +48,14 @@ export const CapabilityManifestV1Schema = z
         variants: z.array(ContractIdentifierSchema).default([]),
         tokenRefs: z.array(ContractIdentifierSchema).default([]),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     accessibility: z
       .object({
         keyboardModel: ContractIdentifierSchema,
         focusModel: ContractIdentifierSchema,
         labelContract: ContractIdentifierSchema,
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     observability: z
       .object({
         eventNamespace: ContractIdentifierSchema,
@@ -65,17 +63,9 @@ export const CapabilityManifestV1Schema = z
         evidenceRefs: z.array(ContractIdentifierSchema).default([]),
         performanceBudgetMs: z.number().positive().optional(),
       })
-      .catchall(JsonValueSchema),
-    compatibility: z
-      .object({
-        aliases: z.array(ContractIdentifierSchema).default([]),
-        sourceKinds: z.array(ContractIdentifierSchema).default([]),
-        minHostContractVersion: z.number().int().positive(),
-      })
-      .catchall(JsonValueSchema),
+      .strict(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export type ContractPortV1 = z.infer<typeof ContractPortV1Schema>;
-export type CapabilityManifestV1 = z.infer<typeof CapabilityManifestV1Schema>;
-
+export type ContractPort = z.infer<typeof ContractPortSchema>;
+export type CapabilityManifest = z.infer<typeof CapabilityManifestSchema>;

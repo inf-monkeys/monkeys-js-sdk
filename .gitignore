@@ -9,5 +9,4 @@ junit.xml
 *.iml
 dist
 coverage
-test/
 lib

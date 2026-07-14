@@ -5,7 +5,7 @@ import {
   JsonValueSchema,
 } from './common';
 
-export const ThemeTokenTypeV1Schema = z.enum([
+export const ThemeTokenTypeSchema = z.enum([
   'color',
   'dimension',
   'fontFamily',
@@ -17,26 +17,25 @@ export const ThemeTokenTypeV1Schema = z.enum([
   'string',
 ]);
 
-export const ThemeTokenV1Schema = z
+export const ThemeTokenSchema = z
   .object({
-    $type: ThemeTokenTypeV1Schema,
+    $type: ThemeTokenTypeSchema,
     $value: JsonValueSchema,
     $description: z.string().optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const ThemeTokenGroupV1Schema = z.record(z.string(), ThemeTokenV1Schema);
+export const ThemeTokenGroupSchema = z.record(z.string(), ThemeTokenSchema);
 
-export const ThemeTokensV1Schema = z
+export const ThemeTokensSchema = z
   .object({
     contract: z.literal('ThemeTokens'),
-    version: z.literal(1),
     metadata: ContractMetadataSchema.extend({
       packageName: z.literal('@inf-monkeys-tech/monkeys-design'),
-    }).catchall(JsonValueSchema),
-    seed: ThemeTokenGroupV1Schema,
-    semantic: ThemeTokenGroupV1Schema,
-    component: z.record(z.string(), ThemeTokenGroupV1Schema).default({}),
+    }).strict(),
+    seed: ThemeTokenGroupSchema,
+    semantic: ThemeTokenGroupSchema,
+    component: z.record(z.string(), ThemeTokenGroupSchema).default({}),
     assets: z
       .object({
         logo: z.string().optional(),
@@ -45,7 +44,7 @@ export const ThemeTokensV1Schema = z
         fontFamilies: z.array(z.string()).default([]),
         icons: z.record(z.string(), z.string()).default({}),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     modes: z
       .object({
         color: z.array(ContractIdentifierSchema).default(['light', 'dark']),
@@ -55,18 +54,11 @@ export const ThemeTokensV1Schema = z
           'comfortable',
         ]),
       })
-      .catchall(JsonValueSchema),
-    compatibility: z
-      .object({
-        cssVariableAliases: z.record(z.string(), z.string()).default({}),
-        deprecatedTokenKeys: z.array(ContractIdentifierSchema).default([]),
-      })
-      .catchall(JsonValueSchema),
+      .strict(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export type ThemeTokenTypeV1 = z.infer<typeof ThemeTokenTypeV1Schema>;
-export type ThemeTokenV1 = z.infer<typeof ThemeTokenV1Schema>;
-export type ThemeTokenGroupV1 = z.infer<typeof ThemeTokenGroupV1Schema>;
-export type ThemeTokensV1 = z.infer<typeof ThemeTokensV1Schema>;
-
+export type ThemeTokenType = z.infer<typeof ThemeTokenTypeSchema>;
+export type ThemeToken = z.infer<typeof ThemeTokenSchema>;
+export type ThemeTokenGroup = z.infer<typeof ThemeTokenGroupSchema>;
+export type ThemeTokens = z.infer<typeof ThemeTokensSchema>;

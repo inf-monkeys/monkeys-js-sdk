@@ -23,6 +23,5 @@ for (const [name, schema] of Object.entries(canonicalContractSchemas)) {
 
 writeFileSync(
   resolve(outputDirectory, 'index.json'),
-  `${JSON.stringify({ version: 1, schemas: index }, null, 2)}\n`,
+  `${JSON.stringify({ schemas: index }, null, 2)}\n`,
 );
-

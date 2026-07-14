@@ -1,82 +1,77 @@
 import { z } from 'zod';
 import {
   ContractIdentifierSchema,
-  EntityRefV1Schema,
+  EntityRefSchema,
   IsoDateTimeSchema,
   JsonValueSchema,
 } from './common';
 
-export const TrendSourceV1Schema = z
+export const TrendSourceSchema = z
   .object({
     sourceId: ContractIdentifierSchema,
     provider: ContractIdentifierSchema,
     channel: z.enum(['trend', 'ecommerce', 'social', 'search', 'internal']),
     collectedAt: IsoDateTimeSchema,
     sourceUrl: z.string().url().optional(),
-    evidenceRefs: z.array(EntityRefV1Schema).default([]),
+    evidenceRefs: z.array(EntityRefSchema).default([]),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const HotwordBodyV1Schema = z
+export const HotwordBodySchema = z
   .object({
     contract: z.literal('HotwordBody'),
-    version: z.literal(1),
     hotwordId: ContractIdentifierSchema,
     label: z.string().trim().min(1),
     normalizedLabel: z.string().trim().min(1),
     categories: z.array(ContractIdentifierSchema).default([]),
-    sourceRefs: z.array(TrendSourceV1Schema).min(1),
-    relationRefs: z.array(EntityRefV1Schema).default([]),
+    sourceRefs: z.array(TrendSourceSchema).min(1),
+    relationRefs: z.array(EntityRefSchema).default([]),
     createdAt: IsoDateTimeSchema,
     updatedAt: IsoDateTimeSchema,
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const TrendMetricSnapshotV1Schema = z
+export const TrendMetricSnapshotSchema = z
   .object({
     contract: z.literal('TrendMetricSnapshot'),
-    version: z.literal(1),
     snapshotId: ContractIdentifierSchema,
-    subjectRef: EntityRefV1Schema,
+    subjectRef: EntityRefSchema,
     observedAt: IsoDateTimeSchema,
     metrics: z.record(z.string(), z.number().finite()),
     confidence: z.number().min(0).max(1),
-    evidenceRefs: z.array(EntityRefV1Schema).min(1),
+    evidenceRefs: z.array(EntityRefSchema).min(1),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const RadarScoreProjectionV1Schema = z
+export const RadarScoreProjectionSchema = z
   .object({
     contract: z.literal('RadarScoreProjection'),
-    version: z.literal(1),
     projectionId: ContractIdentifierSchema,
-    subjectRef: EntityRefV1Schema,
-    modelRef: EntityRefV1Schema,
+    subjectRef: EntityRefSchema,
+    modelRef: EntityRefSchema,
     totalScore: z.number().finite(),
     dimensions: z.record(z.string(), z.number().finite()),
-    evidenceRefs: z.array(EntityRefV1Schema).min(1),
+    evidenceRefs: z.array(EntityRefSchema).min(1),
     freshnessAt: IsoDateTimeSchema,
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const RadarSelectionV1Schema = z
+export const RadarSelectionSchema = z
   .object({
     contract: z.literal('RadarSelection'),
-    version: z.literal(1),
     selectionId: ContractIdentifierSchema,
     teamId: ContractIdentifierSchema,
-    ownerRef: EntityRefV1Schema,
-    subjectRefs: z.array(EntityRefV1Schema),
+    ownerRef: EntityRefSchema,
+    subjectRefs: z.array(EntityRefSchema),
     status: z.enum(['stashed', 'selected', 'rejected', 'archived']),
     note: z.string().optional(),
     expectedVersion: z.number().int().nonnegative(),
     updatedAt: IsoDateTimeSchema,
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export type TrendSourceV1 = z.infer<typeof TrendSourceV1Schema>;
-export type HotwordBodyV1 = z.infer<typeof HotwordBodyV1Schema>;
-export type TrendMetricSnapshotV1 = z.infer<typeof TrendMetricSnapshotV1Schema>;
-export type RadarScoreProjectionV1 = z.infer<typeof RadarScoreProjectionV1Schema>;
-export type RadarSelectionV1 = z.infer<typeof RadarSelectionV1Schema>;
-
+export type TrendSource = z.infer<typeof TrendSourceSchema>;
+export type HotwordBody = z.infer<typeof HotwordBodySchema>;
+export type TrendMetricSnapshot = z.infer<typeof TrendMetricSnapshotSchema>;
+export type RadarScoreProjection = z.infer<typeof RadarScoreProjectionSchema>;
+export type RadarSelection = z.infer<typeof RadarSelectionSchema>;

@@ -1,25 +1,24 @@
 import { z } from 'zod';
 import {
   ContractIdentifierSchema,
-  EntityRefV1Schema,
+  EntityRefSchema,
   IsoDateTimeSchema,
   JsonValueSchema,
   Sha256Schema,
 } from './common';
 
-export const SourceRecordRefV1Schema = z
+export const SourceRecordRefSchema = z
   .object({
     sourceId: ContractIdentifierSchema,
     recordId: ContractIdentifierSchema,
     recordVersion: z.union([z.number().int().nonnegative(), ContractIdentifierSchema]),
     hash: Sha256Schema,
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const OntologyDefinitionV1Schema = z
+export const OntologyDefinitionSchema = z
   .object({
     contract: z.literal('OntologyDefinition'),
-    version: z.literal(1),
     ontologyId: ContractIdentifierSchema,
     dataSpaceId: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
@@ -30,16 +29,15 @@ export const OntologyDefinitionV1Schema = z
         storage: ContractIdentifierSchema,
         scope: z.enum(['tenant', 'team', 'user', 'global']),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     relationKinds: z.array(ContractIdentifierSchema).default([]),
     metricKinds: z.array(ContractIdentifierSchema).default([]),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const ProjectionSpecV1Schema = z
+export const ProjectionSpecSchema = z
   .object({
     contract: z.literal('ProjectionSpec'),
-    version: z.literal(1),
     projectionId: ContractIdentifierSchema,
     ontologyIds: z.array(ContractIdentifierSchema).min(1),
     outputSchemaRef: ContractIdentifierSchema,
@@ -48,7 +46,7 @@ export const ProjectionSpecV1Schema = z
         kind: z.enum(['query', 'aggregate', 'relationship', 'search', 'custom']),
         configuration: z.record(z.string(), JsonValueSchema).default({}),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     materialization: z.enum(['on-demand', 'event-driven', 'scheduled']),
     invalidationEvents: z.array(ContractIdentifierSchema).default([]),
     rebuildable: z.literal(true),
@@ -59,45 +57,42 @@ export const ProjectionSpecV1Schema = z
         runRefs: z.boolean(),
         actorRefs: z.boolean(),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const LineageRecordV1Schema = z
+export const LineageRecordSchema = z
   .object({
     contract: z.literal('LineageRecord'),
-    version: z.literal(1),
     lineageId: ContractIdentifierSchema,
-    subjectRef: EntityRefV1Schema,
-    sourceRecords: z.array(SourceRecordRefV1Schema).default([]),
-    bodyRefs: z.array(EntityRefV1Schema).default([]),
-    runRefs: z.array(EntityRefV1Schema).default([]),
-    outputRefs: z.array(EntityRefV1Schema).default([]),
-    artifactRefs: z.array(EntityRefV1Schema).default([]),
-    actorRefs: z.array(EntityRefV1Schema).default([]),
-    evidenceRefs: z.array(EntityRefV1Schema).default([]),
+    subjectRef: EntityRefSchema,
+    sourceRecords: z.array(SourceRecordRefSchema).default([]),
+    bodyRefs: z.array(EntityRefSchema).default([]),
+    runRefs: z.array(EntityRefSchema).default([]),
+    outputRefs: z.array(EntityRefSchema).default([]),
+    artifactRefs: z.array(EntityRefSchema).default([]),
+    actorRefs: z.array(EntityRefSchema).default([]),
+    evidenceRefs: z.array(EntityRefSchema).default([]),
     recordedAt: IsoDateTimeSchema,
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const DomainEventV1Schema = z
+export const DomainEventSchema = z
   .object({
     contract: z.literal('DomainEvent'),
-    version: z.literal(1),
     eventId: ContractIdentifierSchema,
     eventType: ContractIdentifierSchema,
-    aggregateRef: EntityRefV1Schema,
+    aggregateRef: EntityRefSchema,
     aggregateVersion: z.number().int().nonnegative(),
     requestId: ContractIdentifierSchema,
-    actorRef: EntityRefV1Schema,
+    actorRef: EntityRefSchema,
     payload: JsonValueSchema,
     occurredAt: IsoDateTimeSchema,
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export type SourceRecordRefV1 = z.infer<typeof SourceRecordRefV1Schema>;
-export type OntologyDefinitionV1 = z.infer<typeof OntologyDefinitionV1Schema>;
-export type ProjectionSpecV1 = z.infer<typeof ProjectionSpecV1Schema>;
-export type LineageRecordV1 = z.infer<typeof LineageRecordV1Schema>;
-export type DomainEventV1 = z.infer<typeof DomainEventV1Schema>;
-
+export type SourceRecordRef = z.infer<typeof SourceRecordRefSchema>;
+export type OntologyDefinition = z.infer<typeof OntologyDefinitionSchema>;
+export type ProjectionSpec = z.infer<typeof ProjectionSpecSchema>;
+export type LineageRecord = z.infer<typeof LineageRecordSchema>;
+export type DomainEvent = z.infer<typeof DomainEventSchema>;

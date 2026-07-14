@@ -20,11 +20,6 @@
       "require": "./lib/schemas/index.js",
       "default": "./lib/schemas/index.js"
     },
-    "./migrations": {
-      "types": "./lib/migrations/index.d.ts",
-      "require": "./lib/migrations/index.js",
-      "default": "./lib/migrations/index.js"
-    },
     "./json-schema/*": "./lib/json-schema/*",
     "./package.json": "./package.json"
   },
@@ -32,9 +27,6 @@
     "lib",
     "README.md"
   ],
-  "bin": {
-    "monkeys-contract-migrate": "scripts/migrate-contract.cjs"
-  },
   "repository": "git@github.com:inf-monkeys/monkeys-js-sdk.git",
   "author": "codevoyager1984 <codevoyager.jay@gmail.com>",
   "license": "MIT",

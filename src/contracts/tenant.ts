@@ -4,10 +4,9 @@ import {
   JsonValueSchema,
 } from './common';
 
-export const TenantProductConfigV1Schema = z
+export const TenantProductConfigSchema = z
   .object({
     contract: z.literal('TenantProductConfig'),
-    version: z.literal(1),
     tenantId: ContractIdentifierSchema,
     appId: ContractIdentifierSchema,
     environment: ContractIdentifierSchema,
@@ -20,7 +19,6 @@ export const TenantProductConfigV1Schema = z
     sourceMap: z.record(z.string(), ContractIdentifierSchema),
     warnings: z.array(z.string()).default([]),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export type TenantProductConfigV1 = z.infer<typeof TenantProductConfigV1Schema>;
-
+export type TenantProductConfig = z.infer<typeof TenantProductConfigSchema>;

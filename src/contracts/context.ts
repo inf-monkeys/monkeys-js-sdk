@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import {
   ContractIdentifierSchema,
-  EntityRefV1Schema,
+  EntityRefSchema,
   IsoDateTimeSchema,
   JsonValueSchema,
 } from './common';
 
-export const ActorRefV1Schema = z
+export const ActorRefSchema = z
   .object({
     kind: z.enum(['human', 'agent', 'service', 'tenant', 'public']),
     id: ContractIdentifierSchema.optional(),
@@ -14,87 +14,83 @@ export const ActorRefV1Schema = z
     agentId: ContractIdentifierSchema.optional(),
     serviceId: ContractIdentifierSchema.optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const AuthorityScopeV1Schema = z
+export const AuthorityScopeSchema = z
   .object({
     resource: ContractIdentifierSchema,
     actions: z.array(ContractIdentifierSchema).min(1),
     constraints: z.record(z.string(), JsonValueSchema).optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const RequestScopeV1Schema = z
+export const RequestScopeSchema = z
   .object({
     contract: z.literal('RequestScope'),
-    version: z.literal(1),
     requestId: ContractIdentifierSchema,
     traceId: ContractIdentifierSchema.optional(),
     appId: ContractIdentifierSchema,
     tenantId: ContractIdentifierSchema.optional(),
     teamId: ContractIdentifierSchema.optional(),
-    actor: ActorRefV1Schema,
+    actor: ActorRefSchema,
     session: z
       .object({
         authType: ContractIdentifierSchema,
         authenticated: z.boolean(),
         membershipVerified: z.boolean(),
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     permissionCodes: z.array(ContractIdentifierSchema).default([]),
-    authority: z.array(AuthorityScopeV1Schema).default([]),
+    authority: z.array(AuthorityScopeSchema).default([]),
     issuedAt: IsoDateTimeSchema,
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const ExecutionLinkV1Schema = z
+export const ExecutionLinkSchema = z
   .object({
     contract: z.literal('ExecutionLink'),
-    version: z.literal(1),
     requestId: ContractIdentifierSchema,
     traceId: ContractIdentifierSchema.optional(),
     correlationId: ContractIdentifierSchema.optional(),
     causationId: ContractIdentifierSchema.optional(),
-    workflowRef: EntityRefV1Schema.optional(),
-    runRef: EntityRefV1Schema,
-    taskRef: EntityRefV1Schema.optional(),
-    parentRunRef: EntityRefV1Schema.optional(),
+    workflowRef: EntityRefSchema.optional(),
+    runRef: EntityRefSchema,
+    taskRef: EntityRefSchema.optional(),
+    parentRunRef: EntityRefSchema.optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const CompletionHeaderV1Schema = z
+export const CompletionHeaderSchema = z
   .object({
     contract: z.literal('CompletionHeader'),
-    version: z.literal(1),
     eventId: ContractIdentifierSchema,
     runtimeEventId: ContractIdentifierSchema,
     idempotencyKey: ContractIdentifierSchema,
     sequence: z.number().int().nonnegative(),
-    execution: ExecutionLinkV1Schema,
+    execution: ExecutionLinkSchema,
     producer: z
       .object({
         service: ContractIdentifierSchema,
         runtime: ContractIdentifierSchema,
         version: ContractIdentifierSchema,
       })
-      .catchall(JsonValueSchema),
+      .strict(),
     status: z.enum(['SUCCEEDED', 'FAILED', 'CANCELLED', 'TIMED_OUT']),
     occurredAt: IsoDateTimeSchema,
     payloadSchemaRef: ContractIdentifierSchema.optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const CompletionEventV1Schema = z
+export const CompletionEventSchema = z
   .object({
-    header: CompletionHeaderV1Schema,
+    header: CompletionHeaderSchema,
     payload: JsonValueSchema.optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export type ActorRefV1 = z.infer<typeof ActorRefV1Schema>;
-export type AuthorityScopeV1 = z.infer<typeof AuthorityScopeV1Schema>;
-export type RequestScopeV1 = z.infer<typeof RequestScopeV1Schema>;
-export type ExecutionLinkV1 = z.infer<typeof ExecutionLinkV1Schema>;
-export type CompletionHeaderV1 = z.infer<typeof CompletionHeaderV1Schema>;
-export type CompletionEventV1 = z.infer<typeof CompletionEventV1Schema>;
-
+export type ActorRef = z.infer<typeof ActorRefSchema>;
+export type AuthorityScope = z.infer<typeof AuthorityScopeSchema>;
+export type RequestScope = z.infer<typeof RequestScopeSchema>;
+export type ExecutionLink = z.infer<typeof ExecutionLinkSchema>;
+export type CompletionHeader = z.infer<typeof CompletionHeaderSchema>;
+export type CompletionEvent = z.infer<typeof CompletionEventSchema>;

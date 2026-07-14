@@ -30,17 +30,16 @@ export const ContractMetadataSchema = z
     createdAt: IsoDateTimeSchema.optional(),
     updatedAt: IsoDateTimeSchema.optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
-export const EntityRefV1Schema = z
+export const EntityRefSchema = z
   .object({
     kind: ContractIdentifierSchema,
     id: ContractIdentifierSchema,
     version: z.union([ContractVersionSchema, z.string().trim().min(1)]).optional(),
     ownerRepo: ContractIdentifierSchema.optional(),
   })
-  .catchall(JsonValueSchema);
+  .strict();
 
 export type ContractMetadata = z.infer<typeof ContractMetadataSchema>;
-export type EntityRefV1 = z.infer<typeof EntityRefV1Schema>;
-
+export type EntityRef = z.infer<typeof EntityRefSchema>;
