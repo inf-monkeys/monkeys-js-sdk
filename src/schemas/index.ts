@@ -14,6 +14,7 @@ export {
   JsonValueSchema,
 } from '../contracts/common';
 export {
+  AgentRuntimeEventSchema,
   CompletionEventSchema,
   CompletionHeaderSchema,
   ExecutionLinkSchema,
@@ -36,11 +37,28 @@ export {
   ThemeTokensSchema,
 } from '../contracts/theme';
 export {
+  BrandGeneticsProfileSchema,
+  BrandBodySchema,
   HotwordBodySchema,
+  ProductBodySchema,
+  RadarActionRecordSchema,
+  RadarAnalysisRunSchema,
+  RadarDecisionMetricsSchema,
+  RadarOpportunityMatrixSchema,
+  RadarOpportunityMatrixPointSchema,
+  RadarPanoramaEdgeSchema,
+  RadarPanoramaNodeSchema,
+  RadarPanoramaSchema,
+  RadarQueryBodySchema,
+  RadarScoreModelBodySchema,
   RadarScoreProjectionSchema,
   RadarSelectionSchema,
+  RadarWritebackRecordSchema,
+  SavedRadarQuerySchema,
+  TrendIngestRunSchema,
   TrendMetricSnapshotSchema,
   TrendSourceSchema,
+  TrendSourceRecordSchema,
 } from '../contracts/trend';
 export {
   WorkflowDefinitionSchema,
@@ -51,6 +69,7 @@ export {
 import { ArtifactManifestSchema, OutputRecordSchema } from '../contracts/artifact';
 import { CapabilityManifestSchema } from '../contracts/capability';
 import {
+  AgentRuntimeEventSchema,
   CompletionEventSchema,
   CompletionHeaderSchema,
   ExecutionLinkSchema,
@@ -66,15 +85,31 @@ import { PageDefinitionSchema, PageRuntimeDescriptorSchema } from '../contracts/
 import { TenantProductConfigSchema } from '../contracts/tenant';
 import { ThemeTokensSchema } from '../contracts/theme';
 import {
+  BrandGeneticsProfileSchema,
+  BrandBodySchema,
   HotwordBodySchema,
+  ProductBodySchema,
+  RadarActionRecordSchema,
+  RadarAnalysisRunSchema,
+  RadarOpportunityMatrixSchema,
+  RadarPanoramaSchema,
+  RadarQueryBodySchema,
+  RadarScoreModelBodySchema,
   RadarScoreProjectionSchema,
   RadarSelectionSchema,
+  RadarWritebackRecordSchema,
+  SavedRadarQuerySchema,
+  TrendIngestRunSchema,
   TrendMetricSnapshotSchema,
+  TrendSourceRecordSchema,
 } from '../contracts/trend';
 import { WorkflowDefinitionSchema } from '../contracts/workflow-definition';
 
 export const canonicalContractSchemas = {
+  'agent-runtime-event': AgentRuntimeEventSchema,
   'artifact-manifest': ArtifactManifestSchema,
+  'brand-body': BrandBodySchema,
+  'brand-genetics-profile': BrandGeneticsProfileSchema,
   'capability-manifest': CapabilityManifestSchema,
   'completion-event': CompletionEventSchema,
   'completion-header': CompletionHeaderSchema,
@@ -87,12 +122,23 @@ export const canonicalContractSchemas = {
   'page-definition': PageDefinitionSchema,
   'page-runtime-descriptor': PageRuntimeDescriptorSchema,
   'projection-spec': ProjectionSpecSchema,
+  'product-body': ProductBodySchema,
+  'radar-action-record': RadarActionRecordSchema,
+  'radar-analysis-run': RadarAnalysisRunSchema,
+  'radar-opportunity-matrix': RadarOpportunityMatrixSchema,
+  'radar-panorama': RadarPanoramaSchema,
+  'radar-query-body': RadarQueryBodySchema,
+  'radar-score-model-body': RadarScoreModelBodySchema,
   'radar-score-projection': RadarScoreProjectionSchema,
   'radar-selection': RadarSelectionSchema,
+  'radar-writeback-record': RadarWritebackRecordSchema,
   'request-scope': RequestScopeSchema,
+  'saved-radar-query': SavedRadarQuerySchema,
   'tenant-product-config': TenantProductConfigSchema,
   'theme-tokens': ThemeTokensSchema,
+  'trend-ingest-run': TrendIngestRunSchema,
   'trend-metric-snapshot': TrendMetricSnapshotSchema,
+  'trend-source-record': TrendSourceRecordSchema,
   'workflow-definition': WorkflowDefinitionSchema,
 } as const;
 

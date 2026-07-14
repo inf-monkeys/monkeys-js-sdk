@@ -88,9 +88,25 @@ export const CompletionEventSchema = z
   })
   .strict();
 
+export const AgentRuntimeEventSchema = z
+  .object({
+    contract: z.literal('AgentRuntimeEvent'),
+    runtimeEventId: ContractIdentifierSchema,
+    streamId: ContractIdentifierSchema,
+    sequence: z.number().int().nonnegative(),
+    requestId: ContractIdentifierSchema,
+    teamId: ContractIdentifierSchema,
+    threadId: ContractIdentifierSchema.optional(),
+    eventType: z.enum(['messages:append', 'messages:update', 'thread:update', 'tool-call:upsert']),
+    payload: JsonValueSchema,
+    occurredAt: IsoDateTimeSchema,
+  })
+  .strict();
+
 export type ActorRef = z.infer<typeof ActorRefSchema>;
 export type AuthorityScope = z.infer<typeof AuthorityScopeSchema>;
 export type RequestScope = z.infer<typeof RequestScopeSchema>;
 export type ExecutionLink = z.infer<typeof ExecutionLinkSchema>;
 export type CompletionHeader = z.infer<typeof CompletionHeaderSchema>;
 export type CompletionEvent = z.infer<typeof CompletionEventSchema>;
+export type AgentRuntimeEvent = z.infer<typeof AgentRuntimeEventSchema>;
