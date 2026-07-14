@@ -43,7 +43,9 @@
     "typecheck": "tsc --noEmit",
     "build": "yarn clean && tsc && node scripts/generate-json-schemas.cjs",
     "test": "yarn build && node --test test/*.test.cjs",
-    "pack:check": "yarn build && npm pack --dry-run"
+    "prepack": "yarn build",
+    "prepublishOnly": "yarn typecheck && yarn test",
+    "pack:check": "npm pack --dry-run"
   },
   "publishConfig": {
     "access": "public"
