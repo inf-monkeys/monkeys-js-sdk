@@ -31,6 +31,15 @@ export {
   PageDefinitionSchema,
   PageRuntimeDescriptorSchema,
 } from '../contracts/page';
+export {
+  ApplicationHandoffEndpointSchema,
+  ApplicationHandoffSchema,
+  OverlayNodeSchema,
+  ProductContextSchema,
+  RenderNodeSchema,
+  RenderNodeStateSchema,
+  ViewProviderDescriptorSchema,
+} from '../contracts/render';
 export { TenantProductConfigSchema } from '../contracts/tenant';
 export {
   ThemeTokenSchema,
@@ -82,6 +91,12 @@ import {
   ProjectionSpecSchema,
 } from '../contracts/data';
 import { PageDefinitionSchema, PageRuntimeDescriptorSchema } from '../contracts/page';
+import {
+  ApplicationHandoffSchema,
+  OverlayNodeSchema,
+  RenderNodeSchema,
+  ViewProviderDescriptorSchema,
+} from '../contracts/render';
 import { TenantProductConfigSchema } from '../contracts/tenant';
 import { ThemeTokensSchema } from '../contracts/theme';
 import {
@@ -107,6 +122,7 @@ import { WorkflowDefinitionSchema } from '../contracts/workflow-definition';
 
 export const canonicalContractSchemas = {
   'agent-runtime-event': AgentRuntimeEventSchema,
+  'application-handoff': ApplicationHandoffSchema,
   'artifact-manifest': ArtifactManifestSchema,
   'brand-body': BrandBodySchema,
   'brand-genetics-profile': BrandGeneticsProfileSchema,
@@ -118,6 +134,7 @@ export const canonicalContractSchemas = {
   'hotword-body': HotwordBodySchema,
   'lineage-record': LineageRecordSchema,
   'ontology-definition': OntologyDefinitionSchema,
+  'overlay-node': OverlayNodeSchema,
   'output-record': OutputRecordSchema,
   'page-definition': PageDefinitionSchema,
   'page-runtime-descriptor': PageRuntimeDescriptorSchema,
@@ -133,12 +150,14 @@ export const canonicalContractSchemas = {
   'radar-selection': RadarSelectionSchema,
   'radar-writeback-record': RadarWritebackRecordSchema,
   'request-scope': RequestScopeSchema,
+  'render-node': RenderNodeSchema,
   'saved-radar-query': SavedRadarQuerySchema,
   'tenant-product-config': TenantProductConfigSchema,
   'theme-tokens': ThemeTokensSchema,
   'trend-ingest-run': TrendIngestRunSchema,
   'trend-metric-snapshot': TrendMetricSnapshotSchema,
   'trend-source-record': TrendSourceRecordSchema,
+  'view-provider-descriptor': ViewProviderDescriptorSchema,
   'workflow-definition': WorkflowDefinitionSchema,
 } as const;
 

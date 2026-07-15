@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   ContractIdentifierSchema,
   EntityRefSchema,
-  JsonValueSchema,
 } from './common';
 
 export const PageVisibilitySchema = z
@@ -24,6 +23,7 @@ export const PageDefinitionSchema = z
     routePath: z.string().trim().min(1),
     rendererKey: ContractIdentifierSchema,
     capabilityRef: EntityRefSchema.optional(),
+    capabilityRefs: z.array(EntityRefSchema).default([]),
     binding: z
       .object({
         sourceRef: ContractIdentifierSchema.optional(),

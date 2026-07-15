@@ -7,6 +7,7 @@ const test = require('node:test');
 
 const contracts = require('../lib/contracts');
 const schemas = require('../lib/schemas');
+const runtime = require('../lib/runtime');
 
 const occurredAt = '2026-07-14T08:00:00.000Z';
 const ref = (kind, id) => ({ kind, id });
@@ -66,6 +67,26 @@ const pageDefinition = {
   },
 };
 
+const renderNode = {
+  contract: 'RenderNode',
+  nodeId: 'workspace-root',
+  kind: 'page',
+  ownerRepo: 'monkeys-studio',
+  pageRef: ref('page', 'workflow-page'),
+  capabilityRef: ref('capability', 'image.generate'),
+  providerRef: ref('provider', 'workflow-provider'),
+  surfaceOwner: 'monkeys-studio',
+  scroll: { owner: 'surface', axis: 'y', virtualized: false },
+  activation: { activationId: 'workflow-page', mode: 'navigate' },
+  lifecycle: {
+    mountPolicy: 'when-active',
+    queryPolicy: 'when-active',
+    retainOnDeactivate: false,
+  },
+  state: 'idle',
+  renderModel: {},
+};
+
 const fixtures = {
   'agent-runtime-event': {
     contract: 'AgentRuntimeEvent',
@@ -78,6 +99,30 @@ const fixtures = {
     eventType: 'thread:update',
     payload: { patch: { title: 'New title' } },
     occurredAt,
+  },
+  'application-handoff': {
+    contract: 'ApplicationHandoff',
+    handoffId: 'handoff-1',
+    source: {
+      product: 'studio',
+      pageId: 'workflow-page',
+      viewId: 'workflow-view',
+      objectRef: ref('workflow', 'workflow-1'),
+      path: '/team-1/workflows',
+    },
+    target: {
+      product: 'kernel',
+      pageId: 'workflow-governance',
+      objectRef: ref('workflow', 'workflow-1'),
+      path: '/kernel/app-governance/workflows',
+    },
+    returnTarget: {
+      product: 'studio',
+      pageId: 'workflow-page',
+      path: '/team-1/workflows',
+    },
+    traceId: 'trace-1',
+    createdAt: occurredAt,
   },
   'artifact-manifest': {
     contract: 'ArtifactManifest',
@@ -188,6 +233,25 @@ const fixtures = {
     authority: { service: 'monkeys-data-server', storage: 'postgres', scope: 'tenant' },
     relationKinds: [],
     metricKinds: [],
+  },
+  'overlay-node': {
+    contract: 'OverlayNode',
+    overlayId: 'widget-fullscreen',
+    renderNode: {
+      ...renderNode,
+      nodeId: 'widget-fullscreen',
+      kind: 'overlay',
+      activation: { activationId: 'widget-1', mode: 'fullscreen' },
+      lifecycle: {
+        mountPolicy: 'when-active',
+        queryPolicy: 'when-visible',
+        retainOnDeactivate: true,
+      },
+    },
+    presentation: 'fullscreen',
+    url: { parameter: 'focusWidgetId', value: 'widget-1', closeOnBack: true },
+    focus: { initial: 'first-interactive', trap: true, restore: true },
+    close: { escape: true, backdrop: true },
   },
   'output-record': {
     contract: 'OutputRecord',
@@ -332,6 +396,7 @@ const fixtures = {
     recordedAt: occurredAt,
   },
   'request-scope': requestScope,
+  'render-node': renderNode,
   'saved-radar-query': {
     contract: 'SavedRadarQuery',
     savedQueryId: 'saved-query-1',
@@ -416,6 +481,23 @@ const fixtures = {
     idempotencyKey: 'source-record-1:1',
     collectedAt: occurredAt,
   },
+  'view-provider-descriptor': {
+    contract: 'ViewProviderDescriptor',
+    providerId: 'workflow-provider',
+    ownerRepo: 'monkeys-studio',
+    capabilityRef: ref('capability', 'image.generate'),
+    rendererKey: 'workflow-workspace',
+    loading: 'lazy',
+    stateOwner: 'provider',
+    supportedPageTypes: ['preview'],
+    sideEffects: ['network', 'storage'],
+    lifecycle: {
+      preserveMount: true,
+      preserveScroll: true,
+      focusModel: 'provider-managed',
+    },
+    performance: { lazy: true, virtualized: false, budgetMs: 200 },
+  },
   'workflow-definition': {
     contract: 'WorkflowDefinition',
     metadata: { id: 'workflow-1', version: 1, role: 'workflow', tags: [] },
@@ -440,7 +522,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 34);
+  assert.equal(names.length, 38);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -504,4 +586,34 @@ test('does not publish migration or compatibility entrypoints', () => {
   assert.equal(packageJson.exports['./migrations'], undefined);
   assert.equal(packageJson.bin, undefined);
   assert.equal(existsSync(resolve(__dirname, '../lib/migrations')), false);
+});
+
+test('compiles a strict product runtime catalog and matches dynamic routes', () => {
+  const catalog = runtime.compileProductRuntimeCatalog({
+    product: 'studio',
+    pages: [{
+      ...pageDefinition,
+      routePath: '/$teamId/workflows/:workflowId',
+      capabilityRefs: [ref('capability', 'image.generate')],
+    }],
+    capabilities: [fixtures['capability-manifest']],
+    providers: [fixtures['view-provider-descriptor']],
+  });
+
+  assert.equal(catalog.pagesById.get('workflow-page').routeId, 'workflow');
+  assert.equal(catalog.matchPage('/team-1/workflows/workflow-1').pageId, 'workflow-page');
+  assert.throws(() => runtime.compileProductRuntimeCatalog({
+    product: 'studio',
+    pages: [pageDefinition, pageDefinition],
+    capabilities: [fixtures['capability-manifest']],
+    providers: [fixtures['view-provider-descriptor']],
+  }), /Duplicate pageId/);
+});
+
+test('round-trips a validated application handoff through a URL', () => {
+  const handoff = fixtures['application-handoff'];
+  const target = runtime.buildApplicationHandoffUrl('/kernel/app-governance/workflows?tab=runs', handoff);
+  assert.match(target, /^\/kernel\/app-governance\/workflows\?/);
+  assert.deepEqual(runtime.readApplicationHandoffFromUrl(target), handoff);
+  assert.equal(runtime.parseApplicationHandoff('{"unsafe":true}'), undefined);
 });

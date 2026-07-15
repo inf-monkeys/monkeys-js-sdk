@@ -20,6 +20,11 @@
       "require": "./lib/schemas/index.js",
       "default": "./lib/schemas/index.js"
     },
+    "./runtime": {
+      "types": "./lib/runtime/product-runtime.d.ts",
+      "require": "./lib/runtime/product-runtime.js",
+      "default": "./lib/runtime/product-runtime.js"
+    },
     "./json-schema/*": "./lib/json-schema/*",
     "./package.json": "./package.json"
   },

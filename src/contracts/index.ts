@@ -4,8 +4,8 @@ export * from './common';
 export * from './context';
 export * from './data';
 export * from './page';
+export * from './render';
 export * from './tenant';
 export * from './theme';
 export * from './trend';
 export * from './workflow-definition';
-
