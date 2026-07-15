@@ -10,3 +10,9 @@ export {
   readApplicationHandoffFromUrl,
   serializeApplicationHandoff,
 } from './runtime/product-runtime';
+export {
+  buildChangeImpactGraph,
+  compileProductDeclaration,
+  compileToolCapabilityManifest,
+  validateDomainCommand,
+} from './runtime/declaration-compiler';

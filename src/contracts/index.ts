@@ -5,6 +5,7 @@ export * from './context';
 export * from './data';
 export * from './page';
 export * from './render';
+export * from './semantic';
 export * from './tenant';
 export * from './theme';
 export * from './trend';

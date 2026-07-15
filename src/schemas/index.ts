@@ -40,6 +40,13 @@ export {
   RenderNodeStateSchema,
   ViewProviderDescriptorSchema,
 } from '../contracts/render';
+export {
+  ChangeImpactGraphSchema,
+  ConceptDefinitionSchema,
+  DomainCommandDefinitionSchema,
+  DomainCommandSchema,
+  ProductDeclarationSchema,
+} from '../contracts/semantic';
 export { TenantProductConfigSchema } from '../contracts/tenant';
 export {
   ThemeTokenSchema,
@@ -98,6 +105,13 @@ import {
   ViewProviderDescriptorSchema,
 } from '../contracts/render';
 import { TenantProductConfigSchema } from '../contracts/tenant';
+import {
+  ChangeImpactGraphSchema,
+  ConceptDefinitionSchema,
+  DomainCommandDefinitionSchema,
+  DomainCommandSchema,
+  ProductDeclarationSchema,
+} from '../contracts/semantic';
 import { ThemeTokensSchema } from '../contracts/theme';
 import {
   BrandGeneticsProfileSchema,
@@ -127,9 +141,13 @@ export const canonicalContractSchemas = {
   'brand-body': BrandBodySchema,
   'brand-genetics-profile': BrandGeneticsProfileSchema,
   'capability-manifest': CapabilityManifestSchema,
+  'change-impact-graph': ChangeImpactGraphSchema,
+  'concept-definition': ConceptDefinitionSchema,
   'completion-event': CompletionEventSchema,
   'completion-header': CompletionHeaderSchema,
   'domain-event': DomainEventSchema,
+  'domain-command': DomainCommandSchema,
+  'domain-command-definition': DomainCommandDefinitionSchema,
   'execution-link': ExecutionLinkSchema,
   'hotword-body': HotwordBodySchema,
   'lineage-record': LineageRecordSchema,
@@ -139,6 +157,7 @@ export const canonicalContractSchemas = {
   'page-definition': PageDefinitionSchema,
   'page-runtime-descriptor': PageRuntimeDescriptorSchema,
   'projection-spec': ProjectionSpecSchema,
+  'product-declaration': ProductDeclarationSchema,
   'product-body': ProductBodySchema,
   'radar-action-record': RadarActionRecordSchema,
   'radar-analysis-run': RadarAnalysisRunSchema,

@@ -180,6 +180,29 @@ const fixtures = {
     },
     observability: { eventNamespace: 'capability.image', metrics: [], evidenceRefs: [] },
   },
+  'change-impact-graph': {
+    contract: 'ChangeImpactGraph',
+    declarationId: 'studio-product',
+    nodes: [ref('ontology', 'product.asset')],
+    edges: [],
+    impacts: [{
+      changedRef: ref('ontology', 'product.asset'),
+      affectedRefs: [],
+      reasons: ['direct-change'],
+    }],
+    generatedAt: occurredAt,
+  },
+  'concept-definition': {
+    contract: 'ConceptDefinition',
+    conceptId: 'product',
+    ownerRepo: 'monkeys-data-server',
+    displayName: 'Product',
+    schemaRef: 'schema://product.asset',
+    ontologyId: 'product.asset',
+    capabilityIds: ['image.generate'],
+    commandNames: ['projection.rebuild'],
+    relationships: [],
+  },
   'completion-event': { header: completionHeader, payload: { outputId: 'output-1' } },
   'completion-header': completionHeader,
   'domain-event': {
@@ -192,6 +215,30 @@ const fixtures = {
     actorRef: ref('user', 'user-1'),
     payload: {},
     occurredAt,
+  },
+  'domain-command': {
+    contract: 'DomainCommand',
+    commandId: 'command-1',
+    commandName: 'projection.rebuild',
+    requestId: 'request-1',
+    traceId: 'trace-1',
+    idempotencyKey: 'projection-rebuild-1',
+    targetRef: ref('projection', 'asset-gallery'),
+    actorRef: ref('user', 'user-1'),
+    source: { product: 'kernel', pageId: 'semantic-registry' },
+    payload: {},
+    issuedAt: occurredAt,
+  },
+  'domain-command-definition': {
+    contract: 'DomainCommandDefinition',
+    commandName: 'projection.rebuild',
+    ownerRepo: 'monkeys-data-server',
+    displayName: 'Rebuild projection',
+    targetKinds: ['projection'],
+    inputSchemaRef: 'schema://projection-rebuild',
+    requiredPermissionCodes: ['data_management:write'],
+    handlerRef: ref('handler', 'monkeys-data-server.projection-rebuild'),
+    sideEffects: ['data-write'],
   },
   'execution-link': executionLink,
   'hotword-body': {
@@ -272,6 +319,17 @@ const fixtures = {
     relationRefs: [],
     createdAt: occurredAt,
     updatedAt: occurredAt,
+  },
+  'product-declaration': {
+    contract: 'ProductDeclaration',
+    declarationId: 'studio-product',
+    ownerRepo: 'monkeys-studio',
+    concepts: [],
+    ontologies: [],
+    projections: [],
+    commands: [],
+    capabilities: [],
+    pages: [],
   },
   'page-definition': pageDefinition,
   'page-runtime-descriptor': {
@@ -522,7 +580,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 38);
+  assert.equal(names.length, 43);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -616,4 +674,87 @@ test('round-trips a validated application handoff through a URL', () => {
   assert.match(target, /^\/kernel\/app-governance\/workflows\?/);
   assert.deepEqual(runtime.readApplicationHandoffFromUrl(target), handoff);
   assert.equal(runtime.parseApplicationHandoff('{"unsafe":true}'), undefined);
+});
+
+test('compiles declarations, validates commands, and computes transitive change impact', () => {
+  const command = fixtures['domain-command-definition'];
+  const ontology = fixtures['ontology-definition'];
+  const projection = {
+    ...fixtures['projection-spec'],
+    ontologyIds: [ontology.ontologyId],
+  };
+  const concept = fixtures['concept-definition'];
+  const declaration = {
+    ...fixtures['product-declaration'],
+    concepts: [concept],
+    ontologies: [ontology],
+    projections: [projection],
+    commands: [command],
+    capabilities: [fixtures['capability-manifest']],
+    pages: [{
+      ...pageDefinition,
+      binding: { ontologyId: ontology.ontologyId, projectionRef: projection.projectionId },
+      capabilityRefs: [ref('capability', 'image.generate')],
+    }],
+  };
+  const compiled = runtime.compileProductDeclaration(declaration);
+  assert.equal(compiled.pagesById.get('workflow-page').binding.projectionRef, 'asset-gallery');
+  assert.throws(() => runtime.compileProductDeclaration({
+    ...declaration,
+    projections: [{ ...projection, ontologyIds: ['missing'] }],
+  }), /unknown ontology/);
+
+  assert.equal(runtime.validateDomainCommand(
+    fixtures['domain-command'],
+    [command],
+    ['data_management:write'],
+  ).commandName, 'projection.rebuild');
+  assert.throws(() => runtime.validateDomainCommand(fixtures['domain-command'], [command], []), /requires permissions/);
+
+  const impact = runtime.buildChangeImpactGraph(
+    declaration,
+    {
+      ...declaration,
+      ontologies: [{ ...ontology, metricKinds: ['sales'] }],
+    },
+    occurredAt,
+  );
+  const ontologyImpact = impact.impacts.find((item) => item.changedRef.kind === 'ontology');
+  assert.deepEqual(
+    ontologyImpact.affectedRefs.map((item) => `${item.kind}:${item.id}`),
+    ['concept:product', 'page:workflow-page', 'projection:asset-gallery'],
+  );
+});
+
+test('tool capability compiler rejects non-tool manifests and providers', () => {
+  assert.equal(runtime.compileToolCapabilityManifest(fixtures['capability-manifest']).id, 'image.generate');
+  assert.throws(() => runtime.compileToolCapabilityManifest({
+    ...fixtures['capability-manifest'],
+    kind: 'view',
+  }), /kind tool/);
+});
+
+test('tool capability factory produces the canonical manifest from provider metadata', () => {
+  const manifest = runtime.createToolCapabilityManifest({
+    id: 'monkeys_tools_calculator', capabilityVersion: '1.0.0', ownerRepo: 'monkey-tools-agentkits',
+    displayName: 'Calculator', inputs: [{ name: 'expression', required: true }], outputs: [{ name: 'result' }],
+  });
+  assert.equal(manifest.kind, 'tool');
+  assert.equal(manifest.runtime.providerRef.id, 'monkeys_tools_calculator');
+  assert.equal(manifest.ports.inputs[0].schemaRef, 'schema://tool/monkeys_tools_calculator/input/expression');
+});
+
+test('OpenAPI capability publisher annotates every declared tool operation', () => {
+  const document = {
+    paths: { '/calculate': { post: {
+      'x-monkey-tool-name': 'calculate', 'x-monkey-tool-display-name': 'Calculate',
+      'x-monkey-tool-input': [{ name: 'expression', required: true }], 'x-monkey-tool-output': [{ name: 'result' }],
+    } } },
+  };
+  runtime.publishOpenApiToolCapabilityManifests(document, {
+    namespace: 'monkeys_tools', ownerRepo: 'monkey-tools-agentkits', capabilityVersion: '1.0.0',
+  });
+  const capability = document.paths['/calculate'].post['x-monkeys-capability-manifest'];
+  assert.equal(capability.id, 'monkeys_tools_calculate');
+  assert.equal(capability.ownerRepo, 'monkey-tools-agentkits');
 });
