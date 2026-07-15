@@ -225,7 +225,7 @@ const fixtures = {
     idempotencyKey: 'projection-rebuild-1',
     targetRef: ref('projection', 'asset-gallery'),
     actorRef: ref('user', 'user-1'),
-    source: { product: 'kernel', pageId: 'semantic-registry' },
+    source: { product: 'kernel', pageId: 'data-governance' },
     payload: {},
     issuedAt: occurredAt,
   },
