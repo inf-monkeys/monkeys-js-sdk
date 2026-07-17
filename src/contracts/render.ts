@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   ContractIdentifierSchema,
+  ContractVersionSchema,
   EntityRefSchema,
   IsoDateTimeSchema,
   JsonObjectSchema,
@@ -18,50 +19,163 @@ export const RenderNodeStateSchema = z.enum([
   'selected',
 ]);
 
+export const RenderNodeKindSchema = z.enum([
+  'shell',
+  'page',
+  'navigation',
+  'view',
+  'record',
+  'control',
+  'detail',
+  'action',
+  'overlay',
+  'professional-provider',
+]);
+
+export const RenderSurfaceSchema = z
+  .object({
+    frameOwner: z.enum(['host', 'provider', 'none']),
+    tone: ContractIdentifierSchema.optional(),
+    density: z.enum(['compact', 'default', 'comfortable']),
+  })
+  .strict();
+
+export const RenderScrollSchema = z
+  .object({
+    owner: z.enum(['page', 'surface', 'provider']),
+    axis: z.enum(['x', 'y', 'both', 'none']),
+    restoreKey: ContractIdentifierSchema.optional(),
+    virtualizationBoundary: z.boolean(),
+  })
+  .strict()
+  .superRefine((scroll, context) => {
+    if (scroll.owner === 'provider' && scroll.restoreKey) {
+      context.addIssue({
+        code: 'custom',
+        path: ['restoreKey'],
+        message: 'Provider-owned scroll state cannot declare a host restoreKey.',
+      });
+    }
+    if (scroll.virtualizationBoundary && scroll.owner !== 'provider') {
+      context.addIssue({
+        code: 'custom',
+        path: ['owner'],
+        message: 'A virtualization boundary must keep scroll ownership in the provider.',
+      });
+    }
+  });
+
+export const RenderActivationSchema = z
+  .object({
+    activationId: ContractIdentifierSchema,
+    mode: z.enum(['navigate', 'select', 'drawer', 'modal', 'fullscreen', 'inline']),
+  })
+  .strict();
+
+export const RenderLifecycleSchema = z
+  .object({
+    mountPolicy: z.enum(['always', 'when-visible', 'when-active']),
+    queryPolicy: z.enum(['always', 'when-visible', 'when-active', 'manual']),
+    retainOnDeactivate: z.boolean(),
+    deepLink: z.boolean(),
+    focusReturn: z.boolean(),
+  })
+  .strict();
+
+const requireRef = (
+  reference: z.infer<typeof EntityRefSchema> | undefined,
+  expectedKind: string,
+  path: (string | number)[],
+  context: z.RefinementCtx,
+) => {
+  if (!reference) return;
+  if (reference.kind !== expectedKind) {
+    context.addIssue({
+      code: 'custom',
+      path: [...path, 'kind'],
+      message: `${path.join('.')} must reference ${expectedKind}.`,
+    });
+  }
+};
+
+const requirePinnedOwnedRef = (
+  reference: z.infer<typeof EntityRefSchema> | undefined,
+  expectedKind: string,
+  path: (string | number)[],
+  context: z.RefinementCtx,
+) => {
+  requireRef(reference, expectedKind, path, context);
+  if (!reference) return;
+  if (reference.version === undefined) {
+    context.addIssue({
+      code: 'custom',
+      path: [...path, 'version'],
+      message: `${path.join('.')} must pin a version.`,
+    });
+  }
+  if (reference.ownerRepo === undefined) {
+    context.addIssue({
+      code: 'custom',
+      path: [...path, 'ownerRepo'],
+      message: `${path.join('.')} must declare its owner repository.`,
+    });
+  }
+};
+
 export const RenderNodeSchema = z
   .object({
     contract: z.literal('RenderNode'),
     nodeId: ContractIdentifierSchema,
-    kind: z.enum([
-      'page',
-      'view',
-      'record',
-      'control',
-      'detail',
-      'overlay',
-      'professional-provider',
-    ]),
+    kind: RenderNodeKindSchema,
+    version: ContractVersionSchema,
     ownerRepo: ContractIdentifierSchema,
     parentNodeId: ContractIdentifierSchema.optional(),
+    slot: ContractIdentifierSchema.optional(),
     pageRef: EntityRefSchema,
+    semanticRef: EntityRefSchema.optional(),
+    dataContextRef: EntityRefSchema.optional(),
     capabilityRef: EntityRefSchema,
     providerRef: EntityRefSchema.optional(),
-    surfaceOwner: ContractIdentifierSchema,
-    scroll: z
-      .object({
-        owner: z.enum(['page', 'surface', 'provider']),
-        axis: z.enum(['x', 'y', 'both', 'none']),
-        restoreKey: ContractIdentifierSchema.optional(),
-        virtualized: z.boolean().default(false),
-      })
-      .strict(),
-    activation: z
-      .object({
-        activationId: ContractIdentifierSchema,
-        mode: z.enum(['navigate', 'select', 'drawer', 'modal', 'fullscreen', 'inline']),
-      })
-      .strict(),
-    lifecycle: z
-      .object({
-        mountPolicy: z.enum(['always', 'when-visible', 'when-active']),
-        queryPolicy: z.enum(['always', 'when-visible', 'when-active', 'manual']),
-        retainOnDeactivate: z.boolean().default(false),
-      })
-      .strict(),
-    state: RenderNodeStateSchema.default('idle'),
-    renderModel: JsonObjectSchema.default({}),
+    stateRef: EntityRefSchema.optional(),
+    surface: RenderSurfaceSchema,
+    scroll: RenderScrollSchema,
+    activation: RenderActivationSchema,
+    lifecycle: RenderLifecycleSchema,
+    accessRef: EntityRefSchema.optional(),
+    evidenceRef: EntityRefSchema.optional(),
+    state: RenderNodeStateSchema,
+    renderModel: JsonObjectSchema,
   })
-  .strict();
+  .strict()
+  .superRefine((node, context) => {
+    requireRef(node.pageRef, 'page', ['pageRef'], context);
+    requirePinnedOwnedRef(node.capabilityRef, 'capability', ['capabilityRef'], context);
+    requirePinnedOwnedRef(node.providerRef, 'view-provider', ['providerRef'], context);
+    requireRef(node.accessRef, 'access-policy', ['accessRef'], context);
+    requireRef(node.evidenceRef, 'evidence', ['evidenceRef'], context);
+    if (node.parentNodeId === node.nodeId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['parentNodeId'],
+        message: 'RenderNode cannot be its own parent.',
+      });
+    }
+    if (node.surface.frameOwner === 'provider' && !node.providerRef) {
+      context.addIssue({
+        code: 'custom',
+        path: ['providerRef'],
+        message: 'Provider-owned surfaces require providerRef.',
+      });
+    }
+  });
+
+export const OverlayZIndexLaneSchema = z.enum([
+  'popover',
+  'drawer',
+  'modal',
+  'fullscreen',
+  'system',
+]);
 
 export const OverlayNodeSchema = z
   .object({
@@ -69,24 +183,25 @@ export const OverlayNodeSchema = z
     overlayId: ContractIdentifierSchema,
     renderNode: RenderNodeSchema,
     presentation: z.enum(['drawer', 'modal', 'fullscreen']),
+    zIndexLane: OverlayZIndexLaneSchema,
     url: z
       .object({
         parameter: ContractIdentifierSchema,
         value: ContractIdentifierSchema,
-        closeOnBack: z.boolean().default(true),
+        openMode: z.enum(['push', 'replace']),
+        closeMode: z.enum(['back', 'replace']),
       })
       .strict(),
     focus: z
       .object({
         initial: z.enum(['first-interactive', 'container', 'explicit']),
-        trap: z.boolean().default(true),
-        restore: z.boolean().default(true),
+        trap: z.boolean(),
       })
       .strict(),
     close: z
       .object({
-        escape: z.boolean().default(true),
-        backdrop: z.boolean().default(true),
+        escape: z.boolean(),
+        backdrop: z.boolean(),
       })
       .strict(),
   })
@@ -104,6 +219,27 @@ export const OverlayNodeSchema = z
         code: 'custom',
         path: ['renderNode', 'activation', 'mode'],
         message: 'OverlayNode presentation must match the RenderNode activation mode.',
+      });
+    }
+    if (value.presentation === 'drawer' && value.zIndexLane !== 'drawer') {
+      context.addIssue({
+        code: 'custom',
+        path: ['zIndexLane'],
+        message: 'Drawer overlays must use the drawer z-index lane.',
+      });
+    }
+    if (value.presentation === 'modal' && value.zIndexLane !== 'modal') {
+      context.addIssue({
+        code: 'custom',
+        path: ['zIndexLane'],
+        message: 'Modal overlays must use the modal z-index lane.',
+      });
+    }
+    if (value.presentation === 'fullscreen' && value.zIndexLane !== 'fullscreen' && value.zIndexLane !== 'system') {
+      context.addIssue({
+        code: 'custom',
+        path: ['zIndexLane'],
+        message: 'Fullscreen overlays must use the fullscreen or system z-index lane.',
       });
     }
   });
@@ -156,29 +292,59 @@ export const ViewProviderDescriptorSchema = z
     loading: z.enum(['eager', 'lazy', 'viewport', 'on-activation']),
     stateOwner: z.enum(['host', 'provider', 'external']),
     supportedPageTypes: z.array(ContractIdentifierSchema).min(1),
+    supportedSurfaces: z
+      .array(z.enum(['page', 'workspace', 'view', 'record', 'action', 'overlay', 'agent']))
+      .min(1),
+    frameOwner: z.enum(['host', 'provider', 'none']),
     sideEffects: z
-      .array(z.enum(['network', 'storage', 'navigation', 'worker', 'websocket']))
-      .default([]),
+      .array(z.enum(['network', 'storage', 'navigation', 'worker', 'websocket'])),
     lifecycle: z
       .object({
-        preserveMount: z.boolean().default(false),
-        preserveScroll: z.boolean().default(false),
+        preserveMount: z.boolean(),
+        preserveScroll: z.boolean(),
         focusModel: ContractIdentifierSchema,
       })
       .strict(),
     performance: z
       .object({
         lazy: z.boolean(),
-        virtualized: z.boolean().default(false),
+        virtualized: z.boolean(),
         budgetMs: z.number().positive().optional(),
       })
       .strict(),
+    accessRef: EntityRefSchema.optional(),
+    evidenceRef: EntityRefSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((provider, context) => {
+    requirePinnedOwnedRef(provider.capabilityRef, 'capability', ['capabilityRef'], context);
+    requireRef(provider.accessRef, 'access-policy', ['accessRef'], context);
+    requireRef(provider.evidenceRef, 'evidence', ['evidenceRef'], context);
+    if (provider.capabilityRef.version === undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['capabilityRef', 'version'],
+        message: 'Provider capabilityRef must pin an active capability version.',
+      });
+    }
+    if (provider.frameOwner === 'provider' && provider.stateOwner === 'host' && !provider.lifecycle.preserveMount) {
+      context.addIssue({
+        code: 'custom',
+        path: ['lifecycle', 'preserveMount'],
+        message: 'Host-owned state on a provider-owned frame must preserve the provider mount.',
+      });
+    }
+  });
 
 export type ProductContext = z.infer<typeof ProductContextSchema>;
 export type RenderNodeState = z.infer<typeof RenderNodeStateSchema>;
+export type RenderNodeKind = z.infer<typeof RenderNodeKindSchema>;
+export type RenderSurface = z.infer<typeof RenderSurfaceSchema>;
+export type RenderScroll = z.infer<typeof RenderScrollSchema>;
+export type RenderActivation = z.infer<typeof RenderActivationSchema>;
+export type RenderLifecycle = z.infer<typeof RenderLifecycleSchema>;
 export type RenderNode = z.infer<typeof RenderNodeSchema>;
+export type OverlayZIndexLane = z.infer<typeof OverlayZIndexLaneSchema>;
 export type OverlayNode = z.infer<typeof OverlayNodeSchema>;
 export type ApplicationHandoffEndpoint = z.infer<typeof ApplicationHandoffEndpointSchema>;
 export type ApplicationHandoff = z.infer<typeof ApplicationHandoffSchema>;

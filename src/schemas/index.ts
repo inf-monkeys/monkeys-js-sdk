@@ -4,6 +4,10 @@ export {
   StorageLocatorSchema,
 } from '../contracts/artifact';
 export {
+  CapabilityRegistryDocumentSchema,
+  CapabilityRegistryEntrySchema,
+  CapabilityRegistrySourceSchema,
+  CapabilitySourceTypeSchema,
   CapabilityManifestSchema,
   ContractPortSchema,
 } from '../contracts/capability';
@@ -21,6 +25,12 @@ export {
   RequestScopeSchema,
 } from '../contracts/context';
 export {
+  ApplicationRunSchema,
+  BodyRelationRecordSchema,
+  DataContinuityEnvelopeSchema,
+  ExpiringAccessGrantSchema,
+} from '../contracts/continuity';
+export {
   DomainEventSchema,
   LineageRecordSchema,
   OntologyDefinitionSchema,
@@ -29,15 +39,28 @@ export {
 } from '../contracts/data';
 export {
   PageDefinitionSchema,
+  PageGuardProjectionSchema,
+  PageNavigationProjectionSchema,
+  PageRendererProjectionSchema,
+  PageRouteProjectionSchema,
   PageRuntimeDescriptorSchema,
+  PageRuntimeProjectionSchema,
+  PageTypeSchema,
+  PageVisibilitySchema,
 } from '../contracts/page';
 export {
   ApplicationHandoffEndpointSchema,
   ApplicationHandoffSchema,
   OverlayNodeSchema,
+  OverlayZIndexLaneSchema,
   ProductContextSchema,
+  RenderActivationSchema,
+  RenderLifecycleSchema,
+  RenderNodeKindSchema,
   RenderNodeSchema,
   RenderNodeStateSchema,
+  RenderScrollSchema,
+  RenderSurfaceSchema,
   ViewProviderDescriptorSchema,
 } from '../contracts/render';
 export {
@@ -47,8 +70,19 @@ export {
   DomainCommandSchema,
   ProductDeclarationSchema,
 } from '../contracts/semantic';
-export { TenantProductConfigSchema } from '../contracts/tenant';
 export {
+  TenantApplicationConfigSchema,
+  TenantProductConfigSchema,
+  TenantRuntimeConfigSchema,
+  TenantWorkbenchConfigSchema,
+  TenantWorkbenchPageContextSchema,
+  TenantWorkbenchPageEnvelopeSchema,
+  TenantWorkbenchPageGroupSchema,
+} from '../contracts/tenant';
+export {
+  ResolvedThemeTokensSchema,
+  ThemeTokenGroupSchema,
+  ThemeTokenTypeSchema,
   ThemeTokenSchema,
   ThemeTokensSchema,
 } from '../contracts/theme';
@@ -77,13 +111,21 @@ export {
   TrendSourceRecordSchema,
 } from '../contracts/trend';
 export {
+  ConductorTaskDefinitionSchema,
+  ConductorTaskTypeSchema,
+  ConductorWorkflowDefinitionSchema,
   WorkflowDefinitionSchema,
   WorkflowEdgeSchema,
   WorkflowNodeSchema,
+  WorkflowOutputBindingSchema,
+  WorkflowParameterSchema,
+  WorkflowParameterTypeSchema,
+  WorkflowTriggerSchema,
+  WorkflowValidationIssueSchema,
 } from '../contracts/workflow-definition';
 
 import { ArtifactManifestSchema, OutputRecordSchema } from '../contracts/artifact';
-import { CapabilityManifestSchema } from '../contracts/capability';
+import { CapabilityManifestSchema, CapabilityRegistryDocumentSchema } from '../contracts/capability';
 import {
   AgentRuntimeEventSchema,
   CompletionEventSchema,
@@ -92,19 +134,25 @@ import {
   RequestScopeSchema,
 } from '../contracts/context';
 import {
+  ApplicationRunSchema,
+  BodyRelationRecordSchema,
+  DataContinuityEnvelopeSchema,
+  ExpiringAccessGrantSchema,
+} from '../contracts/continuity';
+import {
   DomainEventSchema,
   LineageRecordSchema,
   OntologyDefinitionSchema,
   ProjectionSpecSchema,
 } from '../contracts/data';
-import { PageDefinitionSchema, PageRuntimeDescriptorSchema } from '../contracts/page';
+import { PageDefinitionSchema, PageRuntimeDescriptorSchema, PageRuntimeProjectionSchema } from '../contracts/page';
 import {
   ApplicationHandoffSchema,
   OverlayNodeSchema,
   RenderNodeSchema,
   ViewProviderDescriptorSchema,
 } from '../contracts/render';
-import { TenantProductConfigSchema } from '../contracts/tenant';
+import { TenantProductConfigSchema, TenantRuntimeConfigSchema } from '../contracts/tenant';
 import {
   ChangeImpactGraphSchema,
   ConceptDefinitionSchema,
@@ -132,23 +180,29 @@ import {
   TrendMetricSnapshotSchema,
   TrendSourceRecordSchema,
 } from '../contracts/trend';
-import { WorkflowDefinitionSchema } from '../contracts/workflow-definition';
+import { ConductorWorkflowDefinitionSchema, WorkflowDefinitionSchema } from '../contracts/workflow-definition';
 
 export const canonicalContractSchemas = {
   'agent-runtime-event': AgentRuntimeEventSchema,
+  'application-run': ApplicationRunSchema,
   'application-handoff': ApplicationHandoffSchema,
   'artifact-manifest': ArtifactManifestSchema,
   'brand-body': BrandBodySchema,
+  'body-relation-record': BodyRelationRecordSchema,
   'brand-genetics-profile': BrandGeneticsProfileSchema,
   'capability-manifest': CapabilityManifestSchema,
+  'capability-registry': CapabilityRegistryDocumentSchema,
   'change-impact-graph': ChangeImpactGraphSchema,
   'concept-definition': ConceptDefinitionSchema,
   'completion-event': CompletionEventSchema,
   'completion-header': CompletionHeaderSchema,
+  'conductor-workflow-definition': ConductorWorkflowDefinitionSchema,
   'domain-event': DomainEventSchema,
   'domain-command': DomainCommandSchema,
   'domain-command-definition': DomainCommandDefinitionSchema,
+  'data-continuity-envelope': DataContinuityEnvelopeSchema,
   'execution-link': ExecutionLinkSchema,
+  'expiring-access-grant': ExpiringAccessGrantSchema,
   'hotword-body': HotwordBodySchema,
   'lineage-record': LineageRecordSchema,
   'ontology-definition': OntologyDefinitionSchema,
@@ -156,6 +210,7 @@ export const canonicalContractSchemas = {
   'output-record': OutputRecordSchema,
   'page-definition': PageDefinitionSchema,
   'page-runtime-descriptor': PageRuntimeDescriptorSchema,
+  'page-runtime-projection': PageRuntimeProjectionSchema,
   'projection-spec': ProjectionSpecSchema,
   'product-declaration': ProductDeclarationSchema,
   'product-body': ProductBodySchema,
@@ -172,6 +227,7 @@ export const canonicalContractSchemas = {
   'render-node': RenderNodeSchema,
   'saved-radar-query': SavedRadarQuerySchema,
   'tenant-product-config': TenantProductConfigSchema,
+  'tenant-runtime-config': TenantRuntimeConfigSchema,
   'theme-tokens': ThemeTokensSchema,
   'trend-ingest-run': TrendIngestRunSchema,
   'trend-metric-snapshot': TrendMetricSnapshotSchema,

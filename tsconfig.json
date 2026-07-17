@@ -5,6 +5,7 @@
   "compilerOptions": {
     "outDir": "./lib",
     "allowJs": false,
+    "resolveJsonModule": true,
     "module": "CommonJS",
     "moduleResolution": "node"
   }

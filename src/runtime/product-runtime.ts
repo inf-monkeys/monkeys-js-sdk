@@ -1,34 +1,16 @@
 import type { CapabilityManifest } from '../contracts/capability';
-import { CapabilityManifestSchema } from '../contracts/capability';
+import type { PageRuntimeProjection } from '../contracts/page';
 import type { PageDefinition } from '../contracts/page';
-import { PageDefinitionSchema } from '../contracts/page';
 import type {
   ApplicationHandoff,
   ProductContext,
   ViewProviderDescriptor,
 } from '../contracts/render';
-import {
-  ApplicationHandoffSchema,
-  ViewProviderDescriptorSchema,
-} from '../contracts/render';
+import { ApplicationHandoffSchema } from '../contracts/render';
+import type { PageAccessContext, PageAccessDecision } from './page-compiler';
+import { compilePageRuntimeProjection } from './page-compiler';
 
 export const APPLICATION_HANDOFF_QUERY_PARAMETER = 'monkeys-handoff';
-
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const compileRoutePattern = (routePath: string): RegExp => {
-  const normalized = routePath.startsWith('/') ? routePath : `/${routePath}`;
-  const segments = normalized.split('/').filter(Boolean);
-  const pattern = segments
-    .map((segment, index) => {
-      if (segment === '*') return index === segments.length - 1 ? '(?:/.*)?' : '/.*';
-      if (segment.startsWith(':') || segment.startsWith('$')) return '[^/]+';
-      if (segment.endsWith('*')) return `${escapeRegExp(segment.slice(0, -1))}.*`;
-      return escapeRegExp(segment);
-    })
-    .reduce((result, segment) => `${result}${segment.startsWith('(?:/') || segment.startsWith('/.*') ? segment : `/${segment}`}`, '');
-  return new RegExp(`^${pattern || '/'}/?$`);
-};
 
 export interface ProductRuntimeCatalogInput {
   product: ProductContext;
@@ -46,7 +28,9 @@ export interface ProductRuntimeCatalog {
   pagesByRouteId: ReadonlyMap<string, PageDefinition>;
   capabilitiesById: ReadonlyMap<string, CapabilityManifest>;
   providersById: ReadonlyMap<string, ViewProviderDescriptor>;
+  projection: PageRuntimeProjection;
   navigation: readonly PageDefinition[];
+  evaluateAccess(pageId: string, context: PageAccessContext): PageAccessDecision;
   matchPage(pathname: string): PageDefinition | undefined;
 }
 
@@ -61,35 +45,15 @@ const indexUnique = <T>(values: readonly T[], key: (value: T) => string, label: 
 };
 
 export const compileProductRuntimeCatalog = (input: ProductRuntimeCatalogInput): ProductRuntimeCatalog => {
-  const pages = input.pages.map((page) => PageDefinitionSchema.parse(page));
-  const capabilities = input.capabilities.map((capability) => CapabilityManifestSchema.parse(capability));
-  const providers = input.providers.map((provider) => ViewProviderDescriptorSchema.parse(provider));
-  const pagesById = indexUnique(pages, (page) => page.pageId, 'pageId');
+  const compiled = compilePageRuntimeProjection(input);
+  const pages = [...compiled.pagesById.values()];
+  const capabilities = [...input.capabilities];
+  const providers = [...compiled.providersById.values()];
+  const pagesById = compiled.pagesById;
   const pagesByRouteId = indexUnique(pages, (page) => page.routeId, 'routeId');
   const capabilitiesById = indexUnique(capabilities, (capability) => capability.id, 'capability id');
-  const providersById = indexUnique(providers, (provider) => provider.providerId, 'provider id');
-
-  for (const page of pages) {
-    if (!page.visibility.productContexts.includes(input.product)) {
-      throw new Error(`Page ${page.pageId} is not visible in ${input.product}.`);
-    }
-    for (const reference of [page.capabilityRef, ...page.capabilityRefs].filter(Boolean)) {
-      if (!capabilitiesById.has(reference!.id)) {
-        throw new Error(`Page ${page.pageId} references unknown capability ${reference!.id}.`);
-      }
-    }
-  }
-
-  for (const provider of providers) {
-    if (!capabilitiesById.has(provider.capabilityRef.id)) {
-      throw new Error(`Provider ${provider.providerId} references unknown capability ${provider.capabilityRef.id}.`);
-    }
-  }
-
-  const routeMatchers = pages.map((page) => ({ page, pattern: compileRoutePattern(page.routePath) }));
-  const navigation = pages
-    .filter((page) => !page.navigation.hidden)
-    .sort((left, right) => (left.navigation.order ?? Number.MAX_SAFE_INTEGER) - (right.navigation.order ?? Number.MAX_SAFE_INTEGER));
+  const providersById = compiled.providersById;
+  const navigation = compiled.document.navigation.map((item) => pagesById.get(item.pageId)!);
 
   return Object.freeze({
     product: input.product,
@@ -100,11 +64,10 @@ export const compileProductRuntimeCatalog = (input: ProductRuntimeCatalogInput):
     pagesByRouteId,
     capabilitiesById,
     providersById,
+    projection: compiled.document,
     navigation: Object.freeze(navigation),
-    matchPage(pathname: string) {
-      const normalized = pathname.split('?')[0]?.split('#')[0] || '/';
-      return routeMatchers.find(({ pattern }) => pattern.test(normalized))?.page;
-    },
+    evaluateAccess: compiled.evaluateAccess,
+    matchPage: compiled.matchRoute,
   });
 };
 

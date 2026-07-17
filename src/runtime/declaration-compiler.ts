@@ -114,6 +114,42 @@ const localizedText = (value: unknown, fallback: string): string => {
   return fallback;
 };
 
+const normalizeToolCapabilityPorts = (
+  value: unknown,
+  direction: 'input' | 'output',
+): ToolCapabilityPortSource[] => {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error(`Tool ${direction} declaration must be an array.`);
+
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new Error(`Tool ${direction} declaration at index ${index} must be an object.`);
+    }
+
+    const record = item as Record<string, unknown>;
+    if (typeof record.name !== 'string' || !record.name.trim()) {
+      throw new Error(`Tool ${direction} declaration at index ${index} must have a non-empty name.`);
+    }
+    if (record.required !== undefined && typeof record.required !== 'boolean') {
+      throw new Error(`Tool ${direction} ${record.name} required must be a boolean.`);
+    }
+    if (record.type !== undefined && (typeof record.type !== 'string' || !record.type.trim())) {
+      throw new Error(`Tool ${direction} ${record.name} type must be a non-empty string.`);
+    }
+
+    const name = record.name.trim();
+    const descriptionSource = record.description ?? record.displayName;
+    return {
+      name,
+      required: record.required === true,
+      type: typeof record.type === 'string' ? record.type.trim() : undefined,
+      description: descriptionSource === undefined
+        ? undefined
+        : localizedText(descriptionSource, name),
+    };
+  });
+};
+
 /** Publishes canonical CapabilityManifest values on every tool operation in an OpenAPI document. */
 export const publishOpenApiToolCapabilityManifests = <T extends Record<string, unknown>>(
   document: T,
@@ -132,8 +168,8 @@ export const publishOpenApiToolCapabilityManifests = <T extends Record<string, u
       const id = `${normalizeToolIdentifier(options.namespace)}_${toolName}`;
       const displayName = localizedText(operation['x-monkey-tool-display-name'] ?? operation.summary, toolName);
       const description = localizedText(operation['x-monkey-tool-description'] ?? operation.description, displayName);
-      const inputs = Array.isArray(operation['x-monkey-tool-input']) ? operation['x-monkey-tool-input'] : [];
-      const outputs = Array.isArray(operation['x-monkey-tool-output']) ? operation['x-monkey-tool-output'] : [];
+      const inputs = normalizeToolCapabilityPorts(operation['x-monkey-tool-input'], 'input');
+      const outputs = normalizeToolCapabilityPorts(operation['x-monkey-tool-output'], 'output');
       operation['x-monkeys-capability-manifest'] = createToolCapabilityManifest({
         id,
         capabilityVersion: typeof operation['x-monkey-tool-version'] === 'string'
@@ -142,8 +178,8 @@ export const publishOpenApiToolCapabilityManifests = <T extends Record<string, u
         ownerRepo: options.ownerRepo,
         displayName,
         description,
-        inputs: inputs as ToolCapabilityPortSource[],
-        outputs: outputs as ToolCapabilityPortSource[],
+        inputs,
+        outputs,
         sideEffects: Array.isArray(operation['x-monkey-tool-side-effects'])
           ? operation['x-monkey-tool-side-effects'] as CapabilityManifest['runtime']['sideEffects']
           : undefined,

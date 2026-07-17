@@ -65,7 +65,79 @@ export const CapabilityManifestSchema = z
       })
       .strict(),
   })
+  .strict()
+  .superRefine((manifest, context) => {
+    if (!['view', 'professional-provider'].includes(manifest.kind)) return;
+
+    if (manifest.runtime.providerRef.kind !== 'view-provider') {
+      context.addIssue({
+        code: 'custom',
+        path: ['runtime', 'providerRef', 'kind'],
+        message: 'View capabilities must resolve to a view-provider.',
+      });
+    }
+    if (manifest.runtime.providerRef.version === undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['runtime', 'providerRef', 'version'],
+        message: 'View capabilities must pin a provider version.',
+      });
+    }
+    if (manifest.runtime.providerRef.ownerRepo !== manifest.ownerRepo) {
+      context.addIssue({
+        code: 'custom',
+        path: ['runtime', 'providerRef', 'ownerRepo'],
+        message: 'View capability provider owner must match the capability owner.',
+      });
+    }
+  });
+
+export const CapabilitySourceTypeSchema = z.enum([
+  'tool-manifest',
+  'plugin-manifest',
+  'openapi',
+  'workflow',
+  'comfyui',
+]);
+
+export const CapabilityRegistrySourceSchema = z
+  .object({
+    sourceType: CapabilitySourceTypeSchema,
+    sourceId: ContractIdentifierSchema,
+    ownerRepo: ContractIdentifierSchema,
+  })
   .strict();
+
+export const CapabilityRegistryEntrySchema = z
+  .object({
+    manifest: CapabilityManifestSchema,
+    sources: z.array(CapabilityRegistrySourceSchema).min(1),
+  })
+  .strict();
+
+export const CapabilityRegistryDocumentSchema = z
+  .object({
+    contract: z.literal('CapabilityRegistry'),
+    entries: z.array(CapabilityRegistryEntrySchema),
+  })
+  .strict()
+  .superRefine((registry, context) => {
+    const ids = new Set<string>();
+    registry.entries.forEach((entry, index) => {
+      if (ids.has(entry.manifest.id)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['entries', index, 'manifest', 'id'],
+          message: `Duplicate capability id: ${entry.manifest.id}`,
+        });
+      }
+      ids.add(entry.manifest.id);
+    });
+  });
 
 export type ContractPort = z.infer<typeof ContractPortSchema>;
 export type CapabilityManifest = z.infer<typeof CapabilityManifestSchema>;
+export type CapabilitySourceType = z.infer<typeof CapabilitySourceTypeSchema>;
+export type CapabilityRegistrySource = z.infer<typeof CapabilityRegistrySourceSchema>;
+export type CapabilityRegistryEntry = z.infer<typeof CapabilityRegistryEntrySchema>;
+export type CapabilityRegistryDocument = z.infer<typeof CapabilityRegistryDocumentSchema>;

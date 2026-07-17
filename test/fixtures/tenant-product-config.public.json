@@ -1,0 +1,176 @@
+{
+  "contract": "TenantProductConfig",
+  "tenantId": "tenant-a",
+  "appId": "concept",
+  "environment": "production",
+  "designTokens": {
+    "tokenSources": [
+      "./base.tokens.json",
+      "https://cdn.example.test/tenant.tokens.json"
+    ]
+  },
+  "moduleRefs": ["studio", "kernel", "compute"],
+  "pageRefs": ["workflow-page"],
+  "featureFlags": { "enhanced": true },
+  "authBinding": { "issuer": "auth.primary" },
+  "dataBinding": { "assets": "data.primary" },
+  "sourceMap": { "applicationConfig.theme": "yaml" },
+  "warnings": [],
+  "applicationConfig": {
+    "theme": {
+      "id": "tenant-a",
+      "title": "Monkeys",
+      "logo": { "light": "/logo-light.svg", "dark": "/logo-dark.svg" },
+      "favicon": { "light": "/favicon-light.svg", "dark": "/favicon-dark.svg" },
+      "form": { "variant": "bento" },
+      "toast": { "position": "top-right" },
+      "icons": { "empty": { "type": "svg", "url": "/empty.svg" } },
+      "views": {
+        "form": {
+          "toast": { "afterCreate": true, "afterDelete": true },
+          "progress": "estimate",
+          "onlyResult": false,
+          "tabular": { "theme": "default" }
+        }
+      },
+      "hideSpaceHeader": false,
+      "showSidebarTeamSelector": true,
+      "showWorkbenchSidebar": true,
+      "workbenchViewTheme": "bsd-blue",
+      "defaults": {
+        "showFormInImageDetail": true,
+        "darkMode": "auto",
+        "language": "zh-CN",
+        "showDarkModeToggle": true,
+        "showLanguageToggle": true
+      },
+      "modules": {
+        "monkeysSpaceSidebar": "*",
+        "monkeysSpaceHeadbar": [{ "id": "workbench", "visible": true }],
+        "settingsSidebar": "*"
+      },
+      "headbar": {
+        "theme": "glassy",
+        "navPosition": "center",
+        "actions": ["team-selector"],
+        "profile": "*",
+        "showTeamQuota": true
+      },
+      "kernelLayout": {
+        "navigationMode": "sidebar",
+        "allowNavigationModeSwitch": true,
+        "headbar": {
+          "theme": "card",
+          "layoutMode": "boxed",
+          "heightPx": 52,
+          "menuRadius": "lg"
+        }
+      },
+      "workflowPreviewExecutionGrid": {
+        "selectionModeDisplayType": "operation-button",
+        "clickBehavior": "preview",
+        "displayType": "masonry",
+        "showErrorFilter": true,
+        "showDetailButton": true
+      },
+      "workbenchSidebarDefaultOpen": true,
+      "workbenchSidebarMoreAction": true,
+      "workbenchSidebarApart": false,
+      "workbenchSidebarToggleGroupDetail": true,
+      "workbenchSidebarViewType": true,
+      "workbenchSidebarFormViewEmbed": false,
+      "workbenchSidebarModernMode": true,
+      "ugc": { "onItemClick": true, "subtitle": true },
+      "uniImagePreview": true,
+      "imagePreviewStyle": false,
+      "teamAsUser": false,
+      "themeMode": "border",
+      "density": "default",
+      "miniMode": { "showPreviewViewExecutionResultGrid": true },
+      "workflow": { "allowConcurrentRuns": true },
+      "historyResult": { "display": true },
+      "uploader": { "orientation": "horizontal", "pasteButton": true, "statusText": true },
+      "designProjects": {
+        "oneOnOne": true,
+        "newTabOpenBoard": true,
+        "createDefaultFrame": true,
+        "showPageMenu": false,
+        "showMainMenu": false,
+        "showStylePanel": false,
+        "showToolbar": true,
+        "showContextMenu": true,
+        "showActionsMenu": true
+      },
+      "workbench": {
+        "pages": [],
+        "pageGroups": [],
+        "catalog": { "enabled": true, "defaultEntry": false },
+        "quickSwitcherMaxItems": 6,
+        "customers": {
+          "layoutManagerEnabled": true,
+          "historyColumnsDefault": 3,
+          "studioTabsMode": "dropdown"
+        }
+      },
+      "initTeam": false,
+      "imageThumbnail": true,
+      "pages": { "allowPageKeys": "*", "defaultPageKey": "workbench" }
+    },
+    "auth": {
+      "enabled": ["password", "oidc"],
+      "oidc": { "buttonText": "SSO", "autoSignin": false },
+      "password": { "disableAutoRegister": false },
+      "hideAuthToast": false,
+      "autoReload": true,
+      "defaultOtherTeam": false
+    },
+    "endpoints": {
+      "clientUrl": "https://studio.example.test",
+      "serverUrl": "https://api.example.test"
+    },
+    "module": "*",
+    "behavior": {
+      "clearWorkflowFormStorageAfterUpdate": true,
+      "autoApproveOAuth": false,
+      "rememberWorkflowModelSelection": true
+    },
+    "dataManagement": {
+      "favoriteBucketId": "favorite",
+      "homeAdvertisement": {
+        "bucketId": "home",
+        "viewType": "container",
+        "pageSize": 20,
+        "sortBy": "updated_timestamp",
+        "sortOrder": "desc"
+      },
+      "homeTrendAssistant": {
+        "bucketId": "trends",
+        "tep": { "baseUrl": "https://tep.example.test", "timeoutMs": 5000 },
+        "runtime": {
+          "appId": "concept",
+          "tepBaseUrlConfigured": true,
+          "tepAuthorizationConfigured": true,
+          "tepCookieConfigured": false
+        }
+      },
+      "sharing": {
+        "shareAccess": {
+          "publicLinksEnabled": true,
+          "passwordGateEnabled": true,
+          "passwordAccessTtlSeconds": 3600,
+          "defaultViewTreeDelivery": "manual"
+        }
+      }
+    },
+    "compute": {
+      "integrations": {
+        "harbor": { "endpoint": "https://harbor.example.test", "projectScopes": ["monkeys"] },
+        "gitlab": { "baseUrl": "https://gitlab.example.test", "deploymentReportsEnabled": true },
+        "kubernetes": { "accessMode": "agent", "namespaceScopes": ["production"] }
+      }
+    },
+    "data": {},
+    "storage": { "presignMode": "backend" },
+    "monkeyData": { "baseUrl": "https://data.example.test" }
+  }
+}

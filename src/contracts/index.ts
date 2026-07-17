@@ -2,6 +2,7 @@ export * from './artifact';
 export * from './capability';
 export * from './common';
 export * from './context';
+export * from './continuity';
 export * from './data';
 export * from './page';
 export * from './render';

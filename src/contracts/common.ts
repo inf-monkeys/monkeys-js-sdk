@@ -20,6 +20,17 @@ export const ContractVersionSchema = z.number().int().positive();
 export const IsoDateTimeSchema = z.string().datetime({ offset: true });
 export const Sha256Schema = z.string().regex(/^[a-f0-9]{64}$/i, 'Expected a SHA-256 hex digest.');
 
+export const LocaleIdentifierSchema = z
+  .string()
+  .regex(/^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-[A-Z]{2}|-\d{3})?$/, 'Expected a BCP 47 locale identifier.');
+
+export const LocalizedTextSchema = z.union([
+  z.string().trim().min(1),
+  z
+    .record(LocaleIdentifierSchema, z.string().trim().min(1))
+    .refine((value) => Object.keys(value).length > 0, 'Localized text must contain at least one locale.'),
+]);
+
 export const ContractMetadataSchema = z
   .object({
     id: ContractIdentifierSchema,
@@ -43,3 +54,4 @@ export const EntityRefSchema = z
 
 export type ContractMetadata = z.infer<typeof ContractMetadataSchema>;
 export type EntityRef = z.infer<typeof EntityRefSchema>;
+export type LocalizedText = z.infer<typeof LocalizedTextSchema>;

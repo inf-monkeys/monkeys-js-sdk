@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { mkdirSync, writeFileSync } = require('node:fs');
+const { mkdirSync, readFileSync, writeFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const { toJSONSchema } = require('zod');
 const { canonicalContractSchemas } = require('../lib/schemas');
@@ -12,11 +12,13 @@ mkdirSync(outputDirectory, { recursive: true });
 const index = {};
 for (const [name, schema] of Object.entries(canonicalContractSchemas)) {
   const fileName = `${name}.schema.json`;
-  const document = {
-    ...toJSONSchema(schema),
-    $id: `https://schemas.infmonkeys.com/contracts/${fileName}`,
-    title: name,
-  };
+  const document = name === 'theme-tokens'
+    ? JSON.parse(readFileSync(resolve(__dirname, '..', 'src', 'contracts', 'dtcg-format.schema.json'), 'utf8'))
+    : {
+        ...toJSONSchema(schema),
+        $id: `https://schemas.infmonkeys.com/contracts/${fileName}`,
+        title: name,
+      };
   writeFileSync(resolve(outputDirectory, fileName), `${JSON.stringify(document, null, 2)}\n`);
   index[name] = `./${fileName}`;
 }

@@ -10,7 +10,12 @@ const schemas = require('../lib/schemas');
 const runtime = require('../lib/runtime');
 
 const occurredAt = '2026-07-14T08:00:00.000Z';
-const ref = (kind, id) => ({ kind, id });
+const ref = (kind, id, version, ownerRepo) => ({
+  kind,
+  id,
+  ...(version === undefined ? {} : { version }),
+  ...(ownerRepo === undefined ? {} : { ownerRepo }),
+});
 
 const requestScope = {
   contract: 'RequestScope',
@@ -49,39 +54,114 @@ const completionHeader = {
   occurredAt,
 };
 
+const pageCapabilityManifest = {
+  contract: 'CapabilityManifest',
+  id: 'studio.workflow-workspace',
+  capabilityVersion: '1.0.0',
+  ownerRepo: 'monkeys-studio',
+  kind: 'view',
+  displayName: 'Workflow workspace',
+  ports: { inputs: [], outputs: [] },
+  runtime: {
+    providerRef: ref('view-provider', 'workflow-provider', '1.0.0', 'monkeys-studio'),
+    loading: 'lazy',
+    stateOwner: 'provider',
+    sideEffects: ['network', 'storage'],
+  },
+  placement: { surfaces: ['workspace'], slots: [], variants: [], tokenRefs: [] },
+  accessibility: { keyboardModel: 'workspace', focusModel: 'provider-managed', labelContract: 'page-title' },
+  observability: { eventNamespace: 'studio.workflow', metrics: [], evidenceRefs: [] },
+};
+
+const pageProviderDescriptor = {
+  contract: 'ViewProviderDescriptor',
+  providerId: 'workflow-provider',
+  ownerRepo: 'monkeys-studio',
+  capabilityRef: ref('capability', pageCapabilityManifest.id, pageCapabilityManifest.capabilityVersion, pageCapabilityManifest.ownerRepo),
+  rendererKey: 'workflow-workspace',
+  loading: 'lazy',
+  stateOwner: 'provider',
+  supportedPageTypes: ['process'],
+  supportedSurfaces: ['workspace'],
+  frameOwner: 'provider',
+  sideEffects: ['network', 'storage'],
+  lifecycle: { preserveMount: true, preserveScroll: true, focusModel: 'provider-managed' },
+  performance: { lazy: true, virtualized: false, budgetMs: 200 },
+};
+
 const pageDefinition = {
   contract: 'PageDefinition',
   pageId: 'workflow-page',
   ownerRepo: 'monkeys-studio',
+  title: 'Workflows',
+  pageType: 'process',
+  ownership: { teamId: 'team-1', builtIn: false },
+  record: { deleted: false },
   surface: 'workspace',
   routeId: 'workflow',
   routePath: '/workflows',
   rendererKey: 'workflow-workspace',
+  capabilityRef: ref('capability', pageCapabilityManifest.id, pageCapabilityManifest.capabilityVersion, pageCapabilityManifest.ownerRepo),
+  workflowRef: ref('workflow', 'workflow-1'),
   binding: {},
-  navigation: { label: 'Workflows', hidden: false },
+  access: { actions: ['read', 'execute'] },
+  rendererConfig: { schemaRef: 'schema://renderer/workflow-workspace', value: {} },
+  navigation: { label: 'Workflows', hidden: false, pinned: true },
   visibility: {
     authenticated: true,
-    permissionCodes: [],
+    permissionAllOf: [],
+    permissionAnyOf: [],
     featureFlags: [],
     productContexts: ['studio'],
   },
+};
+
+const applicationConfig = {
+  theme: { density: 'default' },
+  auth: { enabled: [] },
+  endpoints: { clientUrl: 'https://studio.infmonkeys.test', serverUrl: 'https://api.infmonkeys.test' },
+  module: '*',
+  behavior: {
+    clearWorkflowFormStorageAfterUpdate: true,
+    autoApproveOAuth: false,
+    rememberWorkflowModelSelection: true,
+  },
+};
+
+const conductorTask = {
+  name: 'image.generate',
+  taskReferenceName: 'node-1',
+  type: 'SIMPLE',
+  inputParameters: {},
+};
+
+const conductorWorkflowDefinition = {
+  name: 'workflow-1',
+  version: 1,
+  tasks: [conductorTask],
+  inputParameters: [],
+  outputParameters: {},
+  timeoutSeconds: 0,
 };
 
 const renderNode = {
   contract: 'RenderNode',
   nodeId: 'workspace-root',
   kind: 'page',
+  version: 1,
   ownerRepo: 'monkeys-studio',
   pageRef: ref('page', 'workflow-page'),
-  capabilityRef: ref('capability', 'image.generate'),
-  providerRef: ref('provider', 'workflow-provider'),
-  surfaceOwner: 'monkeys-studio',
-  scroll: { owner: 'surface', axis: 'y', virtualized: false },
+  capabilityRef: ref('capability', pageCapabilityManifest.id, pageCapabilityManifest.capabilityVersion, pageCapabilityManifest.ownerRepo),
+  providerRef: pageCapabilityManifest.runtime.providerRef,
+  surface: { frameOwner: 'host', density: 'default' },
+  scroll: { owner: 'surface', axis: 'y', virtualizationBoundary: false },
   activation: { activationId: 'workflow-page', mode: 'navigate' },
   lifecycle: {
     mountPolicy: 'when-active',
     queryPolicy: 'when-active',
     retainOnDeactivate: false,
+    deepLink: true,
+    focusReturn: true,
   },
   state: 'idle',
   renderModel: {},
@@ -124,6 +204,11 @@ const fixtures = {
     traceId: 'trace-1',
     createdAt: occurredAt,
   },
+  'application-run': {
+    contract: 'ApplicationRun', runId: 'run-1', definitionRef: ref('workflow-definition', 'workflow-1', 1),
+    runtimeLedgerRef: ref('workflow-execution', 'execution-1'), requestId: 'request-1', actorRef: ref('user', 'user-1'),
+    status: 'RUNNING', inputRefs: [], outputRefs: [], startedAt: occurredAt, metadata: {},
+  },
   'artifact-manifest': {
     contract: 'ArtifactManifest',
     artifactId: 'artifact-1',
@@ -137,6 +222,11 @@ const fixtures = {
     access: { visibility: 'team', teamId: 'team-1' },
     metadata: {},
     createdAt: occurredAt,
+  },
+  'body-relation-record': {
+    contract: 'BodyRelationRecord', relationId: 'relation-1', relationKind: 'workflow.to-workflow',
+    subjectRef: ref('workflow-definition', 'workflow-1', 1), objectRef: ref('workflow-definition', 'workflow-2', 1),
+    ownerRepo: 'monkeys-server', authorityScope: 'team', properties: {}, createdAt: occurredAt, updatedAt: occurredAt,
   },
   'brand-body': {
     contract: 'BrandBody',
@@ -180,6 +270,25 @@ const fixtures = {
     },
     observability: { eventNamespace: 'capability.image', metrics: [], evidenceRefs: [] },
   },
+  'capability-registry': {
+    contract: 'CapabilityRegistry',
+    entries: [{
+      manifest: {
+        contract: 'CapabilityManifest',
+        id: 'image.generate',
+        capabilityVersion: '1.0.0',
+        ownerRepo: 'monkey-tools-agentkits',
+        kind: 'tool',
+        displayName: 'Generate image',
+        ports: { inputs: [], outputs: [] },
+        runtime: { providerRef: ref('tool', 'image.generate'), loading: 'lazy', stateOwner: 'provider', sideEffects: ['network'] },
+        placement: { surfaces: ['workflow'], slots: [], variants: [], tokenRefs: [] },
+        accessibility: { keyboardModel: 'form', focusModel: 'managed', labelContract: 'visible-label' },
+        observability: { eventNamespace: 'capability.image', metrics: [], evidenceRefs: [] },
+      },
+      sources: [{ sourceType: 'tool-manifest', sourceId: 'agentkits', ownerRepo: 'monkey-tools-agentkits' }],
+    }],
+  },
   'change-impact-graph': {
     contract: 'ChangeImpactGraph',
     declarationId: 'studio-product',
@@ -205,6 +314,11 @@ const fixtures = {
   },
   'completion-event': { header: completionHeader, payload: { outputId: 'output-1' } },
   'completion-header': completionHeader,
+  'conductor-workflow-definition': conductorWorkflowDefinition,
+  'data-continuity-envelope': {
+    contract: 'DataContinuityEnvelope', tenantId: 'tenant-1', teamId: 'team-1', runRef: ref('application-run', 'run-1'),
+    requestId: 'request-1', actorRef: ref('user', 'user-1'), schemaVersion: 1,
+  },
   'domain-event': {
     contract: 'DomainEvent',
     eventId: 'event-1',
@@ -241,6 +355,10 @@ const fixtures = {
     sideEffects: ['data-write'],
   },
   'execution-link': executionLink,
+  'expiring-access-grant': {
+    contract: 'ExpiringAccessGrant', grantId: 'grant-1', subjectRef: ref('user', 'user-1'), resourceRef: ref('application-run', 'run-1'),
+    permissions: ['read', 'execute'], issuedAt: occurredAt, expiresAt: '2026-07-15T08:00:00.000Z',
+  },
   'hotword-body': {
     contract: 'HotwordBody',
     hotwordId: 'hotword-1',
@@ -293,11 +411,14 @@ const fixtures = {
         mountPolicy: 'when-active',
         queryPolicy: 'when-visible',
         retainOnDeactivate: true,
+        deepLink: true,
+        focusReturn: true,
       },
     },
     presentation: 'fullscreen',
-    url: { parameter: 'focusWidgetId', value: 'widget-1', closeOnBack: true },
-    focus: { initial: 'first-interactive', trap: true, restore: true },
+    zIndexLane: 'fullscreen',
+    url: { parameter: 'focusWidgetId', value: 'widget-1', openMode: 'push', closeMode: 'back' },
+    focus: { initial: 'first-interactive', trap: true },
     close: { escape: true, backdrop: true },
   },
   'output-record': {
@@ -345,6 +466,19 @@ const fixtures = {
       deepLink: true,
       focusReturn: true,
     },
+  },
+  'page-runtime-projection': {
+    contract: 'PageRuntimeProjection',
+    product: 'studio',
+    routes: [{ pageId: 'workflow-page', routeId: 'workflow', path: '/workflows' }],
+    navigation: [{ pageId: 'workflow-page', routeId: 'workflow', path: '/workflows', label: 'Workflows', pinned: true }],
+    guards: [{ pageId: 'workflow-page', authenticated: true, permissionAllOf: [], permissionAnyOf: [], featureFlags: [], actions: ['read', 'execute'] }],
+    renderers: [{
+      pageId: 'workflow-page', surface: 'workspace', rendererKey: 'workflow-workspace',
+      capabilityRef: ref('capability', pageCapabilityManifest.id, pageCapabilityManifest.capabilityVersion, pageCapabilityManifest.ownerRepo), capabilityRefs: [],
+      providerRef: ref('view-provider', 'workflow-provider', '1.0.0', 'monkeys-studio'),
+      binding: {}, rendererConfig: { schemaRef: 'schema://renderer/workflow-workspace', value: {} }, workflowRef: ref('workflow', 'workflow-1'),
+    }],
   },
   'projection-spec': {
     contract: 'ProjectionSpec',
@@ -470,7 +604,9 @@ const fixtures = {
     tenantId: 'tenant-1',
     appId: 'concept',
     environment: 'production',
-    themeRef: 'theme-default',
+    designTokens: {
+      tokenSources: ['./design-tokens/default.tokens.json'],
+    },
     moduleRefs: [],
     pageRefs: [],
     featureFlags: {},
@@ -478,27 +614,35 @@ const fixtures = {
     dataBinding: {},
     sourceMap: {},
     warnings: [],
+    applicationConfig,
+  },
+  'tenant-runtime-config': {
+    contract: 'TenantRuntimeConfig',
+    tenantId: 'tenant-1',
+    appId: 'concept',
+    environment: 'production',
+    designTokens: {
+      color: { primary: { $type: 'color', $value: { colorSpace: 'srgb', components: [0.30196, 0.56078, 0.61569], hex: '#4D8F9D' } } },
+    },
+    moduleRefs: [], pageRefs: [], featureFlags: {}, authBinding: {}, dataBinding: {}, sourceMap: {}, warnings: [],
+    applicationConfig,
   },
   'theme-tokens': {
-    contract: 'ThemeTokens',
-    metadata: {
-      id: 'default',
-      version: 1,
-      name: 'Default',
-      packageName: '@inf-monkeys-tech/monkeys-design',
+    color: {
+      primary: {
+        $type: 'color',
+        $value: {
+          colorSpace: 'srgb',
+          components: [0.30196, 0.56078, 0.61569],
+          hex: '#4D8F9D',
+        },
+      },
     },
-    seed: {
-      'color.primary': { $type: 'color', $value: '#4D8F9D' },
-      'radius.default': { $type: 'dimension', $value: '0.5rem' },
+    radius: {
+      default: { $type: 'dimension', $value: { value: 0.5, unit: 'rem' } },
     },
     semantic: {
-      'color.accent': { $type: 'color', $value: '{seed.color.primary}' },
-    },
-    component: {},
-    assets: { fontFamilies: [], icons: {} },
-    modes: {
-      color: ['light', 'dark'],
-      density: ['compact', 'default', 'comfortable'],
+      accent: { $type: 'color', $value: '{color.primary}' },
     },
   },
   'trend-ingest-run': {
@@ -539,48 +683,37 @@ const fixtures = {
     idempotencyKey: 'source-record-1:1',
     collectedAt: occurredAt,
   },
-  'view-provider-descriptor': {
-    contract: 'ViewProviderDescriptor',
-    providerId: 'workflow-provider',
-    ownerRepo: 'monkeys-studio',
-    capabilityRef: ref('capability', 'image.generate'),
-    rendererKey: 'workflow-workspace',
-    loading: 'lazy',
-    stateOwner: 'provider',
-    supportedPageTypes: ['preview'],
-    sideEffects: ['network', 'storage'],
-    lifecycle: {
-      preserveMount: true,
-      preserveScroll: true,
-      focusModel: 'provider-managed',
-    },
-    performance: { lazy: true, virtualized: false, budgetMs: 200 },
-  },
+  'view-provider-descriptor': pageProviderDescriptor,
   'workflow-definition': {
     contract: 'WorkflowDefinition',
-    metadata: { id: 'workflow-1', version: 1, role: 'workflow', tags: [] },
+    metadata: { id: 'workflow-1', version: 1, name: { 'en-US': 'Workflow' }, role: 'workflow', teamId: 'team-1', creatorRef: ref('user', 'user-1'), tags: [] },
+    revision: { kind: 'release', recordVersion: 1 },
+    presentation: {},
     ports: { inputs: [], outputs: [] },
+    parameters: { variables: [], outputs: [] },
     graph: {
       nodes: [{
         id: 'node-1',
         referenceName: 'node-1',
         capabilityRef: 'image.generate',
         inputBindings: {},
-        configuration: {},
+        configuration: { executor: 'conductor', task: conductorTask },
       }],
       edges: [],
     },
-    execution: { retries: 0, idempotency: 'required' },
+    execution: { retries: 0, idempotency: 'required', conductor: {} },
     triggers: [],
     views: [],
     dataContracts: { reads: [], writes: [], emits: [] },
+    governance: { activated: true, validated: true, validationIssues: [] },
+    interfaces: { openai: { enabled: false } },
   },
 };
 
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 43);
+  assert.equal(names.length, 51);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -613,7 +746,10 @@ test('rejects undeclared nested fields instead of silently normalizing them', ()
   }).success, false);
   assert.equal(schemas.ThemeTokensSchema.safeParse({
     ...fixtures['theme-tokens'],
-    metadata: { ...fixtures['theme-tokens'].metadata, undeclaredField: true },
+    color: {
+      ...fixtures['theme-tokens'].color,
+      primary: { ...fixtures['theme-tokens'].color.primary, undeclaredField: true },
+    },
   }).success, false);
 });
 
@@ -631,10 +767,51 @@ test('WorkflowDefinition rejects duplicate nodes and dangling edges', () => {
   assert.equal(schemas.WorkflowDefinitionSchema.safeParse(dangling).success, false);
 });
 
+test('WorkflowDefinition preserves webhook identity and custom event configuration', () => {
+  const workflow = structuredClone(fixtures['workflow-definition']);
+  workflow.triggers = [
+    {
+      id: 'webhook-trigger',
+      type: 'webhook',
+      enabled: true,
+      webhook: {
+        path: 'stable-webhook-path',
+        method: 'POST',
+        auth: 'NONE',
+        responseUntil: 'WORKFLOW_STARTED',
+      },
+    },
+    {
+      id: 'custom-trigger',
+      type: 'event',
+      enabled: true,
+      event: {
+        eventType: 'third_party__asset_created',
+        configuration: { bucketId: 'bucket-1' },
+      },
+    },
+  ];
+
+  const parsed = schemas.WorkflowDefinitionSchema.parse(workflow);
+  assert.equal(parsed.triggers[0].webhook.path, 'stable-webhook-path');
+  assert.deepEqual(parsed.triggers[1].event.configuration, { bucketId: 'bucket-1' });
+});
+
 test('exports only canonical contract and schema names', () => {
   const versionSuffix = /V[12](?:Schema)?$/;
   assert.deepEqual(Object.keys(contracts).filter((name) => versionSuffix.test(name)), []);
   assert.deepEqual(Object.keys(schemas).filter((name) => versionSuffix.test(name)), []);
+});
+
+test('rejects unpinned render capability and provider references', () => {
+  assert.equal(schemas.RenderNodeSchema.safeParse({
+    ...renderNode,
+    capabilityRef: ref('capability', pageCapabilityManifest.id),
+  }).success, false);
+  assert.equal(schemas.RenderNodeSchema.safeParse({
+    ...renderNode,
+    providerRef: ref('view-provider', pageProviderDescriptor.providerId),
+  }).success, false);
 });
 
 test('does not publish migration or compatibility entrypoints', () => {
@@ -652,10 +829,10 @@ test('compiles a strict product runtime catalog and matches dynamic routes', () 
     pages: [{
       ...pageDefinition,
       routePath: '/$teamId/workflows/:workflowId',
-      capabilityRefs: [ref('capability', 'image.generate')],
+      capabilityRefs: [],
     }],
-    capabilities: [fixtures['capability-manifest']],
-    providers: [fixtures['view-provider-descriptor']],
+    capabilities: [pageCapabilityManifest],
+    providers: [pageProviderDescriptor],
   });
 
   assert.equal(catalog.pagesById.get('workflow-page').routeId, 'workflow');
@@ -663,8 +840,8 @@ test('compiles a strict product runtime catalog and matches dynamic routes', () 
   assert.throws(() => runtime.compileProductRuntimeCatalog({
     product: 'studio',
     pages: [pageDefinition, pageDefinition],
-    capabilities: [fixtures['capability-manifest']],
-    providers: [fixtures['view-provider-descriptor']],
+    capabilities: [pageCapabilityManifest],
+    providers: [pageProviderDescriptor],
   }), /Duplicate pageId/);
 });
 
@@ -690,11 +867,11 @@ test('compiles declarations, validates commands, and computes transitive change 
     ontologies: [ontology],
     projections: [projection],
     commands: [command],
-    capabilities: [fixtures['capability-manifest']],
+    capabilities: [fixtures['capability-manifest'], pageCapabilityManifest],
     pages: [{
       ...pageDefinition,
       binding: { ontologyId: ontology.ontologyId, projectionRef: projection.projectionId },
-      capabilityRefs: [ref('capability', 'image.generate')],
+      capabilityRefs: [],
     }],
   };
   const compiled = runtime.compileProductDeclaration(declaration);
@@ -728,10 +905,7 @@ test('compiles declarations, validates commands, and computes transitive change 
 
 test('tool capability compiler rejects non-tool manifests and providers', () => {
   assert.equal(runtime.compileToolCapabilityManifest(fixtures['capability-manifest']).id, 'image.generate');
-  assert.throws(() => runtime.compileToolCapabilityManifest({
-    ...fixtures['capability-manifest'],
-    kind: 'view',
-  }), /kind tool/);
+  assert.throws(() => runtime.compileToolCapabilityManifest(pageCapabilityManifest), /kind tool/);
 });
 
 test('tool capability factory produces the canonical manifest from provider metadata', () => {
@@ -748,7 +922,13 @@ test('OpenAPI capability publisher annotates every declared tool operation', () 
   const document = {
     paths: { '/calculate': { post: {
       'x-monkey-tool-name': 'calculate', 'x-monkey-tool-display-name': 'Calculate',
-      'x-monkey-tool-input': [{ name: 'expression', required: true }], 'x-monkey-tool-output': [{ name: 'result' }],
+      'x-monkey-tool-input': [{
+        name: 'expression', required: true, type: 'string',
+        description: { 'zh-CN': '表达式', 'en-US': 'Expression' },
+      }],
+      'x-monkey-tool-output': [{
+        name: 'result', displayName: { 'zh-CN': '结果', 'en-US': 'Result' },
+      }],
     } } },
   };
   runtime.publishOpenApiToolCapabilityManifests(document, {
@@ -757,4 +937,16 @@ test('OpenAPI capability publisher annotates every declared tool operation', () 
   const capability = document.paths['/calculate'].post['x-monkeys-capability-manifest'];
   assert.equal(capability.id, 'monkeys_tools_calculate');
   assert.equal(capability.ownerRepo, 'monkey-tools-agentkits');
+  assert.equal(capability.ports.inputs[0].description, 'Expression');
+  assert.equal(capability.ports.outputs[0].description, 'Result');
+  assert.equal(typeof capability.ports.outputs[0].description, 'string');
+
+  assert.throws(() => runtime.publishOpenApiToolCapabilityManifests({
+    paths: { '/invalid': { post: {
+      'x-monkey-tool-name': 'invalid',
+      'x-monkey-tool-input': [{ name: 'value', required: 'yes' }],
+    } } },
+  }, {
+    namespace: 'monkeys_tools', ownerRepo: 'monkey-tools-agentkits', capabilityVersion: '1.0.0',
+  }), /required must be a boolean/);
 });
