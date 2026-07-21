@@ -65,7 +65,7 @@ export interface OpenApiToolCapabilityPublisherOptions {
 export const compileToolCapabilityManifest = (input: unknown): CapabilityManifest => {
   const manifest = CapabilityManifestSchema.parse(input);
   if (manifest.kind !== 'tool') throw new Error(`Capability ${manifest.id} must use kind tool.`);
-  if (manifest.runtime.providerRef.kind !== 'tool') {
+  if (manifest.runtime.providerBindings.length !== 1 || manifest.runtime.providerBindings[0].providerRef.kind !== 'tool') {
     throw new Error(`Tool capability ${manifest.id} must reference a tool provider.`);
   }
   return Object.freeze(manifest);
@@ -90,7 +90,7 @@ export const createToolCapabilityManifest = (input: ToolCapabilitySource): Capab
     description: input.description,
     ports: { inputs: ports('input', input.inputs), outputs: ports('output', input.outputs) },
     runtime: {
-      providerRef: { kind: 'tool', id: input.id },
+      providerBindings: [{ providerRef: { kind: 'tool', id: input.id }, productContexts: [], priority: 0 }],
       loading: 'on-activation',
       stateOwner: 'provider',
       sideEffects: input.sideEffects ?? ['network'],

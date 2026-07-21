@@ -466,7 +466,6 @@ export const TenantApplicationConfigSchema = z
         galleryBucketId: z.string().optional(),
         dataBrowserDefaultBucketId: z.string().optional(),
         workflowResultBucketId: z.string().optional(),
-        visibleBucketIds: z.array(ContractIdentifierSchema).optional(),
         homeAdvertisement: z.object({
           bucketId: ContractIdentifierSchema, viewId: ContractIdentifierSchema.optional(), viewType: z.enum(['filter', 'container', 'share_link']).optional(), teamId: ContractIdentifierSchema.optional(), teamOnly: z.boolean().optional(), pageSize: z.number().int().positive().optional(), sortBy: z.enum(['pin_order', 'asset_id', 'updated_timestamp', 'created_timestamp']).optional(), sortOrder: z.enum(['asc', 'desc']).optional(), fieldMap: z.record(z.string(), z.string()).optional(), columnIds: z.record(z.string(), z.string()).optional(),
         }).strict().optional(),

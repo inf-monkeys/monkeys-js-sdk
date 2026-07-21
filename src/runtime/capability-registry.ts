@@ -100,7 +100,11 @@ export const createWorkflowCapabilityManifest = (
       : workflow.metadata.description?.['en-US'] ?? workflow.metadata.description?.['zh-CN'],
     ports: workflow.ports,
     runtime: {
-      providerRef: { kind: 'workflow', id: workflow.metadata.id, version: workflow.metadata.version, ownerRepo: options.ownerRepo },
+      providerBindings: [{
+        providerRef: { kind: 'workflow', id: workflow.metadata.id, version: workflow.metadata.version, ownerRepo: options.ownerRepo },
+        productContexts: [],
+        priority: 0,
+      }],
       loading: 'on-activation',
       stateOwner: 'external',
       sideEffects: ['network', 'storage', 'worker'],

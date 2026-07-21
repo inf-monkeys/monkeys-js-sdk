@@ -61,9 +61,12 @@ const pageCapabilityManifest = {
   ownerRepo: 'monkeys-studio',
   kind: 'view',
   displayName: 'Workflow workspace',
-  ports: { inputs: [], outputs: [] },
+  ports: {
+    inputs: [{ name: 'renderModel', schemaRef: 'studio.workflow-workspace.render-model', required: true, multiple: false }],
+    outputs: [{ name: 'intent', schemaRef: 'studio.workflow-workspace.intent', required: false, multiple: true }],
+  },
   runtime: {
-    providerRef: ref('view-provider', 'workflow-provider', '1.0.0', 'monkeys-studio'),
+    providerBindings: [{ providerRef: ref('view-provider', 'workflow-provider', '1.0.0', 'monkeys-studio'), productContexts: ['studio'], priority: 100 }],
     loading: 'lazy',
     stateOwner: 'provider',
     sideEffects: ['network', 'storage'],
@@ -76,15 +79,19 @@ const pageCapabilityManifest = {
 const pageProviderDescriptor = {
   contract: 'ViewProviderDescriptor',
   providerId: 'workflow-provider',
+  providerVersion: '1.0.0',
   ownerRepo: 'monkeys-studio',
   capabilityRef: ref('capability', pageCapabilityManifest.id, pageCapabilityManifest.capabilityVersion, pageCapabilityManifest.ownerRepo),
   rendererKey: 'workflow-workspace',
+  renderModelSchemaRef: 'studio.workflow-workspace.render-model',
+  intentSchemaRef: 'studio.workflow-workspace.intent',
   loading: 'lazy',
   stateOwner: 'provider',
   supportedPageTypes: ['process'],
   supportedSurfaces: ['workspace'],
   frameOwner: 'provider',
   sideEffects: ['network', 'storage'],
+  sideEffectAdapterRef: ref('side-effect-adapter', 'studio.workflow-workspace.effects', '1.0.0', 'monkeys-studio'),
   lifecycle: { preserveMount: true, preserveScroll: true, focusModel: 'provider-managed' },
   performance: { lazy: true, virtualized: false, budgetMs: 200 },
 };
@@ -150,12 +157,13 @@ const renderNode = {
   kind: 'page',
   version: 1,
   ownerRepo: 'monkeys-studio',
+  children: [],
   pageRef: ref('page', 'workflow-page'),
   capabilityRef: ref('capability', pageCapabilityManifest.id, pageCapabilityManifest.capabilityVersion, pageCapabilityManifest.ownerRepo),
-  providerRef: pageCapabilityManifest.runtime.providerRef,
+  providerRef: pageCapabilityManifest.runtime.providerBindings[0].providerRef,
   surface: { frameOwner: 'host', density: 'default' },
   scroll: { owner: 'surface', axis: 'y', virtualizationBoundary: false },
-  activation: { activationId: 'workflow-page', mode: 'navigate' },
+  activation: { activationId: 'workflow-page', mode: 'navigate', targetPath: '/workflows/workflow-page' },
   lifecycle: {
     mountPolicy: 'when-active',
     queryPolicy: 'when-active',
@@ -163,6 +171,8 @@ const renderNode = {
     deepLink: true,
     focusReturn: true,
   },
+  layout: { mode: 'block' },
+  responsive: [],
   state: 'idle',
   renderModel: {},
 };
@@ -257,7 +267,7 @@ const fixtures = {
     displayName: 'Generate image',
     ports: { inputs: [], outputs: [] },
     runtime: {
-      providerRef: ref('tool', 'image.generate'),
+      providerBindings: [{ providerRef: ref('tool', 'image.generate'), productContexts: [], priority: 0 }],
       loading: 'lazy',
       stateOwner: 'provider',
       sideEffects: ['network'],
@@ -281,7 +291,7 @@ const fixtures = {
         kind: 'tool',
         displayName: 'Generate image',
         ports: { inputs: [], outputs: [] },
-        runtime: { providerRef: ref('tool', 'image.generate'), loading: 'lazy', stateOwner: 'provider', sideEffects: ['network'] },
+        runtime: { providerBindings: [{ providerRef: ref('tool', 'image.generate'), productContexts: [], priority: 0 }], loading: 'lazy', stateOwner: 'provider', sideEffects: ['network'] },
         placement: { surfaces: ['workflow'], slots: [], variants: [], tokenRefs: [] },
         accessibility: { keyboardModel: 'form', focusModel: 'managed', labelContract: 'visible-label' },
         observability: { eventNamespace: 'capability.image', metrics: [], evidenceRefs: [] },
@@ -589,6 +599,13 @@ const fixtures = {
   },
   'request-scope': requestScope,
   'render-node': renderNode,
+  'render-tree': {
+    contract: 'RenderTree',
+    treeId: 'studio-workspace-tree',
+    product: 'studio',
+    rootNodeId: renderNode.nodeId,
+    nodes: [renderNode],
+  },
   'saved-radar-query': {
     contract: 'SavedRadarQuery',
     savedQueryId: 'saved-query-1',
@@ -713,7 +730,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 51);
+  assert.equal(names.length, 52);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -824,14 +841,17 @@ test('does not publish migration or compatibility entrypoints', () => {
 });
 
 test('compiles a strict product runtime catalog and matches dynamic routes', () => {
+  const declaration = (pages) => ({
+    contract: 'ProductDeclaration', declarationId: 'studio.product', ownerRepo: 'monkeys-studio',
+    concepts: [], ontologies: [], projections: [], commands: [], pages, capabilities: [pageCapabilityManifest],
+  });
   const catalog = runtime.compileProductRuntimeCatalog({
     product: 'studio',
-    pages: [{
+    declaration: declaration([{
       ...pageDefinition,
       routePath: '/$teamId/workflows/:workflowId',
       capabilityRefs: [],
-    }],
-    capabilities: [pageCapabilityManifest],
+    }]),
     providers: [pageProviderDescriptor],
   });
 
@@ -839,10 +859,32 @@ test('compiles a strict product runtime catalog and matches dynamic routes', () 
   assert.equal(catalog.matchPage('/team-1/workflows/workflow-1').pageId, 'workflow-page');
   assert.throws(() => runtime.compileProductRuntimeCatalog({
     product: 'studio',
-    pages: [pageDefinition, pageDefinition],
-    capabilities: [pageCapabilityManifest],
+    declaration: declaration([pageDefinition, pageDefinition]),
     providers: [pageProviderDescriptor],
-  }), /Duplicate pageId/);
+  }), /Duplicate page id/);
+});
+
+test('compiles a recursive render tree and rejects disconnected or asymmetric topology', () => {
+  const child = {
+    ...renderNode,
+    nodeId: 'workspace-view',
+    kind: 'view',
+    parentNodeId: renderNode.nodeId,
+    children: [],
+  };
+  const root = { ...renderNode, children: [child.nodeId] };
+  const tree = {
+    contract: 'RenderTree',
+    treeId: 'studio-workspace-tree',
+    product: 'studio',
+    rootNodeId: root.nodeId,
+    nodes: [root, child],
+  };
+  const compiled = runtime.compileRenderTree(tree);
+  assert.deepEqual(compiled.traversal.map(({ nodeId }) => nodeId), ['workspace-root', 'workspace-view']);
+  assert.deepEqual(compiled.ancestorsOf(child.nodeId).map(({ nodeId }) => nodeId), ['workspace-root']);
+  assert.throws(() => runtime.compileRenderTree({ ...tree, nodes: [root, { ...child, parentNodeId: 'missing' }] }), /missing parent|does not point back/);
+  assert.throws(() => runtime.compileRenderTree({ ...tree, nodes: [{ ...root, children: [] }, child] }), /not declared by parent/);
 });
 
 test('round-trips a validated application handoff through a URL', () => {
@@ -914,7 +956,7 @@ test('tool capability factory produces the canonical manifest from provider meta
     displayName: 'Calculator', inputs: [{ name: 'expression', required: true }], outputs: [{ name: 'result' }],
   });
   assert.equal(manifest.kind, 'tool');
-  assert.equal(manifest.runtime.providerRef.id, 'monkeys_tools_calculator');
+  assert.equal(manifest.runtime.providerBindings[0].providerRef.id, 'monkeys_tools_calculator');
   assert.equal(manifest.ports.inputs[0].schemaRef, 'schema://tool/monkeys_tools_calculator/input/expression');
 });
 

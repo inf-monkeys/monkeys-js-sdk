@@ -86,18 +86,20 @@ export interface ConductorTaskDefinition {
   dynamicTaskNameParam?: string;
   joinMode?: string;
   permissive?: boolean;
+  joinTaskRef?: string;
+  forkTaskRef?: string;
 }
 
 const requiredTaskFields: Partial<Record<ConductorTaskDefinition['type'], readonly (keyof ConductorTaskDefinition)[]>> = {
-  DO_WHILE: ['inputParameters', 'loopCondition', 'loopOver'],
+  DO_WHILE: ['inputParameters', 'loopOver'],
   EVENT: ['sink'],
   FORK_JOIN: ['forkTasks'],
   FORK_JOIN_DYNAMIC: ['inputParameters', 'dynamicForkTasksParam', 'dynamicForkTasksInputParamName'],
   DYNAMIC: ['inputParameters'],
   JOIN: ['joinOn'],
   SUB_WORKFLOW: ['subWorkflowParam'],
-  SWITCH: ['inputParameters', 'decisionCases', 'defaultCase', 'evaluatorType', 'expression'],
-  DECISION: ['inputParameters', 'decisionCases', 'defaultCase'],
+  SWITCH: ['inputParameters', 'decisionCases', 'evaluatorType', 'expression'],
+  DECISION: ['inputParameters', 'decisionCases'],
   WAIT: ['inputParameters'],
   TERMINATE: ['inputParameters'],
 };
@@ -146,6 +148,8 @@ export const ConductorTaskDefinitionSchema: z.ZodType<ConductorTaskDefinition> =
       dynamicTaskNameParam: z.string().optional(),
       joinMode: z.string().optional(),
       permissive: z.boolean().optional(),
+      joinTaskRef: ContractIdentifierSchema.optional(),
+      forkTaskRef: ContractIdentifierSchema.optional(),
     })
     .strict()
     .superRefine((task, context) => {
@@ -153,6 +157,14 @@ export const ConductorTaskDefinitionSchema: z.ZodType<ConductorTaskDefinition> =
         if (task[field] === undefined) {
           context.addIssue({ code: 'custom', path: [field], message: `${task.type} task requires ${String(field)}.` });
         }
+      }
+      if (
+        task.type === 'DO_WHILE' &&
+        (task.inputParameters?.mode === undefined || task.inputParameters.mode === 'expression') &&
+        task.loopCondition === undefined &&
+        task.inputParameters?.loopCondition === undefined
+      ) {
+        context.addIssue({ code: 'custom', path: ['loopCondition'], message: 'Expression DO_WHILE task requires loopCondition.' });
       }
     }),
 );
@@ -191,22 +203,56 @@ export const WorkflowParameterTypeSchema = z.enum([
   'canvas-assist',
 ]);
 
+const WorkflowConditionalStateSchema = z
+  .object({
+    conditions: z.array(
+      z
+        .object({
+          field: z.string(),
+          operator: z.enum(['is', 'isNot', 'isGreaterThan', 'isLessThan', 'isGreaterThanOrEqual', 'isLessThanOrEqual', 'in', 'notIn']),
+          value: JsonValueSchema,
+        })
+        .strict(),
+    ),
+    logic: z.enum(['AND', 'OR']).optional(),
+  })
+  .strict();
+
+const ImageSelectMappingAppearanceSchema = z
+  .object({
+    columns: z.number().int().min(1).max(4).optional(),
+    cardSize: z.enum(['sm', 'md', 'lg']).optional(),
+    imageAspectRatio: z.enum(['square', '4:5', '3:4', '16:9']).optional(),
+    gap: z.enum(['sm', 'md', 'lg']).optional(),
+    radius: z.enum(['sm', 'md', 'lg', 'xl']).optional(),
+    borderStyle: z.enum(['none', 'soft', 'strong']).optional(),
+    borderWidth: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
+    enableScroll: z.boolean().optional(),
+    maxHeight: z.number().int().min(160).max(1200).optional(),
+    enableCollapse: z.boolean().optional(),
+    visibleRows: z.number().int().min(1).max(6).optional(),
+    hideLabel: z.boolean().optional(),
+    hideDescription: z.boolean().optional(),
+    hideValue: z.boolean().optional(),
+  })
+  .strict();
+
 const WorkflowParameterTypeOptionsSchema = z
   .object({
     editor: z.enum(['code', 'codeNodeEditor', 'htmlEditor', 'sqlEditor', 'json']).optional(),
     editorLanguage: z.enum(['javaScript', 'json', 'python', 'sql']).optional(),
     maxValue: z.number().optional(), minValue: z.number().optional(), max: z.number().optional(), min: z.number().optional(),
-    multipleValues: z.boolean().optional(), numberPrecision: z.number().int().nonnegative().optional(), password: z.boolean().optional(), rows: z.number().int().positive().optional(),
+    multipleValues: z.boolean().optional(), numberPrecision: z.number().nonnegative().optional(), password: z.boolean().optional(), rows: z.number().int().positive().optional(),
     assetType: z.string().optional(), accept: z.string().optional(), maxSize: z.number().positive().optional(), fileType: z.string().optional(),
     aiMultiShotMainImageField: z.string().optional(), aiMultiShotWorkflowAppId: z.string().optional(), aiMultiShotWorkflowId: z.string().optional(),
     allowCustomInput: z.boolean().optional(), allowUploadVideo: z.boolean().optional(), aspectRatioField: z.string().optional(), assemblyValueType: z.string().optional(),
     autoAnalyzeDesignImage: z.boolean().optional(), autoDetectAspectRatio: z.boolean().optional(), autoIncrementId: z.boolean().optional(), comfyuiModelServerId: z.string().optional(), comfyuiModelTypeName: z.string().optional(),
-    defaultCustomInput: JsonValueSchema.optional(), descriptionAlert: z.boolean().optional(), disabled: z.boolean().optional(), editable: z.boolean().optional(),
+    defaultCustomInput: JsonValueSchema.optional(), descriptionAlert: z.boolean().optional(), disabled: z.union([z.boolean(), WorkflowConditionalStateSchema]).optional(), editable: z.union([z.boolean(), WorkflowConditionalStateSchema]).optional(),
     enableAiMultiShot: z.boolean().optional(), enableBooleanSwitchMode: z.boolean().optional(), enableClear: z.boolean().optional(), enableExpand: z.boolean().optional(), enableImageMask: z.boolean().optional(), enableImageOverlay: z.boolean().optional(), enablePopupEditor: z.boolean().optional(), enablePromptFontSize: z.boolean().optional(), enableReset: z.boolean().optional(), enableSelectItemIcon: z.boolean().optional(), enableSelectList: z.boolean().optional(), enableSelectSearch: z.boolean().optional(), enableSliderEnterMode: z.boolean().optional(), enableVoice: z.boolean().optional(),
     expandButtonText: z.string().optional(), foldUp: z.boolean().optional(), hidden: z.boolean().optional(), hideRequiredDot: z.boolean().optional(), inlineTitleWithSelect: z.boolean().optional(), knowledgeGraphButtonText: z.string().optional(),
-    identifyAttributeCount: z.number().int().nonnegative().optional(), identifyAttributes: z.array(JsonValueSchema).optional(), identifyMaxVariants: z.number().int().nonnegative().optional(), identifySourceField: z.string().optional(),
-    imageOverlayBaseField: z.string().optional(), imageOverlayOverlayField: z.string().optional(), imageSelectMappingAppearance: z.string().optional(), imageSelectMappingColumns: z.array(JsonValueSchema).optional(), imageSelectMappingEnableCustomUpload: z.boolean().optional(), imageSelectMappingHideLabel: z.boolean().optional(), imageSelectMappingHideLink: z.boolean().optional(), imageSelectMappingHideMeta: z.boolean().optional(), imageSelectMappingInlineUseLargeUploadBox: z.boolean().optional(), imageSelectMappingPromptField: z.string().optional(), imageSelectMappingTabOrder: z.array(JsonValueSchema).optional(), imageSelectMappingTabWidthMode: z.string().optional(), imageSelectMappingTemplatePrompt: z.string().optional(), imageSelectMappingTemplateTabTitle: z.string().optional(), imageSelectMappingUploadMode: z.string().optional(), imageSelectMappingUploadPrompt: z.string().optional(), imageSelectMappingUploadTabTitle: z.string().optional(),
-    endpoints: z.array(JsonValueSchema).optional(), examples: z.array(JsonValueSchema).optional(), extraData: JsonValueSchema.optional(), layer: JsonValueSchema.optional(), map: JsonValueSchema.optional(), multiline: z.boolean().optional(), options: z.array(JsonValueSchema).optional(), originalFiles: z.array(JsonValueSchema).optional(), placeholder: z.string().optional(), preserveSelectListOrder: z.boolean().optional(), promptDictionary: JsonValueSchema.optional(), promptFontSize: z.number().optional(), promptModeToggle: z.boolean().optional(), requireActiveSelectFilter: z.boolean().optional(), restoreDefaultOnEmptyEnter: z.boolean().optional(), search: z.boolean().optional(),
+    identifyAttributeCount: z.union([z.number().nonnegative(), z.string().min(1), z.object({ min: z.number().nonnegative().optional(), max: z.number().nonnegative().optional() }).strict()]).optional(), identifyAttributes: z.array(JsonValueSchema).optional(), identifyMaxVariants: z.number().int().nonnegative().optional(), identifySourceField: z.string().optional(),
+    imageOverlayBaseField: z.string().optional(), imageOverlayOverlayField: z.string().optional(), imageSelectMappingAppearance: ImageSelectMappingAppearanceSchema.optional(), imageSelectMappingColumns: z.number().int().min(1).max(4).optional(), imageSelectMappingEnableCustomUpload: z.boolean().optional(), imageSelectMappingHideLabel: z.boolean().optional(), imageSelectMappingHideLink: z.boolean().optional(), imageSelectMappingHideMeta: z.boolean().optional(), imageSelectMappingInlineUseLargeUploadBox: z.boolean().optional(), imageSelectMappingPromptField: z.string().optional(), imageSelectMappingTabOrder: z.enum(['template-first', 'upload-first']).optional(), imageSelectMappingTabWidthMode: z.enum(['content', 'fill']).optional(), imageSelectMappingTemplatePrompt: LocalizedTextSchema.optional(), imageSelectMappingTemplateTabTitle: LocalizedTextSchema.optional(), imageSelectMappingUploadMode: z.enum(['tabs', 'inline']).optional(), imageSelectMappingUploadPrompt: LocalizedTextSchema.optional(), imageSelectMappingUploadTabTitle: LocalizedTextSchema.optional(),
+    endpoints: z.array(JsonValueSchema).optional(), examples: z.array(JsonValueSchema).optional(), extraData: JsonValueSchema.optional(), layer: JsonValueSchema.optional(), map: JsonValueSchema.optional(), multiline: z.boolean().optional(), options: z.array(JsonValueSchema).optional(), originalFiles: z.array(JsonValueSchema).optional(), placeholder: LocalizedTextSchema.optional(), preserveSelectListOrder: z.boolean().optional(), promptDictionary: JsonValueSchema.optional(), promptFontSize: z.number().optional(), promptModeToggle: JsonValueSchema.optional(), requireActiveSelectFilter: z.boolean().optional(), restoreDefaultOnEmptyEnter: z.boolean().optional(), search: z.boolean().optional(),
     selectButtonEnableCollapse: z.boolean().optional(), selectButtonVisibleRows: z.number().int().positive().optional(), selectList: z.array(JsonValueSchema).optional(), selectListDisplayMode: z.string().optional(), selectPromptField: z.string().optional(), showAddLocalFileButton: z.boolean().optional(), singleColumn: z.boolean().optional(), singleFrameForMultiple: z.boolean().optional(), textSingleLine: z.boolean().optional(), textareaMiniHeight: z.number().nonnegative().optional(), tips: LocalizedTextSchema.optional(), visibility: JsonValueSchema.optional(), voiceButtonText: z.string().optional(),
     designAnalysisFields: z.array(JsonValueSchema).optional(), designAnalysisFillStrategy: z.string().optional(), designAnalysisMaxFields: z.number().int().nonnegative().optional(), designAnalysisType: z.string().optional(),
     designAnalysisFieldPrefix: z.string().optional(),

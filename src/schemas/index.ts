@@ -56,11 +56,14 @@ export {
   ProductContextSchema,
   RenderActivationSchema,
   RenderLifecycleSchema,
+  RenderLayoutSchema,
   RenderNodeKindSchema,
   RenderNodeSchema,
   RenderNodeStateSchema,
+  RenderResponsiveRuleSchema,
   RenderScrollSchema,
   RenderSurfaceSchema,
+  RenderTreeSchema,
   ViewProviderDescriptorSchema,
 } from '../contracts/render';
 export {
@@ -150,6 +153,7 @@ import {
   ApplicationHandoffSchema,
   OverlayNodeSchema,
   RenderNodeSchema,
+  RenderTreeSchema,
   ViewProviderDescriptorSchema,
 } from '../contracts/render';
 import { TenantProductConfigSchema, TenantRuntimeConfigSchema } from '../contracts/tenant';
@@ -225,6 +229,7 @@ export const canonicalContractSchemas = {
   'radar-writeback-record': RadarWritebackRecordSchema,
   'request-scope': RequestScopeSchema,
   'render-node': RenderNodeSchema,
+  'render-tree': RenderTreeSchema,
   'saved-radar-query': SavedRadarQuerySchema,
   'tenant-product-config': TenantProductConfigSchema,
   'tenant-runtime-config': TenantRuntimeConfigSchema,

@@ -1,6 +1,7 @@
 import type { CapabilityManifest } from '../contracts/capability';
 import type { PageRuntimeProjection } from '../contracts/page';
 import type { PageDefinition } from '../contracts/page';
+import type { ProductDeclaration } from '../contracts/semantic';
 import type {
   ApplicationHandoff,
   ProductContext,
@@ -9,18 +10,19 @@ import type {
 import { ApplicationHandoffSchema } from '../contracts/render';
 import type { PageAccessContext, PageAccessDecision } from './page-compiler';
 import { compilePageRuntimeProjection } from './page-compiler';
+import { compileProductDeclaration, type CompiledProductDeclaration } from './declaration-compiler';
 
 export const APPLICATION_HANDOFF_QUERY_PARAMETER = 'monkeys-handoff';
 
 export interface ProductRuntimeCatalogInput {
   product: ProductContext;
-  pages: readonly PageDefinition[];
-  capabilities: readonly CapabilityManifest[];
+  declaration: ProductDeclaration;
   providers: readonly ViewProviderDescriptor[];
 }
 
 export interface ProductRuntimeCatalog {
   product: ProductContext;
+  declaration: CompiledProductDeclaration;
   pages: readonly PageDefinition[];
   capabilities: readonly CapabilityManifest[];
   providers: readonly ViewProviderDescriptor[];
@@ -29,9 +31,12 @@ export interface ProductRuntimeCatalog {
   capabilitiesById: ReadonlyMap<string, CapabilityManifest>;
   providersById: ReadonlyMap<string, ViewProviderDescriptor>;
   projection: PageRuntimeProjection;
+  document: PageRuntimeProjection;
   navigation: readonly PageDefinition[];
   evaluateAccess(pageId: string, context: PageAccessContext): PageAccessDecision;
   matchPage(pathname: string): PageDefinition | undefined;
+  matchRoute(pathname: string): PageDefinition | undefined;
+  requireRenderer(pageId: string): PageRuntimeProjection['renderers'][number];
 }
 
 const indexUnique = <T>(values: readonly T[], key: (value: T) => string, label: string): ReadonlyMap<string, T> => {
@@ -45,9 +50,15 @@ const indexUnique = <T>(values: readonly T[], key: (value: T) => string, label: 
 };
 
 export const compileProductRuntimeCatalog = (input: ProductRuntimeCatalogInput): ProductRuntimeCatalog => {
-  const compiled = compilePageRuntimeProjection(input);
+  const declaration = compileProductDeclaration(input.declaration);
+  const compiled = compilePageRuntimeProjection({
+    product: input.product,
+    pages: declaration.declaration.pages,
+    capabilities: declaration.declaration.capabilities,
+    providers: input.providers,
+  });
   const pages = [...compiled.pagesById.values()];
-  const capabilities = [...input.capabilities];
+  const capabilities = [...declaration.declaration.capabilities];
   const providers = [...compiled.providersById.values()];
   const pagesById = compiled.pagesById;
   const pagesByRouteId = indexUnique(pages, (page) => page.routeId, 'routeId');
@@ -57,6 +68,7 @@ export const compileProductRuntimeCatalog = (input: ProductRuntimeCatalogInput):
 
   return Object.freeze({
     product: input.product,
+    declaration,
     pages: Object.freeze(pages),
     capabilities: Object.freeze(capabilities),
     providers: Object.freeze(providers),
@@ -65,9 +77,12 @@ export const compileProductRuntimeCatalog = (input: ProductRuntimeCatalogInput):
     capabilitiesById,
     providersById,
     projection: compiled.document,
+    document: compiled.document,
     navigation: Object.freeze(navigation),
     evaluateAccess: compiled.evaluateAccess,
     matchPage: compiled.matchRoute,
+    matchRoute: compiled.matchRoute,
+    requireRenderer: compiled.requireRenderer,
   });
 };
 

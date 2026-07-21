@@ -1,7 +1,7 @@
 import type { CapabilityManifest } from '../contracts/capability';
 import { CapabilityManifestSchema } from '../contracts/capability';
 import { PageTypeSchema } from '../contracts/page';
-import type { ViewProviderDescriptor } from '../contracts/render';
+import type { ProductContext, ViewProviderDescriptor } from '../contracts/render';
 import { ViewProviderDescriptorSchema } from '../contracts/render';
 
 const referenceVersion = (version: string | number | undefined): string | undefined =>
@@ -33,10 +33,10 @@ export interface CompiledViewProviderRegistry {
   providers: readonly ViewProviderDescriptor[];
   capabilitiesById: ReadonlyMap<string, CapabilityManifest>;
   providersById: ReadonlyMap<string, ViewProviderDescriptor>;
-  providersByRendererKey: ReadonlyMap<string, ViewProviderDescriptor>;
+  providersByRendererKey: ReadonlyMap<string, readonly ViewProviderDescriptor[]>;
   requireCapability(capabilityId: string): CapabilityManifest;
   requireProvider(providerId: string): ViewProviderDescriptor;
-  resolveProvider(capabilityId: string): ViewProviderDescriptor;
+  resolveProvider(capabilityId: string, product: ProductContext, preferredProviderId?: string): ViewProviderDescriptor;
 }
 
 /**
@@ -51,7 +51,15 @@ export const compileViewProviderRegistry = (
   const providers = input.providers.map((provider) => ViewProviderDescriptorSchema.parse(provider));
   const capabilitiesById = unique(capabilities, (capability) => capability.id, 'capability id');
   const providersById = unique(providers, (provider) => provider.providerId, 'provider id');
-  const providersByRendererKey = unique(providers, (provider) => provider.rendererKey, 'provider renderer key');
+  const providersByRendererKeyMutable = new Map<string, ViewProviderDescriptor[]>();
+  for (const provider of providers) {
+    const values = providersByRendererKeyMutable.get(provider.rendererKey) ?? [];
+    values.push(provider);
+    providersByRendererKeyMutable.set(provider.rendererKey, values);
+  }
+  const providersByRendererKey = new Map(
+    Array.from(providersByRendererKeyMutable.entries()).map(([key, values]) => [key, Object.freeze(values)] as const),
+  );
 
   unique(
     providers,
@@ -70,22 +78,29 @@ export const compileViewProviderRegistry = (
     if (referenceVersion(provider.capabilityRef.version) !== capability.capabilityVersion) {
       throw new Error(`Provider ${provider.providerId} references inactive capability version ${String(provider.capabilityRef.version)}.`);
     }
-    if (provider.capabilityRef.ownerRepo !== capability.ownerRepo || provider.ownerRepo !== capability.ownerRepo) {
-      throw new Error(`Provider ${provider.providerId} owner must match capability ${capability.id}.`);
+    if (provider.capabilityRef.ownerRepo !== capability.ownerRepo) {
+      throw new Error(`Provider ${provider.providerId} must reference capability owner ${capability.ownerRepo}.`);
     }
-    const runtimeProviderRef = capability.runtime.providerRef;
-    if (
-      runtimeProviderRef.kind !== 'view-provider'
-      || runtimeProviderRef.id !== provider.providerId
-      || runtimeProviderRef.ownerRepo !== provider.ownerRepo
-    ) {
-      throw new Error(`Capability ${capability.id} runtime provider must reference ${provider.providerId}.`);
+    const providerBindings = capability.runtime.providerBindings.filter((binding) => binding.providerRef.id === provider.providerId);
+    if (providerBindings.length !== 1) {
+      throw new Error(`Capability ${capability.id} must declare exactly one binding for provider ${provider.providerId}.`);
+    }
+    const providerRef = providerBindings[0].providerRef;
+    if (providerRef.kind !== 'view-provider' || providerRef.ownerRepo !== provider.ownerRepo || referenceVersion(providerRef.version) !== provider.providerVersion) {
+      throw new Error(`Capability ${capability.id} provider binding does not match ${provider.providerId}@${provider.providerVersion}.`);
     }
     if (provider.loading !== capability.runtime.loading || provider.stateOwner !== capability.runtime.stateOwner) {
       throw new Error(`Provider ${provider.providerId} loading and state ownership must match capability ${capability.id}.`);
     }
     if (!sameStringSet(provider.sideEffects, capability.runtime.sideEffects)) {
       throw new Error(`Provider ${provider.providerId} side effects must match capability ${capability.id}.`);
+    }
+    const renderModelPort = capability.ports.inputs.find((port) => port.schemaRef === provider.renderModelSchemaRef);
+    if (!renderModelPort?.required) {
+      throw new Error(`Provider ${provider.providerId} render model schema is not a required capability input.`);
+    }
+    if (provider.intentSchemaRef && !capability.ports.outputs.some((port) => port.schemaRef === provider.intentSchemaRef)) {
+      throw new Error(`Provider ${provider.providerId} intent schema is not declared by capability ${capability.id}.`);
     }
     if (provider.lifecycle.focusModel !== capability.accessibility.focusModel) {
       throw new Error(`Provider ${provider.providerId} focus model must match capability ${capability.id}.`);
@@ -102,13 +117,20 @@ export const compileViewProviderRegistry = (
 
   for (const capability of capabilities) {
     if (!['view', 'professional-provider'].includes(capability.kind)) continue;
-    const providerRef = capability.runtime.providerRef;
-    if (providerRef.kind !== 'view-provider') {
-      throw new Error(`View capability ${capability.id} must resolve to a view-provider.`);
+    for (const binding of capability.runtime.providerBindings) {
+      const providerRef = binding.providerRef;
+      if (providerRef.kind !== 'view-provider') throw new Error(`View capability ${capability.id} must resolve to view providers.`);
+      const provider = providersById.get(providerRef.id);
+      if (!provider || provider.capabilityRef.id !== capability.id) {
+        throw new Error(`View capability ${capability.id} references missing provider ${providerRef.id}.`);
+      }
     }
-    const provider = providersById.get(providerRef.id);
-    if (!provider || provider.capabilityRef.id !== capability.id) {
-      throw new Error(`View capability ${capability.id} references missing provider ${providerRef.id}.`);
+    for (const product of ['studio', 'kernel', 'compute'] as const) {
+      const candidates = capability.runtime.providerBindings.filter((binding) => binding.productContexts.length === 0 || binding.productContexts.includes(product));
+      const priorities = candidates.map((binding) => binding.priority).sort((left, right) => right - left);
+      if (priorities.length > 1 && priorities[0] === priorities[1]) {
+        throw new Error(`Capability ${capability.id} has ambiguous provider bindings for ${product}.`);
+      }
     }
   }
 
@@ -131,12 +153,21 @@ export const compileViewProviderRegistry = (
     providersByRendererKey,
     requireCapability,
     requireProvider,
-    resolveProvider: (capabilityId: string) => {
+    resolveProvider: (capabilityId: string, product: ProductContext, preferredProviderId?: string) => {
       const capability = requireCapability(capabilityId);
-      if (capability.runtime.providerRef.kind !== 'view-provider') {
-        throw new Error(`Capability ${capabilityId} does not resolve to a view provider.`);
+      const candidates = capability.runtime.providerBindings
+        .filter((binding) => binding.productContexts.length === 0 || binding.productContexts.includes(product))
+        .sort((left, right) => right.priority - left.priority || left.providerRef.id.localeCompare(right.providerRef.id));
+      if (preferredProviderId) {
+        const preferred = candidates.find((binding) => binding.providerRef.id === preferredProviderId);
+        if (!preferred) throw new Error(`Provider ${preferredProviderId} is not available for capability ${capabilityId} in ${product}.`);
+        return requireProvider(preferred.providerRef.id);
       }
-      return requireProvider(capability.runtime.providerRef.id);
+      if (candidates.length === 0) throw new Error(`Capability ${capabilityId} has no provider for ${product}.`);
+      if (candidates.length > 1 && candidates[0].priority === candidates[1].priority) {
+        throw new Error(`Capability ${capabilityId} has ambiguous providers for ${product}.`);
+      }
+      return requireProvider(candidates[0].providerRef.id);
     },
   });
 };

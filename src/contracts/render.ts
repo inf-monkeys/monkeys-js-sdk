@@ -69,8 +69,18 @@ export const RenderActivationSchema = z
   .object({
     activationId: ContractIdentifierSchema,
     mode: z.enum(['navigate', 'select', 'drawer', 'modal', 'fullscreen', 'inline']),
+    targetPath: z.string().trim().regex(/^\/(?!\/)/, 'Expected an application-relative path.').optional(),
+    history: z.enum(['push', 'replace']).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((activation, context) => {
+    if (activation.mode === 'navigate' && !activation.targetPath) {
+      context.addIssue({ code: 'custom', path: ['targetPath'], message: 'Navigate activation requires an application-relative targetPath.' });
+    }
+    if (activation.mode !== 'navigate' && activation.targetPath) {
+      context.addIssue({ code: 'custom', path: ['targetPath'], message: 'Only navigate activation may declare targetPath.' });
+    }
+  });
 
 export const RenderLifecycleSchema = z
   .object({
@@ -81,6 +91,44 @@ export const RenderLifecycleSchema = z
     focusReturn: z.boolean(),
   })
   .strict();
+
+export const RenderLayoutSchema = z
+  .object({
+    mode: z.enum(['contents', 'block', 'flex', 'grid', 'absolute']),
+    direction: z.enum(['row', 'column']).optional(),
+    columns: z.number().int().positive().optional(),
+    align: z.enum(['start', 'center', 'end', 'stretch']).optional(),
+    justify: z.enum(['start', 'center', 'end', 'between', 'around']).optional(),
+    gapTokenRef: EntityRefSchema.optional(),
+  })
+  .strict()
+  .superRefine((layout, context) => {
+    if (layout.direction && layout.mode !== 'flex') {
+      context.addIssue({ code: 'custom', path: ['direction'], message: 'direction is only valid for flex layout.' });
+    }
+    if (layout.columns && layout.mode !== 'grid') {
+      context.addIssue({ code: 'custom', path: ['columns'], message: 'columns is only valid for grid layout.' });
+    }
+    if (layout.gapTokenRef && layout.gapTokenRef.kind !== 'design-token') {
+      context.addIssue({ code: 'custom', path: ['gapTokenRef', 'kind'], message: 'gapTokenRef must reference design-token.' });
+    }
+  });
+
+export const RenderResponsiveRuleSchema = z
+  .object({
+    minWidthPx: z.number().nonnegative().optional(),
+    maxWidthPx: z.number().positive().optional(),
+    layout: RenderLayoutSchema,
+  })
+  .strict()
+  .superRefine((rule, context) => {
+    if (rule.minWidthPx === undefined && rule.maxWidthPx === undefined) {
+      context.addIssue({ code: 'custom', path: [], message: 'Responsive rule must declare minWidthPx or maxWidthPx.' });
+    }
+    if (rule.minWidthPx !== undefined && rule.maxWidthPx !== undefined && rule.minWidthPx > rule.maxWidthPx) {
+      context.addIssue({ code: 'custom', path: ['maxWidthPx'], message: 'maxWidthPx must be greater than or equal to minWidthPx.' });
+    }
+  });
 
 const requireRef = (
   reference: z.infer<typeof EntityRefSchema> | undefined,
@@ -130,6 +178,7 @@ export const RenderNodeSchema = z
     version: ContractVersionSchema,
     ownerRepo: ContractIdentifierSchema,
     parentNodeId: ContractIdentifierSchema.optional(),
+    children: z.array(ContractIdentifierSchema),
     slot: ContractIdentifierSchema.optional(),
     pageRef: EntityRefSchema,
     semanticRef: EntityRefSchema.optional(),
@@ -141,6 +190,8 @@ export const RenderNodeSchema = z
     scroll: RenderScrollSchema,
     activation: RenderActivationSchema,
     lifecycle: RenderLifecycleSchema,
+    layout: RenderLayoutSchema,
+    responsive: z.array(RenderResponsiveRuleSchema),
     accessRef: EntityRefSchema.optional(),
     evidenceRef: EntityRefSchema.optional(),
     state: RenderNodeStateSchema,
@@ -160,6 +211,12 @@ export const RenderNodeSchema = z
         message: 'RenderNode cannot be its own parent.',
       });
     }
+    if (new Set(node.children).size !== node.children.length) {
+      context.addIssue({ code: 'custom', path: ['children'], message: 'RenderNode children must be unique.' });
+    }
+    if (node.children.includes(node.nodeId)) {
+      context.addIssue({ code: 'custom', path: ['children'], message: 'RenderNode cannot be its own child.' });
+    }
     if (node.surface.frameOwner === 'provider' && !node.providerRef) {
       context.addIssue({
         code: 'custom',
@@ -168,6 +225,16 @@ export const RenderNodeSchema = z
       });
     }
   });
+
+export const RenderTreeSchema = z
+  .object({
+    contract: z.literal('RenderTree'),
+    treeId: ContractIdentifierSchema,
+    product: ProductContextSchema,
+    rootNodeId: ContractIdentifierSchema,
+    nodes: z.array(RenderNodeSchema).min(1),
+  })
+  .strict();
 
 export const OverlayZIndexLaneSchema = z.enum([
   'popover',
@@ -286,9 +353,12 @@ export const ViewProviderDescriptorSchema = z
   .object({
     contract: z.literal('ViewProviderDescriptor'),
     providerId: ContractIdentifierSchema,
+    providerVersion: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
     capabilityRef: EntityRefSchema,
     rendererKey: ContractIdentifierSchema,
+    renderModelSchemaRef: ContractIdentifierSchema,
+    intentSchemaRef: ContractIdentifierSchema.optional(),
     loading: z.enum(['eager', 'lazy', 'viewport', 'on-activation']),
     stateOwner: z.enum(['host', 'provider', 'external']),
     supportedPageTypes: z.array(ContractIdentifierSchema).min(1),
@@ -298,6 +368,7 @@ export const ViewProviderDescriptorSchema = z
     frameOwner: z.enum(['host', 'provider', 'none']),
     sideEffects: z
       .array(z.enum(['network', 'storage', 'navigation', 'worker', 'websocket'])),
+    sideEffectAdapterRef: EntityRefSchema.optional(),
     lifecycle: z
       .object({
         preserveMount: z.boolean(),
@@ -318,6 +389,7 @@ export const ViewProviderDescriptorSchema = z
   .strict()
   .superRefine((provider, context) => {
     requirePinnedOwnedRef(provider.capabilityRef, 'capability', ['capabilityRef'], context);
+    requirePinnedOwnedRef(provider.sideEffectAdapterRef, 'side-effect-adapter', ['sideEffectAdapterRef'], context);
     requireRef(provider.accessRef, 'access-policy', ['accessRef'], context);
     requireRef(provider.evidenceRef, 'evidence', ['evidenceRef'], context);
     if (provider.capabilityRef.version === undefined) {
@@ -334,6 +406,12 @@ export const ViewProviderDescriptorSchema = z
         message: 'Host-owned state on a provider-owned frame must preserve the provider mount.',
       });
     }
+    if (provider.sideEffects.length > 0 && !provider.sideEffectAdapterRef) {
+      context.addIssue({ code: 'custom', path: ['sideEffectAdapterRef'], message: 'Providers with side effects require a pinned side-effect adapter.' });
+    }
+    if (provider.sideEffects.length === 0 && provider.sideEffectAdapterRef) {
+      context.addIssue({ code: 'custom', path: ['sideEffectAdapterRef'], message: 'Pure providers cannot declare a side-effect adapter.' });
+    }
   });
 
 export type ProductContext = z.infer<typeof ProductContextSchema>;
@@ -343,7 +421,10 @@ export type RenderSurface = z.infer<typeof RenderSurfaceSchema>;
 export type RenderScroll = z.infer<typeof RenderScrollSchema>;
 export type RenderActivation = z.infer<typeof RenderActivationSchema>;
 export type RenderLifecycle = z.infer<typeof RenderLifecycleSchema>;
+export type RenderLayout = z.infer<typeof RenderLayoutSchema>;
+export type RenderResponsiveRule = z.infer<typeof RenderResponsiveRuleSchema>;
 export type RenderNode = z.infer<typeof RenderNodeSchema>;
+export type RenderTree = z.infer<typeof RenderTreeSchema>;
 export type OverlayZIndexLane = z.infer<typeof OverlayZIndexLaneSchema>;
 export type OverlayNode = z.infer<typeof OverlayNodeSchema>;
 export type ApplicationHandoffEndpoint = z.infer<typeof ApplicationHandoffEndpointSchema>;

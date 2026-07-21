@@ -29,7 +29,7 @@ test('workflow relation and expiring run contracts are strict and version-aware'
   }).relationId, 'relation-1');
   assert.equal(contracts.ApplicationRunSchema.parse({
     contract: 'ApplicationRun', runId: 'run-1', definitionRef: ref('workflow-definition', 'workflow-1', 3),
-    runtimeLedgerRef: ref('temporary-workflow-ledger', 'temporary-1'), requestId: 'request-1',
+    runtimeLedgerRef: ref('workflow-run', 'application-run-1'), requestId: 'request-1',
     actorRef: ref('human', 'user-1'), status: 'COMPLETED', inputRefs: [], outputRefs: [], metadata: {},
   }).status, 'COMPLETED');
   assert.equal(contracts.ExpiringAccessGrantSchema.parse({

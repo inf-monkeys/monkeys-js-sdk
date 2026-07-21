@@ -137,15 +137,7 @@ export const compilePageRuntimeProjection = (
       assertCapabilityReference(`Page ${page.pageId}`, reference, capabilitiesById.get(reference.id));
     }
 
-    const capability = capabilitiesById.get(page.capabilityRef.id)!;
-    const providerReference = capability.runtime.providerRef;
-    if (providerReference.kind !== 'view-provider') {
-      throw new Error(`Page ${page.pageId} primary capability must resolve to a view-provider.`);
-    }
-    const provider = providersById.get(providerReference.id);
-    if (!provider) {
-      throw new Error(`Page ${page.pageId} references missing provider ${providerReference.id}.`);
-    }
+    const provider = providerRegistry.resolveProvider(page.capabilityRef.id, input.product);
     if (provider.rendererKey !== page.rendererKey || provider.capabilityRef.id !== page.capabilityRef.id) {
       throw new Error(`Page ${page.pageId} renderer ${page.rendererKey} does not match provider ${provider.providerId}.`);
     }
@@ -196,15 +188,19 @@ export const compilePageRuntimeProjection = (
     actions: page.access.actions,
   }));
   const renderers = pages.map((page) => {
-    const capability = capabilitiesById.get(page.capabilityRef.id)!;
-    const provider = providersById.get(capability.runtime.providerRef.id)!;
+    const provider = providerRegistry.resolveProvider(page.capabilityRef.id, input.product);
     return {
       pageId: page.pageId,
       surface: page.surface,
       rendererKey: page.rendererKey,
       capabilityRef: page.capabilityRef,
       capabilityRefs: page.capabilityRefs,
-      providerRef: capability.runtime.providerRef,
+      providerRef: {
+        kind: 'view-provider' as const,
+        id: provider.providerId,
+        version: provider.providerVersion,
+        ownerRepo: provider.ownerRepo,
+      },
       binding: page.binding,
       rendererConfig: page.rendererConfig,
       workflowRef: page.workflowRef,

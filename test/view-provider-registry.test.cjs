@@ -10,14 +10,21 @@ const capability = (overrides = {}) => ({
   ownerRepo: 'monkeys-studio',
   kind: 'view',
   displayName: 'Prompt',
-  ports: { inputs: [], outputs: [] },
+  ports: {
+    inputs: [{ name: 'renderModel', schemaRef: 'studio.enhanced-view.prompt.render-model', required: true, multiple: false }],
+    outputs: [{ name: 'intent', schemaRef: 'studio.enhanced-view.prompt.intent', required: false, multiple: true }],
+  },
   runtime: {
-    providerRef: {
-      kind: 'view-provider',
-      id: 'studio.provider.enhanced-view.prompt',
-      version: 1,
-      ownerRepo: 'monkeys-studio',
-    },
+    providerBindings: [{
+      providerRef: {
+        kind: 'view-provider',
+        id: 'studio.provider.enhanced-view.prompt',
+        version: 1,
+        ownerRepo: 'monkeys-studio',
+      },
+      productContexts: ['studio'],
+      priority: 100,
+    }],
     loading: 'eager',
     stateOwner: 'host',
     sideEffects: ['storage'],
@@ -44,6 +51,7 @@ const capability = (overrides = {}) => ({
 const provider = (overrides = {}) => ({
   contract: 'ViewProviderDescriptor',
   providerId: 'studio.provider.enhanced-view.prompt',
+  providerVersion: '1',
   ownerRepo: 'monkeys-studio',
   capabilityRef: {
     kind: 'capability',
@@ -52,12 +60,17 @@ const provider = (overrides = {}) => ({
     ownerRepo: 'monkeys-studio',
   },
   rendererKey: 'studio.enhanced-view.prompt',
+  renderModelSchemaRef: 'studio.enhanced-view.prompt.render-model',
+  intentSchemaRef: 'studio.enhanced-view.prompt.intent',
   loading: 'eager',
   stateOwner: 'host',
   supportedPageTypes: ['enhanced'],
   supportedSurfaces: ['view'],
   frameOwner: 'host',
   sideEffects: ['storage'],
+  sideEffectAdapterRef: {
+    kind: 'side-effect-adapter', id: 'studio.enhanced-view.prompt.effects', version: 1, ownerRepo: 'monkeys-studio',
+  },
   lifecycle: { preserveMount: true, preserveScroll: true, focusModel: 'host-managed' },
   performance: { lazy: false, virtualized: false, budgetMs: 100 },
   ...overrides,
@@ -70,11 +83,11 @@ test('compiles a page-independent capability-to-provider registry', () => {
   });
 
   assert.equal(
-    registry.resolveProvider('studio.capability.enhanced-view.prompt').providerId,
+    registry.resolveProvider('studio.capability.enhanced-view.prompt', 'studio').providerId,
     'studio.provider.enhanced-view.prompt',
   );
   assert.equal(
-    registry.providersByRendererKey.get('studio.enhanced-view.prompt').capabilityRef.id,
+    registry.providersByRendererKey.get('studio.enhanced-view.prompt')[0].capabilityRef.id,
     'studio.capability.enhanced-view.prompt',
   );
 });

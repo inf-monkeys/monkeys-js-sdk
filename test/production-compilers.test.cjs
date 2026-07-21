@@ -17,8 +17,11 @@ const manifest = {
   ownerRepo: 'monkey-tools-agentkits',
   kind: 'tool',
   displayName: 'Generate image',
-  ports: { inputs: [], outputs: [] },
-  runtime: { providerRef: ref('tool', 'image.generate'), loading: 'lazy', stateOwner: 'provider', sideEffects: ['network'] },
+  ports: {
+    inputs: [{ name: 'renderModel', schemaRef: 'studio.application-shell.render-model', required: true, multiple: false }],
+    outputs: [{ name: 'intent', schemaRef: 'studio.application-shell.intent', required: false, multiple: true }],
+  },
+  runtime: { providerBindings: [{ providerRef: ref('tool', 'image.generate'), productContexts: [], priority: 0 }], loading: 'lazy', stateOwner: 'provider', sideEffects: ['network'] },
   placement: { surfaces: ['workflow'], slots: [], variants: [], tokenRefs: [] },
   accessibility: { keyboardModel: 'form', focusModel: 'managed', labelContract: 'visible-label' },
   observability: { eventNamespace: 'capability.image', metrics: [], evidenceRefs: [] },
@@ -31,9 +34,12 @@ const pageCapability = {
   ownerRepo: 'monkeys-studio',
   kind: 'view',
   displayName: 'Studio application shell',
-  ports: { inputs: [], outputs: [] },
+  ports: {
+    inputs: [{ name: 'renderModel', schemaRef: 'studio.application-shell.render-model', required: true, multiple: false }],
+    outputs: [{ name: 'intent', schemaRef: 'studio.application-shell.intent', required: false, multiple: true }],
+  },
   runtime: {
-    providerRef: { kind: 'view-provider', id: 'application-shell-provider', version: '1.0.0', ownerRepo: 'monkeys-studio' },
+    providerBindings: [{ providerRef: { kind: 'view-provider', id: 'application-shell-provider', version: '1.0.0', ownerRepo: 'monkeys-studio' }, productContexts: ['studio'], priority: 100 }],
     loading: 'lazy', stateOwner: 'host', sideEffects: ['navigation'],
   },
   placement: { surfaces: ['workspace'], slots: [], variants: [], tokenRefs: [] },
@@ -46,6 +52,40 @@ const representativeProductConfig = JSON.parse(readFileSync(
   'utf8',
 ));
 const applicationConfig = representativeProductConfig.applicationConfig;
+
+test('compiles pure view render models and separates runtime adapters', () => {
+  const onSelect = () => undefined;
+  const opaque = new Date('2026-07-21T00:00:00.000Z');
+  const compiled = runtime.compileViewProviderInput({
+    title: 'Records',
+    rows: [{ id: 'record-1', score: 0.8 }],
+    interaction: { onSelect },
+    visual: opaque,
+  });
+
+  assert.deepEqual(compiled.renderModel, {
+    title: 'Records',
+    rows: [{ id: 'record-1', score: 0.8 }],
+    interaction: { onSelect: null },
+    visual: null,
+  });
+  assert.deepEqual(compiled.runtimeBindings.map(({ path, kind }) => ({ path, kind })), [
+    { path: '/interaction/onSelect', kind: 'intent-adapter' },
+    { path: '/visual', kind: 'opaque-adapter' },
+  ]);
+  const restored = runtime.applyViewRuntimeBindings(compiled.renderModel, compiled.runtimeBindings);
+  assert.equal(restored.interaction.onSelect, onSelect);
+  assert.equal(restored.visual, opaque);
+});
+
+test('rejects identity leaks and invalid values in view render models', () => {
+  assert.throws(() => runtime.compileViewProviderInput({ tenantId: 'tenant-1' }), /Forbidden renderModel field tenantId/);
+  assert.throws(() => runtime.compileViewProviderInput({ nested: { pathname: '/kernel' } }), /Forbidden renderModel field pathname/);
+  assert.throws(() => runtime.compileViewProviderInput({ score: Number.NaN }), /Non-finite number/);
+  const cyclic = {};
+  cyclic.self = cyclic;
+  assert.throws(() => runtime.compileViewProviderInput(cyclic), /Cyclic renderModel input/);
+});
 
 test('compiles desired tenant config into a resolved, source-free browser contract', () => {
   const productConfig = schemas.TenantProductConfigSchema.parse({
@@ -103,6 +143,34 @@ test('compiles desired tenant config into a resolved, source-free browser contra
       },
     },
   }));
+});
+
+test('tenant runtime bindings fail closed for missing and unavailable providers', () => {
+  const policy = {
+    authProviderIds: ['monkeys-server'],
+    dataProviderIds: ['monkeys-server'],
+    requiredAuthBindings: ['primary'],
+    requiredDataBindings: ['primary'],
+  };
+  const bindings = runtime.compileTenantRuntimeBindings({
+    authBinding: {
+      primary: { kind: 'auth-provider', providerId: 'monkeys-server' },
+    },
+    dataBinding: {
+      primary: { kind: 'data-provider', providerId: 'monkeys-server' },
+    },
+  }, policy);
+
+  assert.equal(bindings.requireAuth().providerId, 'monkeys-server');
+  assert.equal(bindings.requireData().providerId, 'monkeys-server');
+  assert.throws(() => runtime.compileTenantRuntimeBindings({
+    authBinding: {},
+    dataBinding: { primary: { kind: 'data-provider', providerId: 'monkeys-server' } },
+  }, policy), /missing required auth binding/i);
+  assert.throws(() => runtime.compileTenantRuntimeBindings({
+    authBinding: { primary: { kind: 'auth-provider', providerId: 'external-auth' } },
+    dataBinding: { primary: { kind: 'data-provider', providerId: 'monkeys-server' } },
+  }, policy), /unavailable provider/i);
 });
 
 test('requires canonical PageDefinition envelopes for tenant workbench pages', () => {
@@ -248,6 +316,15 @@ test('round-trips production workflow tasks, parameters and outputs without deri
     execution: { ...definition.execution, rateLimit: { enabled: true, max: 0, windowMs: 0 } },
   }), /positive/);
   assert.throws(() => schemas.ConductorTaskDefinitionSchema.parse({ ...task, unknownTaskField: true }));
+  assert.doesNotThrow(() => schemas.ConductorTaskDefinitionSchema.parse({ ...task, defaultCase: undefined }));
+  assert.doesNotThrow(() => schemas.ConductorTaskDefinitionSchema.parse({
+    name: 'system.loop', taskReferenceName: 'loop', type: 'DO_WHILE',
+    inputParameters: { mode: 'list', listToLoopOver: '${workflow.input.items}' }, loopOver: [],
+  }));
+  assert.throws(() => schemas.ConductorTaskDefinitionSchema.parse({
+    name: 'system.loop', taskReferenceName: 'loop', type: 'DO_WHILE',
+    inputParameters: { mode: 'expression' }, loopOver: [],
+  }), /loopCondition/);
 });
 
 const page = (overrides = {}) => ({
@@ -262,8 +339,8 @@ const page = (overrides = {}) => ({
 
 test('generates route, navigation, guard and renderer projections from PageDefinition', () => {
   const provider = {
-    contract: 'ViewProviderDescriptor', providerId: 'application-shell-provider', ownerRepo: 'monkeys-studio',
-    capabilityRef: { ...ref('capability', pageCapability.id, pageCapability.capabilityVersion), ownerRepo: pageCapability.ownerRepo }, rendererKey: 'workflow-workspace', loading: 'lazy', stateOwner: 'host', supportedPageTypes: ['process', 'page'], supportedSurfaces: ['workspace'], frameOwner: 'host', sideEffects: ['navigation'],
+    contract: 'ViewProviderDescriptor', providerId: 'application-shell-provider', providerVersion: '1.0.0', ownerRepo: 'monkeys-studio',
+    capabilityRef: { ...ref('capability', pageCapability.id, pageCapability.capabilityVersion), ownerRepo: pageCapability.ownerRepo }, rendererKey: 'workflow-workspace', renderModelSchemaRef: 'studio.application-shell.render-model', intentSchemaRef: 'studio.application-shell.intent', loading: 'lazy', stateOwner: 'host', supportedPageTypes: ['process', 'page'], supportedSurfaces: ['workspace'], frameOwner: 'host', sideEffects: ['navigation'], sideEffectAdapterRef: { ...ref('side-effect-adapter', 'studio.application-shell.effects', '1.0.0'), ownerRepo: 'monkeys-studio' },
     lifecycle: { preserveMount: true, preserveScroll: true, focusModel: 'host-managed' }, performance: { lazy: true, virtualized: false },
   };
   const applicationPage = page({
@@ -288,17 +365,17 @@ test('keeps the exact capability-owned provider reference in renderer projection
     ...pageCapability,
     runtime: {
       ...pageCapability.runtime,
-      providerRef: {
-        ...pageCapability.runtime.providerRef,
-        version: 'provider-release-2026-07',
-      },
+      providerBindings: [{
+        ...pageCapability.runtime.providerBindings[0],
+        providerRef: { ...pageCapability.runtime.providerBindings[0].providerRef, version: 'provider-release-2026-07' },
+      }],
     },
   };
   const provider = {
-    contract: 'ViewProviderDescriptor', providerId: 'application-shell-provider', ownerRepo: 'monkeys-studio',
+    contract: 'ViewProviderDescriptor', providerId: 'application-shell-provider', providerVersion: 'provider-release-2026-07', ownerRepo: 'monkeys-studio',
     capabilityRef: { ...ref('capability', capability.id, capability.capabilityVersion), ownerRepo: capability.ownerRepo },
-    rendererKey: 'workflow-workspace', loading: 'lazy', stateOwner: 'host',
-    supportedPageTypes: ['process'], supportedSurfaces: ['workspace'], frameOwner: 'host', sideEffects: ['navigation'],
+    rendererKey: 'workflow-workspace', renderModelSchemaRef: 'studio.application-shell.render-model', intentSchemaRef: 'studio.application-shell.intent', loading: 'lazy', stateOwner: 'host',
+    supportedPageTypes: ['process'], supportedSurfaces: ['workspace'], frameOwner: 'host', sideEffects: ['navigation'], sideEffectAdapterRef: { ...ref('side-effect-adapter', 'studio.application-shell.effects', '1.0.0'), ownerRepo: 'monkeys-studio' },
     lifecycle: { preserveMount: true, preserveScroll: true, focusModel: 'host-managed' },
     performance: { lazy: true, virtualized: false },
   };
@@ -306,15 +383,15 @@ test('keeps the exact capability-owned provider reference in renderer projection
     product: 'studio', pages: [page()], capabilities: [capability], providers: [provider],
   });
 
-  assert.deepEqual(compiled.requireRenderer('workflow-page').providerRef, capability.runtime.providerRef);
+  assert.deepEqual(compiled.requireRenderer('workflow-page').providerRef, capability.runtime.providerBindings[0].providerRef);
 });
 
 test('fails closed when capability, provider and page runtime facts drift', () => {
   const provider = {
-    contract: 'ViewProviderDescriptor', providerId: 'application-shell-provider', ownerRepo: 'monkeys-studio',
+    contract: 'ViewProviderDescriptor', providerId: 'application-shell-provider', providerVersion: '1.0.0', ownerRepo: 'monkeys-studio',
     capabilityRef: { ...ref('capability', pageCapability.id, pageCapability.capabilityVersion), ownerRepo: pageCapability.ownerRepo },
-    rendererKey: 'workflow-workspace', loading: 'lazy', stateOwner: 'host',
-    supportedPageTypes: ['process'], supportedSurfaces: ['workspace'], frameOwner: 'host', sideEffects: ['navigation'],
+    rendererKey: 'workflow-workspace', renderModelSchemaRef: 'studio.application-shell.render-model', intentSchemaRef: 'studio.application-shell.intent', loading: 'lazy', stateOwner: 'host',
+    supportedPageTypes: ['process'], supportedSurfaces: ['workspace'], frameOwner: 'host', sideEffects: ['navigation'], sideEffectAdapterRef: { ...ref('side-effect-adapter', 'studio.application-shell.effects', '1.0.0'), ownerRepo: 'monkeys-studio' },
     lifecycle: { preserveMount: true, preserveScroll: true, focusModel: 'host-managed' },
     performance: { lazy: true, virtualized: false },
   };
@@ -323,7 +400,7 @@ test('fails closed when capability, provider and page runtime facts drift', () =
   });
 
   assert.throws(() => compile({ loading: 'eager' }), /loading and state ownership/);
-  assert.throws(() => compile({ sideEffects: [] }), /side effects/);
+  assert.throws(() => compile({ sideEffects: [], sideEffectAdapterRef: undefined }), /side effects/);
   assert.throws(() => compile({ lifecycle: { ...provider.lifecycle, focusModel: 'provider-managed' } }), /focus model/);
   assert.throws(() => runtime.compilePageRuntimeProjection({
     product: 'studio', pages: [page({ record: { deleted: true } })], capabilities: [pageCapability], providers: [provider],
@@ -335,10 +412,10 @@ test('fails closed when capability, provider and page runtime facts drift', () =
 
 test('rejects incomplete or divergent route, navigation, guard and renderer documents', () => {
   const provider = {
-    contract: 'ViewProviderDescriptor', providerId: 'application-shell-provider', ownerRepo: 'monkeys-studio',
+    contract: 'ViewProviderDescriptor', providerId: 'application-shell-provider', providerVersion: '1.0.0', ownerRepo: 'monkeys-studio',
     capabilityRef: { ...ref('capability', pageCapability.id, pageCapability.capabilityVersion), ownerRepo: pageCapability.ownerRepo },
-    rendererKey: 'workflow-workspace', loading: 'lazy', stateOwner: 'host',
-    supportedPageTypes: ['process'], supportedSurfaces: ['workspace'], frameOwner: 'host', sideEffects: ['navigation'],
+    rendererKey: 'workflow-workspace', renderModelSchemaRef: 'studio.application-shell.render-model', intentSchemaRef: 'studio.application-shell.intent', loading: 'lazy', stateOwner: 'host',
+    supportedPageTypes: ['process'], supportedSurfaces: ['workspace'], frameOwner: 'host', sideEffects: ['navigation'], sideEffectAdapterRef: { ...ref('side-effect-adapter', 'studio.application-shell.effects', '1.0.0'), ownerRepo: 'monkeys-studio' },
     lifecycle: { preserveMount: true, preserveScroll: true, focusModel: 'host-managed' },
     performance: { lazy: true, virtualized: false },
   };

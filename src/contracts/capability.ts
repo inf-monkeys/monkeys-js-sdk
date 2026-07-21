@@ -3,6 +3,7 @@ import {
   ContractIdentifierSchema,
   EntityRefSchema,
 } from './common';
+import { ProductContextSchema } from './render';
 
 export const ContractPortSchema = z
   .object({
@@ -11,6 +12,14 @@ export const ContractPortSchema = z
     required: z.boolean().default(false),
     multiple: z.boolean().default(false),
     description: z.string().optional(),
+  })
+  .strict();
+
+export const CapabilityProviderBindingSchema = z
+  .object({
+    providerRef: EntityRefSchema,
+    productContexts: z.array(ProductContextSchema).default([]),
+    priority: z.number().int().default(0),
   })
   .strict();
 
@@ -31,7 +40,7 @@ export const CapabilityManifestSchema = z
       .strict(),
     runtime: z
       .object({
-        providerRef: EntityRefSchema,
+        providerBindings: z.array(CapabilityProviderBindingSchema).min(1),
         loading: z.enum(['eager', 'lazy', 'viewport', 'on-activation']),
         fallbackCapabilityRef: EntityRefSchema.optional(),
         stateOwner: z.enum(['host', 'provider', 'external']),
@@ -67,29 +76,24 @@ export const CapabilityManifestSchema = z
   })
   .strict()
   .superRefine((manifest, context) => {
-    if (!['view', 'professional-provider'].includes(manifest.kind)) return;
-
-    if (manifest.runtime.providerRef.kind !== 'view-provider') {
-      context.addIssue({
-        code: 'custom',
-        path: ['runtime', 'providerRef', 'kind'],
-        message: 'View capabilities must resolve to a view-provider.',
-      });
-    }
-    if (manifest.runtime.providerRef.version === undefined) {
-      context.addIssue({
-        code: 'custom',
-        path: ['runtime', 'providerRef', 'version'],
-        message: 'View capabilities must pin a provider version.',
-      });
-    }
-    if (manifest.runtime.providerRef.ownerRepo !== manifest.ownerRepo) {
-      context.addIssue({
-        code: 'custom',
-        path: ['runtime', 'providerRef', 'ownerRepo'],
-        message: 'View capability provider owner must match the capability owner.',
-      });
-    }
+    const providerIds = new Set<string>();
+    manifest.runtime.providerBindings.forEach((binding, index) => {
+      const providerIdentity = `${binding.providerRef.kind}:${binding.providerRef.id}@${String(binding.providerRef.version)}:${binding.providerRef.ownerRepo ?? ''}`;
+      if (providerIds.has(providerIdentity)) {
+        context.addIssue({ code: 'custom', path: ['runtime', 'providerBindings', index], message: `Duplicate capability provider binding: ${providerIdentity}` });
+      }
+      providerIds.add(providerIdentity);
+      if (!['view', 'professional-provider'].includes(manifest.kind)) return;
+      if (binding.providerRef.kind !== 'view-provider') {
+        context.addIssue({ code: 'custom', path: ['runtime', 'providerBindings', index, 'providerRef', 'kind'], message: 'View capabilities must resolve to view providers.' });
+      }
+      if (binding.providerRef.version === undefined) {
+        context.addIssue({ code: 'custom', path: ['runtime', 'providerBindings', index, 'providerRef', 'version'], message: 'View capability providers must pin a provider version.' });
+      }
+      if (binding.providerRef.ownerRepo === undefined) {
+        context.addIssue({ code: 'custom', path: ['runtime', 'providerBindings', index, 'providerRef', 'ownerRepo'], message: 'View capability providers must declare their owner repository.' });
+      }
+    });
   });
 
 export const CapabilitySourceTypeSchema = z.enum([
@@ -136,6 +140,7 @@ export const CapabilityRegistryDocumentSchema = z
   });
 
 export type ContractPort = z.infer<typeof ContractPortSchema>;
+export type CapabilityProviderBinding = z.infer<typeof CapabilityProviderBindingSchema>;
 export type CapabilityManifest = z.infer<typeof CapabilityManifestSchema>;
 export type CapabilitySourceType = z.infer<typeof CapabilitySourceTypeSchema>;
 export type CapabilityRegistrySource = z.infer<typeof CapabilityRegistrySourceSchema>;
