@@ -145,7 +145,7 @@ test('compiles desired tenant config into a resolved, source-free browser contra
   }));
 });
 
-test('accepts only explicit inline, file and URL design-token sources', () => {
+test('accepts empty tenant overrides or explicit inline, file and URL design-token sources', () => {
   const inlineDocument = {
     color: { primary: { $type: 'color', $value: color('#336699', [0.2, 0.4, 0.6]) } },
   };
@@ -166,6 +166,16 @@ test('accepts only explicit inline, file and URL design-token sources', () => {
     },
   });
   assert.equal(parsed.designTokens.tokenSources[2].type, 'inline');
+  assert.deepEqual(schemas.TenantProductConfigSchema.parse({
+    ...representativeProductConfig,
+    authBinding: {
+      primary: { kind: 'auth-provider', providerId: 'oidc', policyRef: 'tenant-login' },
+    },
+    dataBinding: {
+      assets: { kind: 'data-provider', providerId: 'monkey-data', domainRef: 'assets' },
+    },
+    designTokens: { tokenSources: [] },
+  }).designTokens.tokenSources, []);
   assert.equal(schemas.TenantProductConfigSchema.safeParse({
     ...representativeProductConfig,
     designTokens: { tokenSources: ['./tokens/base.tokens.json'] },

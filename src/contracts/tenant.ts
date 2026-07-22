@@ -52,7 +52,8 @@ export const DesignTokenSourceSchema = z.discriminatedUnion('type', [
 
 export const TenantDesignTokensConfigSchema = z
   .object({
-    tokenSources: z.array(DesignTokenSourceSchema).min(1),
+    /** Ordered tenant overrides. The backend always applies the product default first. */
+    tokenSources: z.array(DesignTokenSourceSchema),
   })
   .strict();
 
