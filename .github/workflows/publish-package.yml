@@ -1,4 +1,4 @@
-name: Publish package to GitHub Packages
+name: Publish package to npm
 
 on:
   release:
@@ -24,7 +24,7 @@ jobs:
           node-version: "18.x"
           registry-url: "https://registry.npmjs.org"
           # Defaults to the user or organization that owns the workflow file
-          scope: "@inf-monkeys"
+          scope: "@inf-monkeys-tech"
       - run: npm i -g pnpm@8
       - run: pnpm i
       - run: npm run build
@@ -56,4 +56,4 @@ jobs:
           ci_target: JS SDK
           ci_target_image: infmonkeys/monkeys-js-sdk
           ci_target_tag: ${GITHUB_REF#refs/tags/}
-          build_time: ${{ needs.build.outputs.build_time }} 
+          build_time: ${{ needs.build.outputs.build_time }}

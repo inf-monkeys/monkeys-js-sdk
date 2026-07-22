@@ -1,5 +1,5 @@
 {
-  "name": "@inf-monkeys/monkeys",
+  "name": "@inf-monkeys-tech/monkeys",
   "version": "1.0.0",
   "description": "Monkeys JS SDK",
   "main": "lib/index.js",
