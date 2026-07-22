@@ -237,6 +237,13 @@ const ImageSelectMappingAppearanceSchema = z
   })
   .strict();
 
+const ComfyWorkflowPortBindingSchema = z
+  .object({
+    node: z.union([z.string(), z.number()]),
+    key: z.string().optional(),
+  })
+  .strict();
+
 const WorkflowParameterTypeOptionsSchema = z
   .object({
     editor: z.enum(['code', 'codeNodeEditor', 'htmlEditor', 'sqlEditor', 'json']).optional(),
@@ -246,7 +253,7 @@ const WorkflowParameterTypeOptionsSchema = z
     assetType: z.string().optional(), accept: z.string().optional(), maxSize: z.number().positive().optional(), fileType: z.string().optional(),
     aiMultiShotMainImageField: z.string().optional(), aiMultiShotWorkflowAppId: z.string().optional(), aiMultiShotWorkflowId: z.string().optional(),
     allowCustomInput: z.boolean().optional(), allowUploadVideo: z.boolean().optional(), aspectRatioField: z.string().optional(), assemblyValueType: z.string().optional(),
-    autoAnalyzeDesignImage: z.boolean().optional(), autoDetectAspectRatio: z.boolean().optional(), autoIncrementId: z.boolean().optional(), comfyuiModelServerId: z.string().optional(), comfyuiModelTypeName: z.string().optional(),
+    autoAnalyzeDesignImage: z.boolean().optional(), autoDetectAspectRatio: z.boolean().optional(), autoIncrementId: z.boolean().optional(), comfyOptions: ComfyWorkflowPortBindingSchema.optional(), comfyuiModelServerId: z.string().optional(), comfyuiModelTypeName: z.string().optional(),
     defaultCustomInput: JsonValueSchema.optional(), descriptionAlert: z.boolean().optional(), disabled: z.union([z.boolean(), WorkflowConditionalStateSchema]).optional(), editable: z.union([z.boolean(), WorkflowConditionalStateSchema]).optional(),
     enableAiMultiShot: z.boolean().optional(), enableBooleanSwitchMode: z.boolean().optional(), enableClear: z.boolean().optional(), enableExpand: z.boolean().optional(), enableImageMask: z.boolean().optional(), enableImageOverlay: z.boolean().optional(), enablePopupEditor: z.boolean().optional(), enablePromptFontSize: z.boolean().optional(), enableReset: z.boolean().optional(), enableSelectItemIcon: z.boolean().optional(), enableSelectList: z.boolean().optional(), enableSelectSearch: z.boolean().optional(), enableSliderEnterMode: z.boolean().optional(), enableVoice: z.boolean().optional(),
     expandButtonText: z.string().optional(), foldUp: z.boolean().optional(), hidden: z.boolean().optional(), hideRequiredDot: z.boolean().optional(), inlineTitleWithSelect: z.boolean().optional(), knowledgeGraphButtonText: z.string().optional(),

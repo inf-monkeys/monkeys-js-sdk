@@ -814,6 +814,24 @@ test('WorkflowDefinition preserves webhook identity and custom event configurati
   assert.deepEqual(parsed.triggers[1].event.configuration, { bucketId: 'bucket-1' });
 });
 
+test('WorkflowDefinition preserves canonical ComfyUI workflow port bindings', () => {
+  const workflow = structuredClone(fixtures['workflow-definition']);
+  workflow.parameters.variables = [
+    {
+      displayName: 'Prompt',
+      name: 'prompt',
+      type: 'string',
+      typeOptions: { comfyOptions: { node: 10, key: 'text' } },
+    },
+  ];
+
+  const parsed = schemas.WorkflowDefinitionSchema.parse(workflow);
+  assert.deepEqual(parsed.parameters.variables[0].typeOptions.comfyOptions, {
+    node: 10,
+    key: 'text',
+  });
+});
+
 test('exports only canonical contract and schema names', () => {
   const versionSuffix = /V[12](?:Schema)?$/;
   assert.deepEqual(Object.keys(contracts).filter((name) => versionSuffix.test(name)), []);
