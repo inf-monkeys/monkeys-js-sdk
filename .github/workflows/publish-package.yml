@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write
     outputs:
       build_status: ${{ job.status }}
       build_time: ${{ steps.calc_time.outputs.duration }}
@@ -17,21 +17,15 @@ jobs:
       - name: Start timer
         id: start_time
         run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
-      - uses: actions/checkout@v3
-      # Setup .npmrc file to publish to GitHub Packages
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: "18.x"
+          node-version: "24.x"
           registry-url: "https://registry.npmjs.org"
-          # Defaults to the user or organization that owns the workflow file
-          scope: "@inf-monkeys-tech"
-      - run: npm i -g pnpm@8
-      - run: pnpm i
-      - run: npm run build
+          package-manager-cache: false
+      - run: npm install --global yarn@1.22.22
+      - run: yarn install --frozen-lockfile
       - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
 
       - name: Calculate build duration
         id: calc_time

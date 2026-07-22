@@ -32,7 +32,10 @@
     "lib",
     "README.md"
   ],
-  "repository": "git@github.com:inf-monkeys/monkeys-js-sdk.git",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inf-monkeys/monkeys-js-sdk.git"
+  },
   "author": "codevoyager1984 <codevoyager.jay@gmail.com>",
   "license": "MIT",
   "scripts": {
