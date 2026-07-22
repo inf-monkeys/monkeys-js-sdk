@@ -218,6 +218,9 @@ test('requires canonical PageDefinition envelopes for tenant workbench pages', (
     ...applicationConfig,
     theme: {
       ...applicationConfig.theme,
+      workflowPreviewExecutionGrid: {
+        clickBehavior: 'none',
+      },
       workbench: {
         pages: [canonicalPage],
         pageGroups: [{

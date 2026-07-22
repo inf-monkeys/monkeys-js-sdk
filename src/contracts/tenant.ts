@@ -357,7 +357,7 @@ export const TenantApplicationConfigSchema = z
         workflowPreviewExecutionGrid: z
           .object({
             selectionModeDisplayType: z.enum(['operation-button', 'dropdown-menu']).optional(),
-            clickBehavior: z.enum(['preview', 'select', 'fill-form']).optional(),
+            clickBehavior: z.enum(['preview', 'select', 'fill-form', 'none']).optional(),
             showErrorFilter: z.boolean().optional(),
             displayType: z.enum(['grid', 'masonry']).optional(),
             showDetailButton: z.boolean().optional(),

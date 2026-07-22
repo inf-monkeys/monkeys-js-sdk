@@ -121,7 +121,7 @@ const normalizeToolCapabilityPorts = (
   if (value === undefined) return [];
   if (!Array.isArray(value)) throw new Error(`Tool ${direction} declaration must be an array.`);
 
-  return value.map((item, index) => {
+  const normalized = value.map((item, index) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
       throw new Error(`Tool ${direction} declaration at index ${index} must be an object.`);
     }
@@ -148,6 +148,28 @@ const normalizeToolCapabilityPorts = (
         : localizedText(descriptionSource, name),
     };
   });
+
+  const portsByName = new Map<string, ToolCapabilityPortSource>();
+  for (const port of normalized) {
+    const existing = portsByName.get(port.name);
+    if (!existing) {
+      portsByName.set(port.name, port);
+      continue;
+    }
+
+    // OpenAPI tool forms may declare the same logical field more than once
+    // to provide conditional presentation/defaults (for example one code
+    // editor per selected language). A capability port is an identity and
+    // must remain unique, so collapse presentation-only duplicates while
+    // failing closed when their executable contract disagrees.
+    if (existing.required !== port.required || existing.type !== port.type) {
+      throw new Error(
+        `Tool ${direction} ${port.name} has conflicting duplicate declarations.`,
+      );
+    }
+  }
+
+  return [...portsByName.values()];
 };
 
 /** Publishes canonical CapabilityManifest values on every tool operation in an OpenAPI document. */

@@ -992,3 +992,36 @@ test('OpenAPI capability publisher annotates every declared tool operation', () 
     namespace: 'monkeys_tools', ownerRepo: 'monkey-tools-agentkits', capabilityVersion: '1.0.0',
   }), /required must be a boolean/);
 });
+
+test('OpenAPI capability publisher collapses conditional presentation duplicates without weakening contracts', () => {
+  const document = {
+    paths: { '/execute': { post: {
+      'x-monkey-tool-name': 'sandbox',
+      'x-monkey-tool-input': [
+        { name: 'language', type: 'options' },
+        { name: 'sourceCode', required: true, type: 'string', description: 'Node.js source code' },
+        { name: 'sourceCode', required: true, type: 'string', description: 'Python source code' },
+      ],
+    } } },
+  };
+
+  runtime.publishOpenApiToolCapabilityManifests(document, {
+    namespace: 'sandbox', ownerRepo: 'monkey-tools-sandbox', capabilityVersion: '1.0.0',
+  });
+
+  const capability = document.paths['/execute'].post['x-monkeys-capability-manifest'];
+  assert.deepEqual(capability.ports.inputs.map((port) => port.name), ['language', 'sourceCode']);
+  assert.equal(capability.ports.inputs[1].description, 'Node.js source code');
+
+  assert.throws(() => runtime.publishOpenApiToolCapabilityManifests({
+    paths: { '/invalid': { post: {
+      'x-monkey-tool-name': 'invalid',
+      'x-monkey-tool-input': [
+        { name: 'value', required: true, type: 'string' },
+        { name: 'value', required: false, type: 'string' },
+      ],
+    } } },
+  }, {
+    namespace: 'sandbox', ownerRepo: 'monkey-tools-sandbox', capabilityVersion: '1.0.0',
+  }), /conflicting duplicate declarations/);
+});
