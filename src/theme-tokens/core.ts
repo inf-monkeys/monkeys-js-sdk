@@ -547,3 +547,68 @@ export function mergeThemeTokenDocuments(inputs: readonly unknown[]): ThemeToken
   resolveThemeTokens(merged);
   return merged as ThemeTokens;
 }
+
+const REQUIRED_SEMANTIC_COLOR_PATHS = [
+  'background',
+  'foreground',
+  'card',
+  'card-foreground',
+  'popover',
+  'popover-foreground',
+  'primary',
+  'primary-foreground',
+  'secondary',
+  'secondary-foreground',
+  'muted',
+  'muted-foreground',
+  'accent',
+  'accent-foreground',
+  'destructive',
+  'destructive-foreground',
+  'success',
+  'success-foreground',
+  'warning',
+  'warning-foreground',
+  'border',
+  'input',
+  'ring',
+  'neocard',
+] as const;
+
+/** The complete semantic surface consumed by Studio, Kernel and Compute. */
+export const MONKEYS_REQUIRED_THEME_TOKEN_PATHS: Readonly<Record<string, ThemeTokenType>> = Object.freeze({
+  ...Object.fromEntries(
+    REQUIRED_SEMANTIC_COLOR_PATHS.flatMap((name) => [
+      [`semantic.color.${name}.light`, 'color'],
+      [`semantic.color.${name}.dark`, 'color'],
+    ]),
+  ),
+  'semantic.radius.base': 'dimension',
+  'semantic.spacing.global.compact': 'dimension',
+  'semantic.spacing.global.default': 'dimension',
+  'semantic.spacing.global.comfortable': 'dimension',
+  'semantic.font.body': 'fontFamily',
+});
+
+/** Validate product completeness after all explicitly configured layers merge. */
+export function assertMonkeysThemeTokensComplete(input: unknown): ThemeTokens {
+  const resolved = resolveThemeTokens(input);
+  const issues: ThemeTokenValidationIssue[] = [];
+  for (const [path, expectedType] of Object.entries(MONKEYS_REQUIRED_THEME_TOKEN_PATHS)) {
+    const token = resolved.tokens.get(path);
+    if (!token) {
+      issues.push({ path: `/${path.replace(/\./g, '/')}`, message: 'Required Monkeys semantic token is missing.' });
+      continue;
+    }
+    if (token.type !== expectedType) {
+      issues.push({
+        path: `/${path.replace(/\./g, '/')}`,
+        message: `Required Monkeys semantic token must use type ${expectedType}.`,
+      });
+    }
+  }
+  if (issues.length > 0) {
+    throw new ThemeTokenValidationError('The merged design-token release is incomplete.', issues);
+  }
+  return resolved.document;
+}

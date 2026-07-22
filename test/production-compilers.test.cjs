@@ -145,6 +145,33 @@ test('compiles desired tenant config into a resolved, source-free browser contra
   }));
 });
 
+test('accepts only explicit inline, file and URL design-token sources', () => {
+  const inlineDocument = {
+    color: { primary: { $type: 'color', $value: color('#336699', [0.2, 0.4, 0.6]) } },
+  };
+  const parsed = schemas.TenantProductConfigSchema.parse({
+    ...representativeProductConfig,
+    authBinding: {
+      primary: { kind: 'auth-provider', providerId: 'oidc', policyRef: 'tenant-login' },
+    },
+    dataBinding: {
+      assets: { kind: 'data-provider', providerId: 'monkey-data', domainRef: 'assets' },
+    },
+    designTokens: {
+      tokenSources: [
+        { type: 'file', path: './tokens/base.tokens.json' },
+        { type: 'url', url: 'https://cdn.example.com/tenant.tokens.json' },
+        { type: 'inline', document: inlineDocument },
+      ],
+    },
+  });
+  assert.equal(parsed.designTokens.tokenSources[2].type, 'inline');
+  assert.equal(schemas.TenantProductConfigSchema.safeParse({
+    ...representativeProductConfig,
+    designTokens: { tokenSources: ['./tokens/base.tokens.json'] },
+  }).success, false);
+});
+
 test('tenant runtime bindings fail closed for missing and unavailable providers', () => {
   const policy = {
     authProviderIds: ['monkeys-server'],

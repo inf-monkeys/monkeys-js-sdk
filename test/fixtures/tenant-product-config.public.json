@@ -5,8 +5,8 @@
   "environment": "production",
   "designTokens": {
     "tokenSources": [
-      "./base.tokens.json",
-      "https://cdn.example.test/tenant.tokens.json"
+      { "type": "file", "path": "./base.tokens.json" },
+      { "type": "url", "url": "https://cdn.example.test/tenant.tokens.json" }
     ]
   },
   "moduleRefs": ["studio", "kernel", "compute"],

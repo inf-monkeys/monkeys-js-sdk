@@ -622,7 +622,7 @@ const fixtures = {
     appId: 'concept',
     environment: 'production',
     designTokens: {
-      tokenSources: ['./design-tokens/default.tokens.json'],
+      tokenSources: [{ type: 'file', path: './design-tokens/default.tokens.json' }],
     },
     moduleRefs: [],
     pageRefs: [],

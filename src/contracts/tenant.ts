@@ -6,16 +6,49 @@ import {
   LocalizedTextSchema,
 } from './common';
 import { PageDefinitionSchema } from './page';
-import { ResolvedThemeTokensSchema } from './theme';
+import { ResolvedThemeTokensSchema, ThemeTokensSchema } from './theme';
 
-export const DesignTokenSourceSchema = z.string().trim().min(1).superRefine((source, context) => {
-  if (/^[a-z][a-z\d+.-]*:/i.test(source) && !/^https?:\/\//i.test(source)) {
-    context.addIssue({
-      code: 'custom',
-      message: 'Design token sources must be local file paths or HTTP(S) URLs.',
-    });
-  }
-});
+const DesignTokenFileSourceSchema = z
+  .object({
+    type: z.literal('file'),
+    path: z.string().trim().min(1).superRefine((source, context) => {
+      if (/^[a-z][a-z\d+.-]*:/i.test(source)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Design token file sources must use local file paths.',
+        });
+      }
+    }),
+  })
+  .strict();
+
+const DesignTokenUrlSourceSchema = z
+  .object({
+    type: z.literal('url'),
+    url: z.string().trim().min(1).superRefine((source, context) => {
+      if (!/^https?:\/\//i.test(source)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Design token URL sources must use HTTP(S).',
+        });
+      }
+    }),
+  })
+  .strict();
+
+const DesignTokenInlineSourceSchema = z
+  .object({
+    type: z.literal('inline'),
+    document: ThemeTokensSchema,
+  })
+  .strict();
+
+/** One explicitly ordered input to the tenant design-token release. */
+export const DesignTokenSourceSchema = z.discriminatedUnion('type', [
+  DesignTokenFileSourceSchema,
+  DesignTokenUrlSourceSchema,
+  DesignTokenInlineSourceSchema,
+]);
 
 export const TenantDesignTokensConfigSchema = z
   .object({

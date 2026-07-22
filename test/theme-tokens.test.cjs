@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { ThemeTokensSchema } = require('../lib/schemas');
 const {
+  assertMonkeysThemeTokensComplete,
   mergeThemeTokenDocuments,
   resolveThemeTokens,
 } = require('../lib/runtime');
@@ -153,4 +154,19 @@ test('rejects token/group conflicts across sources', () => {
     { item: { $type: 'number', $value: 1 } },
     { item: { child: { $type: 'number', $value: 2 } } },
   ]), /cannot change item from token to group/);
+});
+
+test('rejects structurally valid but product-incomplete token releases', () => {
+  assert.throws(
+    () => assertMonkeysThemeTokensComplete({
+      semantic: {
+        color: {
+          primary: {
+            light: { $type: 'color', $value: color('#336699', [0.2, 0.4, 0.6]) },
+          },
+        },
+      },
+    }),
+    /incomplete/i,
+  );
 });
