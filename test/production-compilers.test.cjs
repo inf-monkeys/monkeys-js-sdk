@@ -348,7 +348,14 @@ test('round-trips production workflow tasks, parameters and outputs without deri
     interfaces: { openai: { enabled: true, modelName: 'workflow-1' }, preferredAppId: 'studio' },
   });
 
-  assert.deepEqual(runtime.compileConductorWorkflowDefinition(definition), conductor);
+  assert.deepEqual(runtime.compileConductorWorkflowDefinition(definition), {
+    ...conductor,
+    ownerEmail: runtime.DEFAULT_CONDUCTOR_OWNER_EMAIL,
+  });
+  assert.equal(
+    definition.execution.conductor.ownerEmail,
+    runtime.DEFAULT_CONDUCTOR_OWNER_EMAIL,
+  );
   assert.deepEqual(runtime.compileWorkflowPersistenceProjection(definition), { tasks: [task], variables, output });
   assert.equal(definition.graph.nodes[0].configuration.task.decisionCases.image[0].type, 'GENERATE_IMAGE');
   assert.throws(() => schemas.WorkflowDefinitionSchema.parse({

@@ -34,6 +34,8 @@ export interface WorkflowPersistenceProjection {
   output: readonly WorkflowOutputBinding[];
 }
 
+export const DEFAULT_CONDUCTOR_OWNER_EMAIL = 'dev@inf-monkeys.com';
+
 const localizedText = (value: WorkflowDefinition['metadata']['description']): string | undefined => {
   if (typeof value === 'string') return value;
   if (!value) return undefined;
@@ -109,7 +111,11 @@ export const compileWorkflowDefinitionFromConductor = (
     execution: {
       ...input.execution,
       ...(timeoutSeconds > 0 ? { timeoutMs: timeoutSeconds * 1000 } : {}),
-      conductor: conductorOptions,
+      conductor: {
+        ...conductorOptions,
+        ownerEmail:
+          conductorOptions.ownerEmail ?? DEFAULT_CONDUCTOR_OWNER_EMAIL,
+      },
     },
     triggers: input.triggers,
     views: input.views,
@@ -125,6 +131,9 @@ export const compileConductorWorkflowDefinition = (
   const workflow = WorkflowDefinitionSchema.parse(input);
   return ConductorWorkflowDefinitionSchema.parse({
     ...workflow.execution.conductor,
+    ownerEmail:
+      workflow.execution.conductor.ownerEmail ??
+      DEFAULT_CONDUCTOR_OWNER_EMAIL,
     name: workflow.metadata.id,
     description: localizedText(workflow.metadata.description),
     version: workflow.metadata.version,
