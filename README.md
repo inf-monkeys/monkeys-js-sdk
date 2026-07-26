@@ -5,7 +5,7 @@
 ## 安装
 
 ```bash
-yarn add @inf-monkeys-tech/monkeys@1.0.0 --registry https://registry.npmjs.org
+yarn add @inf-monkeys-tech/monkeys@^1.0.3 --registry https://registry.npmjs.org
 ```
 
 ## 稳定入口
@@ -19,10 +19,12 @@ import {
   RequestScopeSchema,
   WorkflowDefinitionSchema,
 } from '@inf-monkeys-tech/monkeys/schemas';
+import { resolveThemeTokens } from '@inf-monkeys-tech/monkeys/runtime';
 ```
 
 - `@inf-monkeys-tech/monkeys/contracts`：canonical TypeScript 合同。
 - `@inf-monkeys-tech/monkeys/schemas`：同一合同的 Zod 运行时 Schema 与 schema registry。
+- `@inf-monkeys-tech/monkeys/runtime`：同时提供浏览器 ESM 与 Node.js CommonJS 入口的运行时编译器。
 - `@inf-monkeys-tech/monkeys/json-schema/*`：构建时生成的 JSON Schema 2020-12 文件。
 
 当前 canonical 合同覆盖 RequestScope、ExecutionLink、Completion、Artifact/Output、Workflow、Capability、Page/Runtime Descriptor、Tenant Config、Theme Tokens、Ontology、Projection、Lineage、Domain Event 与 Trend/Radar 数据对象。运行时 Schema 严格拒绝未声明字段、错误引用和不满足不变量的数据；SDK 不提供旧合同迁移器、兼容别名或并行版本入口。
