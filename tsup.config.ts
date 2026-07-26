@@ -12,6 +12,7 @@ export default defineConfig({
   outExtension: () => ({ js: '.mjs' }),
   clean: false,
   dts: false,
+  noExternal: ['ajv'],
   sourcemap: true,
   splitting: false,
 });
