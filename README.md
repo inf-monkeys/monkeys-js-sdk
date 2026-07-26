@@ -5,7 +5,7 @@
 ## 安装
 
 ```bash
-yarn add @inf-monkeys-tech/monkeys@^1.0.3 --registry https://registry.npmjs.org
+yarn add @inf-monkeys-tech/monkeys@^1.0.4 --registry https://registry.npmjs.org
 ```
 
 ## 稳定入口
