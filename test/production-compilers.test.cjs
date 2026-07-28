@@ -139,10 +139,32 @@ test('compiles desired tenant config into a resolved, source-free browser contra
       ...applicationConfig.theme,
       modules: {
         ...applicationConfig.theme.modules,
-        monkeysSpaceHeadbar: '*',
+        monkeysSpaceHeadbar: [
+          {
+            id: 'workbench',
+            children: [
+              { id: 'studio-a', displayName: 'Studio A' },
+              { id: 'studio-b', displayName: 'Studio B', disabled: true },
+            ],
+          },
+        ],
       },
     },
   }));
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      headbar: { theme: 'bsd-blue' },
+    },
+  }).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      headbar: { theme: 'fixed' },
+    },
+  }).success, false);
 });
 
 test('accepts empty tenant overrides or explicit inline, file and URL design-token sources', () => {

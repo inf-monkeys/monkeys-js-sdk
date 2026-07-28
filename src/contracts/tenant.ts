@@ -102,15 +102,40 @@ const AssetVariantsSchema = z
   })
   .strict();
 
-const ThemeHeadbarSchema = z
+export const ThemeHeadbarSchema = z
   .object({
-    theme: z.enum(['fixed', 'card', 'glassy', 'ghost', 'bsd-blue']).optional(),
+    theme: z.enum(['card', 'glassy', 'ghost']).optional(),
     navPosition: z.enum(['left', 'center', 'right']).optional(),
     actions: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]).optional(),
     profile: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]).optional(),
     showTeamQuota: z.boolean().optional(),
   })
   .strict();
+
+const TenantHeadbarModuleLeafSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    extraInfo: z.boolean().optional(),
+    displayName: z.union([z.string(), z.record(LocaleIdentifierSchema, z.string())]).optional(),
+    visible: z.boolean().optional(),
+    disabled: z.boolean().optional(),
+    icon: z.string().optional(),
+    showQuickSwitcher: z.boolean().optional(),
+    showSidebar: z.boolean().optional(),
+  })
+  .strict();
+
+/**
+ * One configurable HeadBar navigation entry.
+ *
+ * Children intentionally stop at one level: the shared HeadBar renders a menu,
+ * not an arbitrary navigation tree. Studio maps the workbench list to these
+ * children when the tenant selects dropdown mode, or flattens the same list in
+ * tabs mode.
+ */
+export const TenantHeadbarModuleItemSchema = TenantHeadbarModuleLeafSchema.extend({
+  children: z.array(TenantHeadbarModuleLeafSchema).optional(),
+}).strict();
 
 const KernelHeadbarSchema = z
   .object({
@@ -357,20 +382,7 @@ export const TenantApplicationConfigSchema = z
             monkeysSpaceHeadbar: z
               .union([
                 z.literal('*'),
-                z.array(
-                  z
-                    .object({
-                      id: ContractIdentifierSchema,
-                      extraInfo: z.boolean().optional(),
-                      displayName: z.union([z.string(), z.record(LocaleIdentifierSchema, z.string())]).optional(),
-                      visible: z.boolean().optional(),
-                      disabled: z.boolean().optional(),
-                      icon: z.string().optional(),
-                      showQuickSwitcher: z.boolean().optional(),
-                      showSidebar: z.boolean().optional(),
-                    })
-                    .strict(),
-                ),
+                z.array(TenantHeadbarModuleItemSchema),
               ])
               .optional(),
             settingsSidebar: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]).optional(),
@@ -621,3 +633,5 @@ export type DesignTokenSource = z.infer<typeof DesignTokenSourceSchema>;
 export type TenantDesignTokensConfig = z.infer<typeof TenantDesignTokensConfigSchema>;
 export type TenantAuthBinding = z.infer<typeof TenantAuthBindingSchema>;
 export type TenantDataBinding = z.infer<typeof TenantDataBindingSchema>;
+export type ThemeHeadbar = z.infer<typeof ThemeHeadbarSchema>;
+export type TenantHeadbarModuleItem = z.infer<typeof TenantHeadbarModuleItemSchema>;
