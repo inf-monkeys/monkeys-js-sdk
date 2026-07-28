@@ -531,6 +531,65 @@ const fixtures = {
     outputRefs: [],
     createdAt: occurredAt,
   },
+  'radar-analysis-detail': {
+    contract: 'RadarAnalysisDetail',
+    run: {
+      contract: 'RadarAnalysisRun',
+      runId: 'run-1',
+      teamId: 'team-1',
+      selectionRef: ref('radar-selection', 'selection-1'),
+      workflowRef: ref('workflow', 'workflow-1'),
+      modelRef: ref('radar-score-model', 'model-1'),
+      requestId: 'request-1',
+      idempotencyKey: 'launch-1',
+      status: 'SUCCEEDED',
+      outputRefs: [ref('workflow-output', 'output-1')],
+      workflowInput: {},
+      createDesignProject: true,
+      createdAt: occurredAt,
+      completedAt: occurredAt,
+    },
+    runVersion: 2,
+    selection: {
+      contract: 'RadarSelection',
+      selectionId: 'selection-1',
+      teamId: 'team-1',
+      ownerRef: ref('human', 'user-1'),
+      subjectRefs: [ref('hotword', 'hotword-1')],
+      status: 'selected',
+      expectedVersion: 1,
+      updatedAt: occurredAt,
+    },
+    outputs: [{
+      contract: 'OutputRecord',
+      outputId: 'output-1',
+      runRef: ref('workflow-run', 'workflow-run-1'),
+      outputPort: 'images',
+      artifactRefs: [ref('artifact', 'artifact-1')],
+      createdAt: occurredAt,
+    }],
+    assets: [{
+      artifactRef: ref('artifact', 'artifact-1'),
+      kind: 'image',
+      mimeType: 'image/png',
+      url: 'https://example.com/generated.png',
+      metadata: {},
+      createdAt: occurredAt,
+    }],
+    lineage: [{
+      contract: 'LineageRecord',
+      lineageId: 'lineage-1',
+      subjectRef: ref('radar-analysis-run', 'run-1'),
+      sourceRecords: [],
+      bodyRefs: [ref('hotword', 'hotword-1')],
+      runRefs: [ref('workflow-run', 'workflow-run-1')],
+      outputRefs: [ref('workflow-output', 'output-1')],
+      artifactRefs: [ref('artifact', 'artifact-1')],
+      actorRefs: [ref('human', 'user-1')],
+      evidenceRefs: [],
+      recordedAt: occurredAt,
+    }],
+  },
   'radar-opportunity-matrix': {
     contract: 'RadarOpportunityMatrix',
     xMetric: 'searchHeat',
@@ -730,7 +789,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 52);
+  assert.equal(names.length, 53);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
