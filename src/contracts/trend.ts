@@ -6,6 +6,8 @@ import {
   JsonValueSchema,
   Sha256Schema,
 } from './common';
+import { LineageRecordSchema } from './data';
+import { OutputRecordSchema } from './artifact';
 
 export const RadarDecisionMetricsSchema = z
   .object({
@@ -272,6 +274,29 @@ export const RadarAnalysisRunSchema = z
   })
   .strict();
 
+export const RadarAnalysisAssetSchema = z
+  .object({
+    artifactRef: EntityRefSchema,
+    kind: ContractIdentifierSchema,
+    mimeType: z.string().trim().min(1).optional(),
+    url: z.string().url(),
+    metadata: z.record(z.string(), JsonValueSchema).default({}),
+    createdAt: IsoDateTimeSchema,
+  })
+  .strict();
+
+export const RadarAnalysisDetailSchema = z
+  .object({
+    contract: z.literal('RadarAnalysisDetail'),
+    run: RadarAnalysisRunSchema,
+    runVersion: z.number().int().positive(),
+    selection: RadarSelectionSchema,
+    outputs: z.array(OutputRecordSchema),
+    assets: z.array(RadarAnalysisAssetSchema),
+    lineage: z.array(LineageRecordSchema),
+  })
+  .strict();
+
 export const RadarActionRecordSchema = z
   .object({
     contract: z.literal('RadarActionRecord'),
@@ -317,5 +342,7 @@ export type RadarQueryBody = z.infer<typeof RadarQueryBodySchema>;
 export type SavedRadarQuery = z.infer<typeof SavedRadarQuerySchema>;
 export type RadarSelection = z.infer<typeof RadarSelectionSchema>;
 export type RadarAnalysisRun = z.infer<typeof RadarAnalysisRunSchema>;
+export type RadarAnalysisAsset = z.infer<typeof RadarAnalysisAssetSchema>;
+export type RadarAnalysisDetail = z.infer<typeof RadarAnalysisDetailSchema>;
 export type RadarActionRecord = z.infer<typeof RadarActionRecordSchema>;
 export type RadarWritebackRecord = z.infer<typeof RadarWritebackRecordSchema>;
