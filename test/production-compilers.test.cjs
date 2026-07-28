@@ -165,6 +165,32 @@ test('compiles desired tenant config into a resolved, source-free browser contra
       headbar: { theme: 'fixed' },
     },
   }).success, false);
+  assert.deepEqual(schemas.TenantLandingPageConfigSchema.parse({ mode: 'default' }), { mode: 'default' });
+  assert.deepEqual(schemas.TenantLandingPageConfigSchema.parse({ mode: 'markdown', content: '# Welcome' }), {
+    mode: 'markdown',
+    content: '# Welcome',
+  });
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'html',
+    content: '<main>Welcome</main>',
+    url: 'https://example.com',
+  }).success, false);
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'iframe',
+    url: 'javascript:alert(1)',
+  }).success, false);
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'iframe',
+    url: 'not-a-url',
+  }).success, false);
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'iframe',
+    url: 'https://user:secret@example.com',
+  }).success, false);
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'iframe',
+    url: '/landing-pages/tenant/index.html',
+  }).success, true);
 });
 
 test('accepts empty tenant overrides or explicit inline, file and URL design-token sources', () => {

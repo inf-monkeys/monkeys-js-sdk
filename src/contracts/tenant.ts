@@ -328,6 +328,56 @@ const LoginPageSchema = z
   })
   .strict();
 
+const LandingPageDefaultConfigSchema = z
+  .object({
+    mode: z.literal('default'),
+  })
+  .strict();
+
+const LandingPageMarkdownConfigSchema = z
+  .object({
+    mode: z.literal('markdown'),
+    content: z.string(),
+  })
+  .strict();
+
+const LandingPageHtmlConfigSchema = z
+  .object({
+    mode: z.literal('html'),
+    content: z.string(),
+  })
+  .strict();
+
+const LandingPageIframeConfigSchema = z
+  .object({
+    mode: z.literal('iframe'),
+    url: z
+      .string()
+      .refine((value) => {
+        if (/^\/(?!\/)/.test(value)) {
+          return !value.includes('\\');
+        }
+        try {
+          const url = new URL(value);
+          return (
+            (url.protocol === 'http:' || url.protocol === 'https:') &&
+            !url.username &&
+            !url.password
+          );
+        } catch {
+          return false;
+        }
+      }, 'Landing page iframe URL must use a root-relative path or HTTP(S) without embedded credentials.'),
+  })
+  .strict();
+
+export const TenantLandingPageConfigSchema = z.discriminatedUnion('mode', [
+  LandingPageDefaultConfigSchema,
+  LandingPageMarkdownConfigSchema,
+  LandingPageHtmlConfigSchema,
+  LandingPageIframeConfigSchema,
+]);
+
 /** Public, application-specific values that are intentionally safe for browser clients. */
 export const TenantApplicationConfigSchema = z
   .object({
@@ -480,6 +530,7 @@ export const TenantApplicationConfigSchema = z
           .optional(),
       })
       .strict(),
+    landingPage: TenantLandingPageConfigSchema.optional(),
     auth: z
       .object({
         enabled: z.array(ContractIdentifierSchema).default([]),
@@ -625,6 +676,7 @@ export const TenantRuntimeConfigSchema = z
 export type TenantProductConfig = z.infer<typeof TenantProductConfigSchema>;
 export type TenantRuntimeConfig = z.infer<typeof TenantRuntimeConfigSchema>;
 export type TenantApplicationConfig = z.infer<typeof TenantApplicationConfigSchema>;
+export type TenantLandingPageConfig = z.infer<typeof TenantLandingPageConfigSchema>;
 export type TenantWorkbenchConfig = z.infer<typeof TenantWorkbenchConfigSchema>;
 export type TenantWorkbenchPageContext = z.infer<typeof TenantWorkbenchPageContextSchema>;
 export type TenantWorkbenchPageEnvelope = z.infer<typeof TenantWorkbenchPageEnvelopeSchema>;
