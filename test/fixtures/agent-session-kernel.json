@@ -1,0 +1,62 @@
+{
+  "contract": "AgentSessionViewModel",
+  "sessionId": "kernel-session-1",
+  "snapshot": {
+    "mode": "agent",
+    "modelId": "kernel:claude-code",
+    "capabilities": {
+      "text": true,
+      "reasoning": true,
+      "plan": false,
+      "tasks": false,
+      "tools": true,
+      "mcp": false,
+      "shell": true,
+      "fileChange": true,
+      "skills": false,
+      "approval": true,
+      "artifacts": true,
+      "usage": false,
+      "resume": true,
+      "diff": false,
+      "workspaceFiles": true,
+      "terminal": true,
+      "testResults": false
+    }
+  },
+  "status": "running",
+  "events": [
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-1",
+      "sessionId": "kernel-session-1",
+      "sequence": 0,
+      "idempotencyKey": "kernel-session-1:0",
+      "occurredAt": "2026-07-30T08:00:00.000Z",
+      "eventType": "status",
+      "payload": { "status": "running" }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-2",
+      "sessionId": "kernel-session-1",
+      "sequence": 1,
+      "idempotencyKey": "kernel-session-1:1",
+      "occurredAt": "2026-07-30T08:00:01.000Z",
+      "eventType": "workspace-file",
+      "payload": { "path": "src/index.ts", "operation": "upsert", "mimeType": "text/typescript", "size": 128 }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-3",
+      "sessionId": "kernel-session-1",
+      "sequence": 2,
+      "idempotencyKey": "kernel-session-1:2",
+      "occurredAt": "2026-07-30T08:00:02.000Z",
+      "eventType": "terminal",
+      "payload": { "terminalId": "terminal-1", "stream": "stdout", "chunk": "Tests passed\n" }
+    }
+  ],
+  "lastSequence": 2,
+  "resumable": true
+}

@@ -198,6 +198,56 @@ const fixtures = {
     payload: { patch: { title: 'New title' } },
     occurredAt,
   },
+  'agent-session-event': {
+    contract: 'AgentSessionEvent',
+    eventId: 'agent-session-event-1',
+    sessionId: 'agent-session-1',
+    sequence: 0,
+    idempotencyKey: 'agent-session-1:0',
+    occurredAt,
+    eventType: 'status',
+    payload: { status: 'running' },
+  },
+  'agent-session-view-model': {
+    contract: 'AgentSessionViewModel',
+    sessionId: 'agent-session-1',
+    snapshot: {
+      mode: 'agent',
+      modelId: 'openai:gpt-5.1-codex',
+      capabilities: {
+        text: true,
+        reasoning: true,
+        plan: false,
+        tasks: false,
+        tools: true,
+        mcp: true,
+        shell: true,
+        fileChange: true,
+        skills: true,
+        approval: true,
+        artifacts: true,
+        usage: true,
+        resume: true,
+        diff: false,
+        workspaceFiles: false,
+        terminal: false,
+        testResults: false,
+      },
+    },
+    status: 'running',
+    events: [{
+      contract: 'AgentSessionEvent',
+      eventId: 'agent-session-event-1',
+      sessionId: 'agent-session-1',
+      sequence: 0,
+      idempotencyKey: 'agent-session-1:0',
+      occurredAt,
+      eventType: 'status',
+      payload: { status: 'running' },
+    }],
+    lastSequence: 0,
+    resumable: true,
+  },
   'application-handoff': {
     contract: 'ApplicationHandoff',
     handoffId: 'handoff-1',
@@ -797,7 +847,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 53);
+  assert.equal(names.length, 55);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),

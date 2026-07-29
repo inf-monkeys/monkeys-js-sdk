@@ -1,0 +1,62 @@
+{
+  "contract": "AgentSessionViewModel",
+  "sessionId": "agent-session-1",
+  "snapshot": {
+    "mode": "agent",
+    "modelId": "openai:gpt-5.1-codex",
+    "capabilities": {
+      "text": true,
+      "reasoning": true,
+      "plan": false,
+      "tasks": false,
+      "tools": true,
+      "mcp": true,
+      "shell": true,
+      "fileChange": true,
+      "skills": true,
+      "approval": true,
+      "artifacts": true,
+      "usage": true,
+      "resume": true,
+      "diff": false,
+      "workspaceFiles": false,
+      "terminal": false,
+      "testResults": false
+    }
+  },
+  "status": "waiting_approval",
+  "events": [
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "agent-event-1",
+      "sessionId": "agent-session-1",
+      "sequence": 0,
+      "idempotencyKey": "agent-session-1:0",
+      "occurredAt": "2026-07-30T08:00:00.000Z",
+      "eventType": "reasoning",
+      "payload": { "reasoningId": "reasoning-1", "text": "Inspecting files", "status": "streaming" }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "agent-event-2",
+      "sessionId": "agent-session-1",
+      "sequence": 1,
+      "idempotencyKey": "agent-session-1:1",
+      "occurredAt": "2026-07-30T08:00:01.000Z",
+      "eventType": "tool",
+      "payload": { "toolCallId": "tool-1", "toolName": "shell", "status": "running", "input": { "command": "git status" } }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "agent-event-3",
+      "sessionId": "agent-session-1",
+      "sequence": 2,
+      "idempotencyKey": "agent-session-1:2",
+      "occurredAt": "2026-07-30T08:00:02.000Z",
+      "eventType": "approval",
+      "payload": { "approvalId": "approval-1", "toolCallId": "tool-1", "status": "requested", "title": "Run shell command", "requestedAction": { "command": "git status" } }
+    }
+  ],
+  "lastSequence": 2,
+  "resumable": true
+}

@@ -18,6 +18,15 @@ export {
   JsonValueSchema,
 } from '../contracts/common';
 export {
+  AgentModeSchema,
+  AgentSessionCapabilitiesSchema,
+  AgentSessionCapabilitySchema,
+  AgentSessionEventSchema,
+  AgentSessionSnapshotSchema,
+  AgentSessionViewModelSchema,
+  AgentExecutionModeSchema,
+} from '../contracts/agent';
+export {
   AgentRuntimeEventSchema,
   CompletionEventSchema,
   CompletionHeaderSchema,
@@ -131,6 +140,7 @@ export {
 } from '../contracts/workflow-definition';
 
 import { ArtifactManifestSchema, OutputRecordSchema } from '../contracts/artifact';
+import { AgentSessionEventSchema, AgentSessionViewModelSchema } from '../contracts/agent';
 import { CapabilityManifestSchema, CapabilityRegistryDocumentSchema } from '../contracts/capability';
 import {
   AgentRuntimeEventSchema,
@@ -191,6 +201,8 @@ import {
 import { ConductorWorkflowDefinitionSchema, WorkflowDefinitionSchema } from '../contracts/workflow-definition';
 
 export const canonicalContractSchemas = {
+  'agent-session-event': AgentSessionEventSchema,
+  'agent-session-view-model': AgentSessionViewModelSchema,
   'agent-runtime-event': AgentRuntimeEventSchema,
   'application-run': ApplicationRunSchema,
   'application-handoff': ApplicationHandoffSchema,
