@@ -22,6 +22,23 @@ test('publishes Agent session contracts in the canonical schema registry', () =>
   assert.equal(schemas.canonicalContractSchemas['agent-session-view-model'], contracts.AgentSessionViewModelSchema);
 });
 
+test('carries canonical session events through the durable runtime envelope', () => {
+  const sessionEvent = readFixture('agent-session-agent.json').events[0];
+  const envelope = {
+    contract: 'AgentRuntimeEvent',
+    runtimeEventId: 'runtime-event-1',
+    streamId: 'agent-session-1:request-1',
+    sequence: 0,
+    requestId: 'request-1',
+    teamId: 'team-1',
+    threadId: 'agent-session-1',
+    eventType: 'session:event',
+    payload: { event: sessionEvent },
+    occurredAt: sessionEvent.occurredAt,
+  };
+  assert.deepEqual(contracts.AgentRuntimeEventSchema.parse(envelope), envelope);
+});
+
 test('fails closed for unknown event types and unknown payload fields', () => {
   const fixture = readFixture('agent-session-agent.json').events[0];
   assert.equal(contracts.AgentSessionEventSchema.safeParse({ ...fixture, eventType: 'provider-secret-event' }).success, false);

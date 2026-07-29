@@ -97,7 +97,7 @@ export const AgentRuntimeEventSchema = z
     requestId: ContractIdentifierSchema,
     teamId: ContractIdentifierSchema,
     threadId: ContractIdentifierSchema.optional(),
-    eventType: z.enum(['messages:append', 'messages:update', 'thread:update', 'tool-call:upsert']),
+    eventType: z.enum(['messages:append', 'messages:update', 'thread:update', 'tool-call:upsert', 'session:event']),
     payload: JsonValueSchema,
     occurredAt: IsoDateTimeSchema,
   })
