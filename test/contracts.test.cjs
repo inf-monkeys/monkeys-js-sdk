@@ -124,7 +124,15 @@ const pageDefinition = {
 };
 
 const applicationConfig = {
-  theme: { density: 'default' },
+  theme: {
+    density: 'default',
+    agent: {
+      logo: {
+        light: 'https://example.com/agent-light.svg',
+        dark: 'https://example.com/agent-dark.svg',
+      },
+    },
+  },
   auth: { enabled: [] },
   endpoints: { clientUrl: 'https://studio.infmonkeys.test', serverUrl: 'https://api.infmonkeys.test' },
   module: '*',

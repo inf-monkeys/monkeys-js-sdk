@@ -461,6 +461,7 @@ export const TenantApplicationConfigSchema = z
           .optional(),
         agent: z
           .object({
+            logo: AssetVariantsSchema.optional(),
             brandDisplayMode: z.enum(['auto', 'logo-only', 'logo-name', 'name-only']).optional(),
             density: z.enum(['compact', 'default', 'comfortable']).optional(),
           })

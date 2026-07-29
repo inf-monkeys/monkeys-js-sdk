@@ -21,6 +21,9 @@
       "id": "tenant-a",
       "title": "Monkeys",
       "logo": { "light": "/logo-light.svg", "dark": "/logo-dark.svg" },
+      "agent": {
+        "logo": { "light": "/agent-logo-light.svg", "dark": "/agent-logo-dark.svg" }
+      },
       "favicon": { "light": "/favicon-light.svg", "dark": "/favicon-dark.svg" },
       "form": { "variant": "bento" },
       "toast": { "position": "top-right" },
