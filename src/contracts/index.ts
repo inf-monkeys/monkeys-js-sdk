@@ -1,4 +1,5 @@
 export * from './artifact';
+export * from './agent';
 export * from './capability';
 export * from './common';
 export * from './context';
