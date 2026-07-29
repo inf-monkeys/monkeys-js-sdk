@@ -75,6 +75,7 @@ export {
 } from '../contracts/semantic';
 export {
   TenantApplicationConfigSchema,
+  TenantLandingPageConfigSchema,
   TenantProductConfigSchema,
   TenantRuntimeConfigSchema,
   TenantWorkbenchConfigSchema,

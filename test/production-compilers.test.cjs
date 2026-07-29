@@ -140,10 +140,58 @@ test('compiles desired tenant config into a resolved, source-free browser contra
       ...applicationConfig.theme,
       modules: {
         ...applicationConfig.theme.modules,
-        monkeysSpaceHeadbar: '*',
+        monkeysSpaceHeadbar: [
+          {
+            id: 'workbench',
+            children: [
+              { id: 'studio-a', displayName: 'Studio A' },
+              { id: 'studio-b', displayName: 'Studio B', disabled: true },
+            ],
+          },
+        ],
       },
     },
   }));
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      headbar: { theme: 'bsd-blue' },
+    },
+  }).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      headbar: { theme: 'fixed' },
+    },
+  }).success, false);
+  assert.deepEqual(schemas.TenantLandingPageConfigSchema.parse({ mode: 'default' }), { mode: 'default' });
+  assert.deepEqual(schemas.TenantLandingPageConfigSchema.parse({ mode: 'markdown', content: '# Welcome' }), {
+    mode: 'markdown',
+    content: '# Welcome',
+  });
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'html',
+    content: '<main>Welcome</main>',
+    url: 'https://example.com',
+  }).success, false);
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'iframe',
+    url: 'javascript:alert(1)',
+  }).success, false);
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'iframe',
+    url: 'not-a-url',
+  }).success, false);
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'iframe',
+    url: 'https://user:secret@example.com',
+  }).success, false);
+  assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+    mode: 'iframe',
+    url: '/landing-pages/tenant/index.html',
+  }).success, true);
 });
 
 test('accepts empty tenant overrides or explicit inline, file and URL design-token sources', () => {

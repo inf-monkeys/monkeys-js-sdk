@@ -102,15 +102,40 @@ const AssetVariantsSchema = z
   })
   .strict();
 
-const ThemeHeadbarSchema = z
+export const ThemeHeadbarSchema = z
   .object({
-    theme: z.enum(['fixed', 'card', 'glassy', 'ghost', 'bsd-blue']).optional(),
+    theme: z.enum(['card', 'glassy', 'ghost']).optional(),
     navPosition: z.enum(['left', 'center', 'right']).optional(),
     actions: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]).optional(),
     profile: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]).optional(),
     showTeamQuota: z.boolean().optional(),
   })
   .strict();
+
+const TenantHeadbarModuleLeafSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    extraInfo: z.boolean().optional(),
+    displayName: z.union([z.string(), z.record(LocaleIdentifierSchema, z.string())]).optional(),
+    visible: z.boolean().optional(),
+    disabled: z.boolean().optional(),
+    icon: z.string().optional(),
+    showQuickSwitcher: z.boolean().optional(),
+    showSidebar: z.boolean().optional(),
+  })
+  .strict();
+
+/**
+ * One configurable HeadBar navigation entry.
+ *
+ * Children intentionally stop at one level: the shared HeadBar renders a menu,
+ * not an arbitrary navigation tree. Studio maps the workbench list to these
+ * children when the tenant selects dropdown mode, or flattens the same list in
+ * tabs mode.
+ */
+export const TenantHeadbarModuleItemSchema = TenantHeadbarModuleLeafSchema.extend({
+  children: z.array(TenantHeadbarModuleLeafSchema).optional(),
+}).strict();
 
 const KernelHeadbarSchema = z
   .object({
@@ -303,6 +328,56 @@ const LoginPageSchema = z
   })
   .strict();
 
+const LandingPageDefaultConfigSchema = z
+  .object({
+    mode: z.literal('default'),
+  })
+  .strict();
+
+const LandingPageMarkdownConfigSchema = z
+  .object({
+    mode: z.literal('markdown'),
+    content: z.string(),
+  })
+  .strict();
+
+const LandingPageHtmlConfigSchema = z
+  .object({
+    mode: z.literal('html'),
+    content: z.string(),
+  })
+  .strict();
+
+const LandingPageIframeConfigSchema = z
+  .object({
+    mode: z.literal('iframe'),
+    url: z
+      .string()
+      .refine((value) => {
+        if (/^\/(?!\/)/.test(value)) {
+          return !value.includes('\\');
+        }
+        try {
+          const url = new URL(value);
+          return (
+            (url.protocol === 'http:' || url.protocol === 'https:') &&
+            !url.username &&
+            !url.password
+          );
+        } catch {
+          return false;
+        }
+      }, 'Landing page iframe URL must use a root-relative path or HTTP(S) without embedded credentials.'),
+  })
+  .strict();
+
+export const TenantLandingPageConfigSchema = z.discriminatedUnion('mode', [
+  LandingPageDefaultConfigSchema,
+  LandingPageMarkdownConfigSchema,
+  LandingPageHtmlConfigSchema,
+  LandingPageIframeConfigSchema,
+]);
+
 /** Public, application-specific values that are intentionally safe for browser clients. */
 export const TenantApplicationConfigSchema = z
   .object({
@@ -357,20 +432,7 @@ export const TenantApplicationConfigSchema = z
             monkeysSpaceHeadbar: z
               .union([
                 z.literal('*'),
-                z.array(
-                  z
-                    .object({
-                      id: ContractIdentifierSchema,
-                      extraInfo: z.boolean().optional(),
-                      displayName: z.union([z.string(), z.record(LocaleIdentifierSchema, z.string())]).optional(),
-                      visible: z.boolean().optional(),
-                      disabled: z.boolean().optional(),
-                      icon: z.string().optional(),
-                      showQuickSwitcher: z.boolean().optional(),
-                      showSidebar: z.boolean().optional(),
-                    })
-                    .strict(),
-                ),
+                z.array(TenantHeadbarModuleItemSchema),
               ])
               .optional(),
             settingsSidebar: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]).optional(),
@@ -469,6 +531,7 @@ export const TenantApplicationConfigSchema = z
           .optional(),
       })
       .strict(),
+    landingPage: TenantLandingPageConfigSchema.optional(),
     auth: z
       .object({
         enabled: z.array(ContractIdentifierSchema).default([]),
@@ -614,6 +677,7 @@ export const TenantRuntimeConfigSchema = z
 export type TenantProductConfig = z.infer<typeof TenantProductConfigSchema>;
 export type TenantRuntimeConfig = z.infer<typeof TenantRuntimeConfigSchema>;
 export type TenantApplicationConfig = z.infer<typeof TenantApplicationConfigSchema>;
+export type TenantLandingPageConfig = z.infer<typeof TenantLandingPageConfigSchema>;
 export type TenantWorkbenchConfig = z.infer<typeof TenantWorkbenchConfigSchema>;
 export type TenantWorkbenchPageContext = z.infer<typeof TenantWorkbenchPageContextSchema>;
 export type TenantWorkbenchPageEnvelope = z.infer<typeof TenantWorkbenchPageEnvelopeSchema>;
@@ -622,3 +686,5 @@ export type DesignTokenSource = z.infer<typeof DesignTokenSourceSchema>;
 export type TenantDesignTokensConfig = z.infer<typeof TenantDesignTokensConfigSchema>;
 export type TenantAuthBinding = z.infer<typeof TenantAuthBindingSchema>;
 export type TenantDataBinding = z.infer<typeof TenantDataBindingSchema>;
+export type ThemeHeadbar = z.infer<typeof ThemeHeadbarSchema>;
+export type TenantHeadbarModuleItem = z.infer<typeof TenantHeadbarModuleItemSchema>;
