@@ -198,6 +198,27 @@ const fixtures = {
     payload: { patch: { title: 'New title' } },
     occurredAt,
   },
+  'agent-session-command': {
+    contract: 'AgentSessionCommand',
+    commandId: 'command-stop-1',
+    sessionId: 'agent-session-1',
+    idempotencyKey: 'agent-session-1:stop:1',
+    expectedSequence: 0,
+    issuedAt: occurredAt,
+    commandType: 'stop',
+    payload: {},
+  },
+  'agent-session-command-result': {
+    contract: 'AgentSessionCommandResult',
+    commandId: 'command-stop-1',
+    sessionId: 'agent-session-1',
+    idempotencyKey: 'agent-session-1:stop:1',
+    outcome: 'accepted',
+    sessionStatus: 'stopping',
+    acceptedSequence: 1,
+    resultEventIds: ['status-event-1'],
+    occurredAt,
+  },
   'agent-session-event': {
     contract: 'AgentSessionEvent',
     eventId: 'agent-session-event-1',
@@ -847,7 +868,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 55);
+  assert.equal(names.length, 57);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),

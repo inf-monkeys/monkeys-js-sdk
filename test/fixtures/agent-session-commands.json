@@ -1,0 +1,72 @@
+{
+  "commands": [
+    {
+      "contract": "AgentSessionCommand",
+      "commandId": "command-stop-1",
+      "sessionId": "agent-session-1",
+      "idempotencyKey": "agent-session-1:stop:1",
+      "expectedSequence": 2,
+      "issuedAt": "2026-07-30T00:00:00.000Z",
+      "commandType": "stop",
+      "payload": { "reason": "User requested stop." }
+    },
+    {
+      "contract": "AgentSessionCommand",
+      "commandId": "command-resume-1",
+      "sessionId": "agent-session-1",
+      "idempotencyKey": "agent-session-1:resume:1",
+      "expectedSequence": 4,
+      "issuedAt": "2026-07-30T00:01:00.000Z",
+      "commandType": "resume",
+      "payload": { "resumeEventId": "resume-event-1" }
+    },
+    {
+      "contract": "AgentSessionCommand",
+      "commandId": "command-retry-1",
+      "sessionId": "agent-session-1",
+      "idempotencyKey": "agent-session-1:retry:1",
+      "expectedSequence": 6,
+      "issuedAt": "2026-07-30T00:02:00.000Z",
+      "commandType": "retry",
+      "payload": { "sourceEventId": "error-event-1" }
+    },
+    {
+      "contract": "AgentSessionCommand",
+      "commandId": "command-approval-1",
+      "sessionId": "agent-session-1",
+      "idempotencyKey": "agent-session-1:approval:1",
+      "expectedSequence": 8,
+      "issuedAt": "2026-07-30T00:03:00.000Z",
+      "commandType": "approval",
+      "payload": { "approvalId": "approval-1", "decision": "approved" }
+    }
+  ],
+  "results": [
+    {
+      "contract": "AgentSessionCommandResult",
+      "commandId": "command-stop-1",
+      "sessionId": "agent-session-1",
+      "idempotencyKey": "agent-session-1:stop:1",
+      "outcome": "accepted",
+      "sessionStatus": "stopping",
+      "acceptedSequence": 3,
+      "resultEventIds": ["status-event-3"],
+      "occurredAt": "2026-07-30T00:00:00.100Z"
+    },
+    {
+      "contract": "AgentSessionCommandResult",
+      "commandId": "command-retry-2",
+      "sessionId": "agent-session-1",
+      "idempotencyKey": "agent-session-1:retry:2",
+      "outcome": "rejected",
+      "sessionStatus": "completed",
+      "resultEventIds": [],
+      "error": {
+        "code": "INVALID_SESSION_STATE",
+        "message": "Retry requires a failed session.",
+        "retryable": false
+      },
+      "occurredAt": "2026-07-30T00:04:00.000Z"
+    }
+  ]
+}

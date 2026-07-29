@@ -18,8 +18,58 @@ for (const name of ['agent-session-chatbot.json', 'agent-session-agent.json', 'a
 }
 
 test('publishes Agent session contracts in the canonical schema registry', () => {
+  assert.equal(schemas.canonicalContractSchemas['agent-session-command'], contracts.AgentSessionCommandSchema);
+  assert.equal(schemas.canonicalContractSchemas['agent-session-command-result'], contracts.AgentSessionCommandResultSchema);
   assert.equal(schemas.canonicalContractSchemas['agent-session-event'], contracts.AgentSessionEventSchema);
   assert.equal(schemas.canonicalContractSchemas['agent-session-view-model'], contracts.AgentSessionViewModelSchema);
+});
+
+test('validates idempotent Agent session commands and results', () => {
+  const fixture = readFixture('agent-session-commands.json');
+  fixture.commands.forEach((command) => {
+    assert.deepEqual(contracts.AgentSessionCommandSchema.parse(command), command);
+  });
+  fixture.results.forEach((result) => {
+    assert.deepEqual(contracts.AgentSessionCommandResultSchema.parse(result), result);
+  });
+});
+
+test('fails closed for unknown commands, payload fields, and inconsistent results', () => {
+  const fixture = readFixture('agent-session-commands.json');
+  const command = fixture.commands[0];
+  assert.equal(contracts.AgentSessionCommandSchema.safeParse({ ...command, commandType: 'regenerate' }).success, false);
+  assert.equal(
+    contracts.AgentSessionCommandSchema.safeParse({
+      ...command,
+      payload: { ...command.payload, providerRuntime: 'codex' },
+    }).success,
+    false,
+  );
+  assert.equal(
+    contracts.AgentSessionCommandResultSchema.safeParse({
+      ...fixture.results[0],
+      outcome: 'accepted',
+      error: { code: 'COMMAND_EXECUTION_FAILED', message: 'Unexpected error.', retryable: true },
+    }).success,
+    false,
+  );
+  assert.equal(
+    contracts.AgentSessionCommandResultSchema.safeParse({
+      ...fixture.results[1],
+      outcome: 'rejected',
+      error: undefined,
+    }).success,
+    false,
+  );
+});
+
+test('defines deterministic command state transitions', () => {
+  assert.equal(contracts.resolveAgentSessionCommandTransition('running', 'stop'), 'stopping');
+  assert.equal(contracts.resolveAgentSessionCommandTransition('stopped', 'resume'), 'queued');
+  assert.equal(contracts.resolveAgentSessionCommandTransition('failed', 'retry'), 'queued');
+  assert.equal(contracts.resolveAgentSessionCommandTransition('waiting_approval', 'approval'), 'running');
+  assert.equal(contracts.resolveAgentSessionCommandTransition('completed', 'stop'), undefined);
+  assert.equal(contracts.resolveAgentSessionCommandTransition('running', 'retry'), undefined);
 });
 
 test('carries canonical session events through the durable runtime envelope', () => {

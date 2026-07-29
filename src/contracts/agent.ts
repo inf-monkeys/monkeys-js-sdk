@@ -53,6 +53,113 @@ export const AgentSessionSnapshotSchema = z
   })
   .strict();
 
+export const AgentSessionStatusSchema = z.enum([
+  'queued',
+  'running',
+  'waiting_approval',
+  'stopping',
+  'stopped',
+  'completed',
+  'failed',
+]);
+
+export const AgentSessionCommandTypeSchema = z.enum(['stop', 'resume', 'retry', 'approval']);
+
+const AgentSessionCommandHeaderSchema = z
+  .object({
+    contract: z.literal('AgentSessionCommand'),
+    commandId: ContractIdentifierSchema,
+    sessionId: ContractIdentifierSchema,
+    idempotencyKey: ContractIdentifierSchema,
+    expectedSequence: z.number().int().min(-1),
+    issuedAt: IsoDateTimeSchema,
+  })
+  .strict();
+
+const sessionCommand = <CommandType extends string, Payload extends z.ZodRawShape>(commandType: CommandType, payload: Payload) =>
+  AgentSessionCommandHeaderSchema.extend({
+    commandType: z.literal(commandType),
+    payload: z.object(payload).strict(),
+  }).strict();
+
+export const AgentSessionCommandSchema = z.discriminatedUnion('commandType', [
+  sessionCommand('stop', {
+    reason: z.string().trim().min(1).optional(),
+  }),
+  sessionCommand('resume', {
+    resumeEventId: ContractIdentifierSchema.optional(),
+  }),
+  sessionCommand('retry', {
+    sourceEventId: ContractIdentifierSchema,
+  }),
+  sessionCommand('approval', {
+    approvalId: ContractIdentifierSchema,
+    decision: z.enum(['approved', 'rejected']),
+    reason: z.string().trim().min(1).optional(),
+  }),
+]);
+
+export const AgentSessionCommandErrorCodeSchema = z.enum([
+  'SESSION_NOT_FOUND',
+  'COMMAND_NOT_SUPPORTED',
+  'CAPABILITY_UNAVAILABLE',
+  'SEQUENCE_CONFLICT',
+  'INVALID_SESSION_STATE',
+  'TARGET_EVENT_NOT_FOUND',
+  'TARGET_EVENT_NOT_RETRYABLE',
+  'APPROVAL_NOT_FOUND',
+  'APPROVAL_ALREADY_RESOLVED',
+  'COMMAND_EXECUTION_FAILED',
+]);
+
+export const AgentSessionCommandResultSchema = z
+  .object({
+    contract: z.literal('AgentSessionCommandResult'),
+    commandId: ContractIdentifierSchema,
+    sessionId: ContractIdentifierSchema,
+    idempotencyKey: ContractIdentifierSchema,
+    outcome: z.enum(['accepted', 'duplicate', 'rejected', 'failed']),
+    sessionStatus: AgentSessionStatusSchema,
+    acceptedSequence: z.number().int().nonnegative().optional(),
+    resultEventIds: z.array(ContractIdentifierSchema).default([]),
+    error: z
+      .object({
+        code: AgentSessionCommandErrorCodeSchema,
+        message: z.string(),
+        retryable: z.boolean(),
+      })
+      .strict()
+      .optional(),
+    occurredAt: IsoDateTimeSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const requiresError = value.outcome === 'rejected' || value.outcome === 'failed';
+    if (requiresError !== Boolean(value.error)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['error'],
+        message: requiresError
+          ? 'Rejected and failed command results require an error.'
+          : 'Accepted and duplicate command results must not contain an error.',
+      });
+    }
+  });
+
+const AGENT_SESSION_COMMAND_TRANSITIONS: Record<AgentSessionCommandType, Partial<Record<AgentSessionStatus, AgentSessionStatus>>> = {
+  stop: { queued: 'stopping', running: 'stopping', waiting_approval: 'stopping' },
+  resume: { stopped: 'queued', completed: 'queued', failed: 'queued' },
+  retry: { failed: 'queued' },
+  approval: { waiting_approval: 'running' },
+};
+
+export function resolveAgentSessionCommandTransition(
+  status: AgentSessionStatus,
+  commandType: AgentSessionCommandType,
+): AgentSessionStatus | undefined {
+  return AGENT_SESSION_COMMAND_TRANSITIONS[commandType][status];
+}
+
 const AgentSessionEventHeaderSchema = z
   .object({
     contract: z.literal('AgentSessionEvent'),
@@ -122,7 +229,7 @@ export const AgentSessionEventSchema = z.discriminatedUnion('eventType', [
     requestedAction: JsonValueSchema.optional(),
   }),
   sessionEvent('status', {
-    status: z.enum(['queued', 'running', 'waiting_approval', 'stopping', 'stopped', 'completed', 'failed']),
+    status: AgentSessionStatusSchema,
     detail: z.string().optional(),
   }),
   sessionEvent('artifact', {
@@ -185,7 +292,7 @@ export const AgentSessionViewModelSchema = z
     contract: z.literal('AgentSessionViewModel'),
     sessionId: ContractIdentifierSchema,
     snapshot: AgentSessionSnapshotSchema,
-    status: z.enum(['queued', 'running', 'waiting_approval', 'stopping', 'stopped', 'completed', 'failed']),
+    status: AgentSessionStatusSchema,
     events: z.array(AgentSessionEventSchema),
     lastSequence: z.number().int().min(-1),
     resumable: z.boolean().default(false),
@@ -244,6 +351,11 @@ export type AgentMode = z.infer<typeof AgentModeSchema>;
 export type AgentSessionCapability = z.infer<typeof AgentSessionCapabilitySchema>;
 export type AgentSessionCapabilities = z.infer<typeof AgentSessionCapabilitiesSchema>;
 export type AgentSessionSnapshot = z.infer<typeof AgentSessionSnapshotSchema>;
+export type AgentSessionStatus = z.infer<typeof AgentSessionStatusSchema>;
+export type AgentSessionCommandType = z.infer<typeof AgentSessionCommandTypeSchema>;
+export type AgentSessionCommand = z.infer<typeof AgentSessionCommandSchema>;
+export type AgentSessionCommandErrorCode = z.infer<typeof AgentSessionCommandErrorCodeSchema>;
+export type AgentSessionCommandResult = z.infer<typeof AgentSessionCommandResultSchema>;
 export type AgentSessionEvent = z.infer<typeof AgentSessionEventSchema>;
 export type AgentSessionViewModel = z.infer<typeof AgentSessionViewModelSchema>;
 
