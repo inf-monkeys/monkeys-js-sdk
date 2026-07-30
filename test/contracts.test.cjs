@@ -839,6 +839,70 @@ const fixtures = {
     collectedAt: occurredAt,
   },
   'view-provider-descriptor': pageProviderDescriptor,
+  'workflow-completion-commit': {
+    contract: 'WorkflowCompletionCommit',
+    commitId: 'completion-execution-1',
+    run: {
+      contract: 'ApplicationRun',
+      runId: 'run-1',
+      definitionRef: ref('workflow-definition', 'workflow-1', 1),
+      runtimeLedgerRef: ref('workflow-run', 'execution-1'),
+      requestId: 'request-1',
+      actorRef: ref('user', 'user-1'),
+      status: 'COMPLETED',
+      inputRefs: [],
+      outputRefs: [ref('workflow-output', 'output-1')],
+      startedAt: occurredAt,
+      completedAt: occurredAt,
+      metadata: {},
+    },
+    outputs: [{
+      contract: 'OutputRecord',
+      outputId: 'output-1',
+      runRef: ref('application-run', 'run-1'),
+      outputPort: 'result',
+      artifactRefs: [ref('artifact', 'artifact-1')],
+      createdAt: occurredAt,
+    }],
+    artifacts: [{
+      contract: 'ArtifactManifest',
+      artifactId: 'artifact-1',
+      kind: 'image',
+      mimeType: 'image/png',
+      sha256: 'a'.repeat(64),
+      storage: { provider: 's3', key: 'outputs/artifact-1.png' },
+      runRef: ref('application-run', 'run-1'),
+      outputRef: ref('workflow-output', 'output-1'),
+      producer: { service: 'monkeys-conductor-worker', version: '1.0.0' },
+      access: { visibility: 'team', teamId: 'team-1' },
+      metadata: {},
+      createdAt: occurredAt,
+    }],
+    lineage: {
+      contract: 'LineageRecord',
+      lineageId: 'lineage-run-1',
+      subjectRef: ref('application-run', 'run-1'),
+      sourceRecords: [],
+      bodyRefs: [ref('workflow-definition', 'workflow-1', 1)],
+      runRefs: [ref('application-run', 'run-1')],
+      outputRefs: [ref('workflow-output', 'output-1')],
+      artifactRefs: [ref('artifact', 'artifact-1')],
+      actorRefs: [ref('user', 'user-1')],
+      evidenceRefs: [ref('workflow-run', 'execution-1')],
+      recordedAt: occurredAt,
+    },
+    completedAt: occurredAt,
+  },
+  'workflow-completion-receipt': {
+    contract: 'WorkflowCompletionReceipt',
+    commitId: 'completion-execution-1',
+    runRef: ref('application-run', 'run-1'),
+    outputRefs: [ref('workflow-output', 'output-1')],
+    artifactRefs: [ref('artifact', 'artifact-1')],
+    contentHash: 'c'.repeat(64),
+    committedAt: occurredAt,
+    idempotentReplay: false,
+  },
   'workflow-definition': {
     contract: 'WorkflowDefinition',
     metadata: { id: 'workflow-1', version: 1, name: { 'en-US': 'Workflow' }, role: 'workflow', teamId: 'team-1', creatorRef: ref('user', 'user-1'), tags: [] },
@@ -863,12 +927,23 @@ const fixtures = {
     governance: { activated: true, validated: true, validationIssues: [] },
     interfaces: { openai: { enabled: false } },
   },
+  'workflow-publication': {
+    contract: 'WorkflowPublication',
+    publicationId: 'workflow-1-1',
+    definitionRef: ref('workflow-definition', 'workflow-1', 1),
+    runtimeDefinitionRef: ref('conductor-workflow-definition', 'workflow-1', 1),
+    sourceHash: 'a'.repeat(64),
+    compiledHash: 'b'.repeat(64),
+    status: 'PUBLISHED',
+    publisherRef: ref('user', 'user-1'),
+    publishedAt: occurredAt,
+  },
 };
 
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 57);
+  assert.equal(names.length, 60);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -1025,6 +1100,94 @@ test('WorkflowDefinition preserves canonical ComfyUI workflow port bindings', ()
     node: 10,
     key: 'text',
   });
+});
+
+test('workflow runtime contracts preserve one authoritative completion graph', () => {
+  const run = {
+    contract: 'ApplicationRun',
+    runId: 'run-1',
+    definitionRef: ref('workflow-definition', 'workflow-1', 2),
+    runtimeLedgerRef: ref('workflow-run', 'execution-1'),
+    requestId: 'request-1',
+    actorRef: ref('user', 'user-1'),
+    status: 'COMPLETED',
+    inputRefs: [],
+    outputRefs: [ref('workflow-output', 'output-1')],
+    startedAt: '2026-07-31T00:00:00.000Z',
+    completedAt: '2026-07-31T00:01:00.000Z',
+    metadata: {},
+  };
+  const output = {
+    contract: 'OutputRecord',
+    outputId: 'output-1',
+    runRef: ref('application-run', 'run-1'),
+    outputPort: 'result',
+    value: { text: 'done' },
+    artifactRefs: [ref('artifact', 'artifact-1')],
+    createdAt: '2026-07-31T00:01:00.000Z',
+  };
+  const artifact = {
+    contract: 'ArtifactManifest',
+    artifactId: 'artifact-1',
+    kind: 'image',
+    mimeType: 'image/png',
+    sha256: 'a'.repeat(64),
+    storage: { provider: 's3', bucket: 'assets', key: 'generated/result.png' },
+    runRef: ref('application-run', 'run-1'),
+    outputRef: ref('workflow-output', 'output-1'),
+    producer: { service: 'monkeys-conductor-worker', version: '1' },
+    access: { teamId: 'team-1', visibility: 'team' },
+    metadata: {},
+    createdAt: '2026-07-31T00:01:00.000Z',
+  };
+  const lineage = {
+    contract: 'LineageRecord',
+    lineageId: 'lineage-1',
+    subjectRef: ref('application-run', 'run-1'),
+    sourceRecords: [],
+    bodyRefs: [ref('workflow-definition', 'workflow-1', 2)],
+    runRefs: [ref('application-run', 'run-1')],
+    outputRefs: [ref('workflow-output', 'output-1')],
+    artifactRefs: [ref('artifact', 'artifact-1')],
+    actorRefs: [ref('user', 'user-1')],
+    evidenceRefs: [ref('workflow-run', 'execution-1')],
+    recordedAt: '2026-07-31T00:01:00.000Z',
+  };
+  const commit = {
+    contract: 'WorkflowCompletionCommit',
+    commitId: 'completion-execution-1',
+    run,
+    outputs: [output],
+    artifacts: [artifact],
+    lineage,
+    completedAt: '2026-07-31T00:01:00.000Z',
+  };
+
+  assert.equal(schemas.WorkflowCompletionCommitSchema.safeParse(commit).success, true);
+  assert.equal(schemas.WorkflowCompletionCommitSchema.safeParse({
+    ...commit,
+    outputs: [{ ...output, runRef: ref('application-run', 'other-run') }],
+  }).success, false);
+});
+
+test('workflow publication pins one immutable Conductor definition', () => {
+  const publication = {
+    contract: 'WorkflowPublication',
+    publicationId: 'workflow-1-2',
+    definitionRef: ref('workflow-definition', 'workflow-1', 2),
+    runtimeDefinitionRef: ref('conductor-workflow-definition', 'workflow-1', 2),
+    sourceHash: 'a'.repeat(64),
+    compiledHash: 'b'.repeat(64),
+    status: 'PUBLISHED',
+    publisherRef: ref('user', 'user-1'),
+    publishedAt: '2026-07-31T00:00:00.000Z',
+  };
+
+  assert.equal(schemas.WorkflowPublicationSchema.safeParse(publication).success, true);
+  assert.equal(schemas.WorkflowPublicationSchema.safeParse({
+    ...publication,
+    runtimeDefinitionRef: ref('workflow-definition', 'workflow-1', 2),
+  }).success, false);
 });
 
 test('exports only canonical contract and schema names', () => {
