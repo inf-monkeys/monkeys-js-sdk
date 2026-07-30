@@ -610,6 +610,18 @@ const fixtures = {
     outputRefs: [],
     createdAt: occurredAt,
   },
+  'radar-decision-report': {
+    contract: 'RadarDecisionReport',
+    axes: [{ key: 'market-potential', label: 'Market potential', score: 88, weight: 0.2 }],
+    overallScore: 88,
+    formulaFields: [{ key: 'growth-rate', label: 'Growth rate', value: 0.42, unit: 'ratio' }],
+    sections: [{ sectionId: 'summary', title: 'Decision summary', findings: ['Strong forecast demand'] }],
+    combinationGraph: {
+      nodes: [{ nodeId: 'hotword-1', ref: ref('hotword', 'hotword-1'), kind: 'hotword', label: 'Outdoor' }],
+      edges: [],
+    },
+    moduleAvailability: { report: { status: 'available' } },
+  },
   'radar-analysis-detail': {
     contract: 'RadarAnalysisDetail',
     run: {
@@ -669,6 +681,27 @@ const fixtures = {
       recordedAt: occurredAt,
     }],
   },
+  'radar-opportunity-detail': {
+    contract: 'RadarOpportunityDetail',
+    body: {
+      contract: 'HotwordBody',
+      hotwordId: 'hotword-1',
+      label: 'Outdoor',
+      normalizedLabel: 'outdoor',
+      categories: ['outdoor'],
+      sourceRefs: [{ sourceId: 'source-1', provider: 'internal', channel: 'internal', collectedAt: occurredAt }],
+      relationRefs: [],
+      createdAt: occurredAt,
+      updatedAt: occurredAt,
+    },
+    version: 1,
+    score: {
+      contract: 'RadarScoreProjection', projectionId: 'radar-1', subjectRef: ref('hotword', 'hotword-1'),
+      modelRef: ref('model', 'trend-radar'), totalScore: 88,
+      dimensions: { currentSales: 82, forecastSales: 91, searchHeat: 88, socialHeat: 79, confidence: 0.93 },
+      evidenceRefs: [ref('evidence', 'evidence-1')], freshnessAt: occurredAt,
+    },
+  },
   'radar-opportunity-matrix': {
     contract: 'RadarOpportunityMatrix',
     xMetric: 'searchHeat',
@@ -682,6 +715,27 @@ const fixtures = {
       evidenceRefs: [ref('evidence', 'evidence-1')],
     }],
     computedAt: occurredAt,
+  },
+  'radar-opportunity-summary': {
+    contract: 'RadarOpportunitySummary',
+    body: {
+      contract: 'HotwordBody',
+      hotwordId: 'hotword-1',
+      label: 'Outdoor',
+      normalizedLabel: 'outdoor',
+      categories: ['outdoor'],
+      sourceRefs: [{ sourceId: 'source-1', provider: 'internal', channel: 'internal', collectedAt: occurredAt }],
+      relationRefs: [],
+      createdAt: occurredAt,
+      updatedAt: occurredAt,
+    },
+    version: 1,
+    score: {
+      contract: 'RadarScoreProjection', projectionId: 'radar-1', subjectRef: ref('hotword', 'hotword-1'),
+      modelRef: ref('model', 'trend-radar'), totalScore: 88,
+      dimensions: { currentSales: 82, forecastSales: 91, searchHeat: 88, socialHeat: 79, confidence: 0.93 },
+      evidenceRefs: [ref('evidence', 'evidence-1')], freshnessAt: occurredAt,
+    },
   },
   'radar-panorama': {
     contract: 'RadarPanorama',
@@ -868,7 +922,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 57);
+  assert.equal(names.length, 60);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
