@@ -124,8 +124,18 @@
         "kind": "file",
         "status": "ready"
       }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-8",
+      "sessionId": "kernel-session-1",
+      "sequence": 7,
+      "idempotencyKey": "kernel-session-1:7",
+      "occurredAt": "2026-07-30T08:00:07.000Z",
+      "eventType": "resume",
+      "payload": { "resumable": true, "reason": "runtime_attached" }
     }
   ],
-  "lastSequence": 6,
+  "lastSequence": 7,
   "resumable": true
 }

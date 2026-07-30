@@ -171,6 +171,17 @@ test('projects replayed and out-of-order events without advancing across a seque
   assert.deepEqual(runtime.toAgentSessionViewModel(complete, fixture.snapshot), fixture);
 });
 
+test('projects every shared session fixture into its declared view model', () => {
+  for (const name of ['chatbot', 'agent', 'kernel']) {
+    const fixture = readFixture(`agent-session-${name}.json`);
+    const projection = runtime.projectAgentSessionEvents(
+      runtime.createAgentSessionEventProjection(fixture.sessionId),
+      [...fixture.events].reverse(),
+    );
+    assert.deepEqual(runtime.toAgentSessionViewModel(projection, fixture.snapshot), fixture);
+  }
+});
+
 test('session projection fails closed for unknown, foreign, and conflicting events', () => {
   const fixture = readFixture('agent-session-agent.json');
   const projection = runtime.createAgentSessionEventProjection(fixture.sessionId);
