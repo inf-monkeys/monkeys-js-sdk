@@ -18,7 +18,10 @@ export {
   JsonValueSchema,
 } from '../contracts/common';
 export {
+  AgentConfigurationCapabilitySchema,
   AgentModeSchema,
+  AgentModeCapabilitiesSchema,
+  AgentResourceModeSupportSchema,
   AgentSessionCapabilitiesSchema,
   AgentSessionCapabilitySchema,
   AgentSessionCommandErrorCodeSchema,

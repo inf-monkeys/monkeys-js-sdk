@@ -122,3 +122,23 @@ test('normalizes legacy provider values only at the product boundary', () => {
   assert.equal(contracts.normalizeAgentMode('vercel-ai'), 'chatbot');
   assert.equal(contracts.normalizeAgentMode('unknown'), undefined);
 });
+
+test('publishes canonical configuration capabilities for each Agent mode', () => {
+  assert.deepEqual(contracts.getAgentModeCapabilities('chatbot'), {
+    models: true,
+    skills: true,
+    tools: true,
+    mcp: true,
+    reasoning: false,
+  });
+  assert.equal(contracts.agentModeHasCapability('agent', 'reasoning'), true);
+  assert.equal(contracts.agentModeHasCapability('chatbot', 'reasoning'), false);
+});
+
+test('requires resources to declare their compatible product modes', () => {
+  const agentOnly = contracts.AgentResourceModeSupportSchema.parse({ modes: ['agent'] });
+  assert.equal(contracts.isAgentResourceModeCompatible(agentOnly, 'agent'), true);
+  assert.equal(contracts.isAgentResourceModeCompatible(agentOnly, 'chatbot'), false);
+  assert.equal(contracts.isAgentResourceModeCompatible(undefined, 'agent'), false);
+  assert.equal(contracts.AgentResourceModeSupportSchema.safeParse({ modes: [] }).success, false);
+});

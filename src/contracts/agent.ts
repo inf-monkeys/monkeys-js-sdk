@@ -3,6 +3,62 @@ import { ContractIdentifierSchema, IsoDateTimeSchema, JsonObjectSchema, JsonValu
 
 export const AgentModeSchema = z.enum(['chatbot', 'agent']);
 
+export const AgentConfigurationCapabilitySchema = z.enum([
+  'models',
+  'skills',
+  'tools',
+  'mcp',
+  'reasoning',
+]);
+
+export const AgentModeCapabilitiesSchema = z
+  .object({
+    models: z.boolean(),
+    skills: z.boolean(),
+    tools: z.boolean(),
+    mcp: z.boolean(),
+    reasoning: z.boolean(),
+  })
+  .strict();
+
+export const AgentResourceModeSupportSchema = z
+  .object({
+    modes: z.array(AgentModeSchema).min(1),
+  })
+  .strict();
+
+export const AGENT_MODE_CAPABILITIES = Object.freeze({
+  chatbot: AgentModeCapabilitiesSchema.parse({
+    models: true,
+    skills: true,
+    tools: true,
+    mcp: true,
+    reasoning: false,
+  }),
+  agent: AgentModeCapabilitiesSchema.parse({
+    models: true,
+    skills: true,
+    tools: true,
+    mcp: true,
+    reasoning: true,
+  }),
+}) satisfies Readonly<Record<AgentMode, AgentModeCapabilities>>;
+
+export function getAgentModeCapabilities(mode: AgentMode): AgentModeCapabilities {
+  return AGENT_MODE_CAPABILITIES[mode];
+}
+
+export function agentModeHasCapability(mode: AgentMode, capability: AgentConfigurationCapability): boolean {
+  return getAgentModeCapabilities(mode)[capability];
+}
+
+export function isAgentResourceModeCompatible(
+  support: AgentResourceModeSupport | undefined,
+  mode: AgentMode,
+): boolean {
+  return support?.modes.includes(mode) ?? false;
+}
+
 export const AgentSessionCapabilitySchema = z.enum([
   'text',
   'reasoning',
@@ -348,6 +404,9 @@ export const AgentSessionViewModelSchema = z
   });
 
 export type AgentMode = z.infer<typeof AgentModeSchema>;
+export type AgentConfigurationCapability = z.infer<typeof AgentConfigurationCapabilitySchema>;
+export type AgentModeCapabilities = z.infer<typeof AgentModeCapabilitiesSchema>;
+export type AgentResourceModeSupport = z.infer<typeof AgentResourceModeSupportSchema>;
 export type AgentSessionCapability = z.infer<typeof AgentSessionCapabilitySchema>;
 export type AgentSessionCapabilities = z.infer<typeof AgentSessionCapabilitiesSchema>;
 export type AgentSessionSnapshot = z.infer<typeof AgentSessionSnapshotSchema>;
