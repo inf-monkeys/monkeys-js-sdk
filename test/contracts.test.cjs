@@ -908,6 +908,44 @@ test('rejects undeclared nested fields instead of silently normalizing them', ()
   }).success, false);
 });
 
+test('tenant application config accepts Ontology data bindings and rejects retired Bucket aliases', () => {
+  const canonical = {
+    ...applicationConfig,
+    dataManagement: {
+      favoriteOntologyId: 'favorite',
+      pairedOntologyId: 'paired',
+      galleryOntologyId: 'gallery',
+      dataBrowserDefaultOntologyId: 'assets',
+      workflowResultOntologyId: 'workflow-results',
+      homeAdvertisement: { ontologyId: 'home' },
+      homeTrendAssistant: { ontologyId: 'trends' },
+      sharing: {
+        silentViewLinks: {
+          placement: { mode: 'sourceOntology', ontologyId: 'assets' },
+        },
+      },
+    },
+  };
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(canonical).success, true);
+
+  const retiredBindings = [
+    { favoriteBucketId: 'favorite' },
+    { pairedBucketId: 'paired' },
+    { galleryBucketId: 'gallery' },
+    { dataBrowserDefaultBucketId: 'assets' },
+    { workflowResultBucketId: 'workflow-results' },
+    { homeAdvertisement: { bucketId: 'home' } },
+    { homeTrendAssistant: { bucketId: 'trends' } },
+    { sharing: { silentViewLinks: { placement: { mode: 'sourceBucket', bucketId: 'assets' } } } },
+  ];
+  for (const dataManagement of retiredBindings) {
+    assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      dataManagement,
+    }).success, false);
+  }
+});
+
 test('WorkflowDefinition rejects duplicate nodes and dangling edges', () => {
   const fixture = fixtures['workflow-definition'];
   const duplicate = {
@@ -942,14 +980,14 @@ test('WorkflowDefinition preserves webhook identity and custom event configurati
       enabled: true,
       event: {
         eventType: 'third_party__asset_created',
-        configuration: { bucketId: 'bucket-1' },
+        configuration: { sourceId: 'source-1' },
       },
     },
   ];
 
   const parsed = schemas.WorkflowDefinitionSchema.parse(workflow);
   assert.equal(parsed.triggers[0].webhook.path, 'stable-webhook-path');
-  assert.deepEqual(parsed.triggers[1].event.configuration, { bucketId: 'bucket-1' });
+  assert.deepEqual(parsed.triggers[1].event.configuration, { sourceId: 'source-1' });
 });
 
 test('WorkflowDefinition preserves canonical ComfyUI workflow port bindings', () => {
