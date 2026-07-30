@@ -168,7 +168,7 @@ test('projects replayed and out-of-order events without advancing across a seque
   assert.deepEqual(withGap.gap, { expectedSequence: 2, receivedSequence: 3 });
   const recovered = runtime.projectAgentSessionEvents(withGap, [fixture.events[2]]);
   const complete = runtime.projectAgentSessionEvents(recovered, fixture.events.slice(3));
-  assert.deepEqual(runtime.toAgentSessionViewModel(complete, fixture.snapshot).events, fixture.events);
+  assert.deepEqual(runtime.toAgentSessionViewModel(complete, fixture.snapshot), fixture);
 });
 
 test('session projection fails closed for unknown, foreign, and conflicting events', () => {
