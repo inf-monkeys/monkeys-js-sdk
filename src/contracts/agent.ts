@@ -101,6 +101,48 @@ export const AgentSessionCapabilitiesSchema = z
   })
   .strict();
 
+export const AGENT_SESSION_RUNTIME_CAPABILITIES = Object.freeze({
+  chatbot: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, skills: true, approval: true, usage: true }),
+  agent: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true }),
+}) satisfies Readonly<Record<AgentMode, AgentSessionCapabilities>>;
+
+export function getAgentSessionRuntimeCapabilities(mode: AgentMode): AgentSessionCapabilities {
+  return AGENT_SESSION_RUNTIME_CAPABILITIES[mode];
+}
+
+export const AGENT_SESSION_CAPABILITY_EVIDENCE = Object.freeze({
+  text: { eventTypes: ['message'], commandTypes: [] },
+  reasoning: { eventTypes: ['reasoning'], commandTypes: [] },
+  plan: { eventTypes: ['plan'], commandTypes: [] },
+  tasks: { eventTypes: ['task'], commandTypes: [] },
+  tools: { eventTypes: ['tool'], commandTypes: [] },
+  mcp: { eventTypes: ['tool'], commandTypes: [] },
+  shell: { eventTypes: ['tool', 'terminal'], commandTypes: [] },
+  fileChange: { eventTypes: ['tool', 'diff', 'workspace-file'], commandTypes: [] },
+  skills: { eventTypes: ['tool'], commandTypes: [] },
+  approval: { eventTypes: ['approval'], commandTypes: ['approval'] },
+  artifacts: { eventTypes: ['artifact'], commandTypes: [] },
+  usage: { eventTypes: ['usage'], commandTypes: [] },
+  resume: { eventTypes: ['resume'], commandTypes: ['resume'] },
+  diff: { eventTypes: ['diff'], commandTypes: [] },
+  workspaceFiles: { eventTypes: ['workspace-file'], commandTypes: [] },
+  terminal: { eventTypes: ['terminal'], commandTypes: [] },
+  testResults: { eventTypes: ['test-result'], commandTypes: [] },
+} as const) satisfies Readonly<Record<AgentSessionCapability, { readonly eventTypes: readonly string[]; readonly commandTypes: readonly string[] }>>;
+
+export function findUnsupportedAgentSessionCapabilities(
+  capabilities: AgentSessionCapabilities,
+  evidence: { eventTypes?: readonly string[]; commandTypes?: readonly string[] },
+): AgentSessionCapability[] {
+  const eventTypes = new Set(evidence.eventTypes || []);
+  const commandTypes = new Set(evidence.commandTypes || []);
+  return AgentSessionCapabilitySchema.options.filter((capability) => {
+    if (!capabilities[capability]) return false;
+    const requirement = AGENT_SESSION_CAPABILITY_EVIDENCE[capability];
+    return !requirement.eventTypes.some((eventType) => eventTypes.has(eventType)) && !requirement.commandTypes.some((commandType) => commandTypes.has(commandType));
+  });
+}
+
 export const AgentSessionSnapshotSchema = z
   .object({
     mode: AgentModeSchema,

@@ -7,6 +7,7 @@ const test = require('node:test');
 
 const contracts = require('../lib/contracts');
 const schemas = require('../lib/schemas');
+const runtime = require('../lib/runtime');
 
 const readFixture = (name) => JSON.parse(readFileSync(resolve(__dirname, 'fixtures', name), 'utf8'));
 
@@ -141,4 +142,40 @@ test('requires resources to declare their compatible product modes', () => {
   assert.equal(contracts.isAgentResourceModeCompatible(agentOnly, 'chatbot'), false);
   assert.equal(contracts.isAgentResourceModeCompatible(undefined, 'agent'), false);
   assert.equal(contracts.AgentResourceModeSupportSchema.safeParse({ modes: [] }).success, false);
+});
+
+test('keeps runtime capability truth backed by canonical events or commands', () => {
+  const commandTypes = readFixture('agent-session-commands.json').commands.map((command) => command.commandType);
+  for (const mode of ['chatbot', 'agent']) {
+    const fixture = readFixture(`agent-session-${mode}.json`);
+    assert.deepEqual(fixture.snapshot.capabilities, contracts.getAgentSessionRuntimeCapabilities(mode));
+    assert.deepEqual(contracts.findUnsupportedAgentSessionCapabilities(fixture.snapshot.capabilities, {
+      eventTypes: fixture.events.map((event) => event.eventType), commandTypes,
+    }), []);
+  }
+  const kernel = readFixture('agent-session-kernel.json');
+  assert.deepEqual(contracts.findUnsupportedAgentSessionCapabilities(kernel.snapshot.capabilities, {
+    eventTypes: kernel.events.map((event) => event.eventType), commandTypes,
+  }), []);
+});
+
+test('projects replayed and out-of-order events without advancing across a sequence gap', () => {
+  const fixture = readFixture('agent-session-agent.json');
+  const initial = runtime.projectAgentSessionEvents(runtime.createAgentSessionEventProjection(fixture.sessionId), [fixture.events[1], fixture.events[0], fixture.events[0]]);
+  assert.deepEqual(initial.events.map((event) => event.sequence), [0, 1]);
+  const withGap = runtime.projectAgentSessionEvents(initial, [{ ...fixture.events[2], sequence: 3 }]);
+  assert.equal(withGap.lastSequence, 1);
+  assert.deepEqual(withGap.gap, { expectedSequence: 2, receivedSequence: 3 });
+  const recovered = runtime.projectAgentSessionEvents(withGap, [fixture.events[2]]);
+  const complete = runtime.projectAgentSessionEvents(recovered, fixture.events.slice(3));
+  assert.deepEqual(runtime.toAgentSessionViewModel(complete, fixture.snapshot).events, fixture.events);
+});
+
+test('session projection fails closed for unknown, foreign, and conflicting events', () => {
+  const fixture = readFixture('agent-session-agent.json');
+  const projection = runtime.createAgentSessionEventProjection(fixture.sessionId);
+  assert.throws(() => runtime.projectAgentSessionEvents(projection, [{ ...fixture.events[0], eventType: 'unknown' }]));
+  assert.throws(() => runtime.projectAgentSessionEvents(projection, [{ ...fixture.events[0], sessionId: 'foreign' }]));
+  const initial = runtime.projectAgentSessionEvents(projection, [fixture.events[0]]);
+  assert.throws(() => runtime.projectAgentSessionEvents(initial, [{ ...fixture.events[0], eventId: 'conflict', idempotencyKey: 'conflict', payload: { status: 'failed' } }]));
 });

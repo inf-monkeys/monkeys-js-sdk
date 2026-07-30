@@ -1,6 +1,6 @@
 {
   "name": "@inf-monkeys-tech/monkeys",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Monkeys JS SDK",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -29,11 +29,13 @@
       "require": "./lib/runtime/index.js",
       "default": "./lib/runtime/index.js"
     },
+    "./fixtures/*": "./test/fixtures/*",
     "./json-schema/*": "./lib/json-schema/*",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
+    "test/fixtures",
     "README.md"
   ],
   "repository": {
