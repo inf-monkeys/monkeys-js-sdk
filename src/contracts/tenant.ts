@@ -561,6 +561,7 @@ export const TenantApplicationConfigSchema = z
       .object({
         favoriteOntologyId: z.string().optional(),
         pairedOntologyId: z.string().optional(),
+        galleryOntologyIds: z.array(ContractIdentifierSchema).max(20).optional(),
         galleryOntologyId: z.string().optional(),
         dataBrowserDefaultOntologyId: z.string().optional(),
         workflowResultOntologyId: z.string().optional(),

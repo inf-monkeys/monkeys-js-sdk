@@ -914,6 +914,7 @@ test('tenant application config accepts Ontology data bindings and rejects retir
     dataManagement: {
       favoriteOntologyId: 'favorite',
       pairedOntologyId: 'paired',
+      galleryOntologyIds: ['gallery', 'trend-reports'],
       galleryOntologyId: 'gallery',
       dataBrowserDefaultOntologyId: 'assets',
       workflowResultOntologyId: 'workflow-results',
@@ -931,6 +932,7 @@ test('tenant application config accepts Ontology data bindings and rejects retir
   const retiredBindings = [
     { favoriteBucketId: 'favorite' },
     { pairedBucketId: 'paired' },
+    { galleryBucketIds: ['gallery'] },
     { galleryBucketId: 'gallery' },
     { dataBrowserDefaultBucketId: 'assets' },
     { workflowResultBucketId: 'workflow-results' },
@@ -944,6 +946,23 @@ test('tenant application config accepts Ontology data bindings and rejects retir
       dataManagement,
     }).success, false);
   }
+});
+
+test('tenant application config bounds canonical gallery Ontology bindings', () => {
+  const withGalleryOntologyIds = (galleryOntologyIds) => ({
+    ...applicationConfig,
+    dataManagement: { galleryOntologyIds },
+  });
+
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
+    withGalleryOntologyIds(Array.from({ length: 20 }, (_, index) => `gallery-${index}`)),
+  ).success, true);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
+    withGalleryOntologyIds(Array.from({ length: 21 }, (_, index) => `gallery-${index}`)),
+  ).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
+    withGalleryOntologyIds(['']),
+  ).success, false);
 });
 
 test('WorkflowDefinition rejects duplicate nodes and dangling edges', () => {

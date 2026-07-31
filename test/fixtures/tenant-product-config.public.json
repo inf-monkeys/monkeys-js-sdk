@@ -139,6 +139,7 @@
     },
     "dataManagement": {
       "favoriteOntologyId": "favorite",
+      "galleryOntologyIds": ["gallery", "trend-reports"],
       "homeAdvertisement": {
         "ontologyId": "home",
         "viewType": "container",
