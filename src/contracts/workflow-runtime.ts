@@ -1,8 +1,71 @@
 import { z } from 'zod';
 import { ArtifactManifestSchema, OutputRecordSchema } from './artifact';
-import { ContractIdentifierSchema, EntityRefSchema, IsoDateTimeSchema, Sha256Schema } from './common';
+import {
+  ContractIdentifierSchema,
+  EntityRefSchema,
+  IsoDateTimeSchema,
+  JsonObjectSchema,
+  Sha256Schema,
+} from './common';
 import { ApplicationRunSchema } from './continuity';
 import { LineageRecordSchema } from './data';
+
+export const WorkflowCatalogEntrySchema = z
+  .object({
+    contract: z.literal('WorkflowCatalogEntry'),
+    workflowId: ContractIdentifierSchema,
+    teamId: ContractIdentifierSchema,
+    creatorRef: EntityRefSchema,
+    currentDefinitionRef: EntityRefSchema,
+    lifecycle: z.enum(['ACTIVE', 'DELETED']),
+    asset: z
+      .object({
+        preset: z.boolean(),
+        marketplacePublished: z.boolean(),
+        publishConfig: JsonObjectSchema.optional(),
+        sort: z.number().int(),
+        forkFromRef: EntityRefSchema.optional(),
+        notAuthorized: z.boolean(),
+      })
+      .strict(),
+    createdAt: IsoDateTimeSchema,
+    updatedAt: IsoDateTimeSchema,
+    deletedAt: IsoDateTimeSchema.optional(),
+  })
+  .strict()
+  .superRefine((entry, context) => {
+    if (
+      entry.creatorRef.kind !== 'user' &&
+      entry.creatorRef.kind !== 'service'
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['creatorRef', 'kind'],
+        message: 'creatorRef must reference a user or service.',
+      });
+    }
+    if (entry.currentDefinitionRef.kind !== 'workflow-definition') {
+      context.addIssue({
+        code: 'custom',
+        path: ['currentDefinitionRef', 'kind'],
+        message: 'currentDefinitionRef must reference a workflow-definition.',
+      });
+    }
+    if (entry.lifecycle === 'DELETED' && !entry.deletedAt) {
+      context.addIssue({
+        code: 'custom',
+        path: ['deletedAt'],
+        message: 'Deleted workflow catalog entries require deletedAt.',
+      });
+    }
+    if (entry.lifecycle === 'ACTIVE' && entry.deletedAt) {
+      context.addIssue({
+        code: 'custom',
+        path: ['deletedAt'],
+        message: 'Active workflow catalog entries cannot declare deletedAt.',
+      });
+    }
+  });
 
 export const WorkflowPublicationSchema = z
   .object({
@@ -149,5 +212,6 @@ export const WorkflowCompletionReceiptSchema = z
   });
 
 export type WorkflowPublication = z.infer<typeof WorkflowPublicationSchema>;
+export type WorkflowCatalogEntry = z.infer<typeof WorkflowCatalogEntrySchema>;
 export type WorkflowCompletionCommit = z.infer<typeof WorkflowCompletionCommitSchema>;
 export type WorkflowCompletionReceipt = z.infer<typeof WorkflowCompletionReceiptSchema>;

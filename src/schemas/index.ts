@@ -147,6 +147,7 @@ export {
   WorkflowValidationIssueSchema,
 } from '../contracts/workflow-definition';
 export {
+  WorkflowCatalogEntrySchema,
   WorkflowCompletionCommitSchema,
   WorkflowCompletionReceiptSchema,
   WorkflowPublicationSchema,
@@ -218,6 +219,7 @@ import {
 } from '../contracts/trend';
 import { ConductorWorkflowDefinitionSchema, WorkflowDefinitionSchema } from '../contracts/workflow-definition';
 import {
+  WorkflowCatalogEntrySchema,
   WorkflowCompletionCommitSchema,
   WorkflowCompletionReceiptSchema,
   WorkflowPublicationSchema,
@@ -281,6 +283,7 @@ export const canonicalContractSchemas = {
   'trend-source-record': TrendSourceRecordSchema,
   'view-provider-descriptor': ViewProviderDescriptorSchema,
   'workflow-definition': WorkflowDefinitionSchema,
+  'workflow-catalog-entry': WorkflowCatalogEntrySchema,
   'workflow-publication': WorkflowPublicationSchema,
   'workflow-completion-commit': WorkflowCompletionCommitSchema,
   'workflow-completion-receipt': WorkflowCompletionReceiptSchema,

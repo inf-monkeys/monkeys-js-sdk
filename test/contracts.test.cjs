@@ -839,6 +839,26 @@ const fixtures = {
     collectedAt: occurredAt,
   },
   'view-provider-descriptor': pageProviderDescriptor,
+  'workflow-catalog-entry': {
+    contract: 'WorkflowCatalogEntry',
+    workflowId: 'workflow-1',
+    teamId: 'team-1',
+    creatorRef: ref('user', 'user-1'),
+    currentDefinitionRef: ref(
+      'workflow-definition',
+      'workflow-1:release:1',
+      1,
+    ),
+    lifecycle: 'ACTIVE',
+    asset: {
+      preset: false,
+      marketplacePublished: false,
+      sort: 0,
+      notAuthorized: false,
+    },
+    createdAt: occurredAt,
+    updatedAt: occurredAt,
+  },
   'workflow-completion-commit': {
     contract: 'WorkflowCompletionCommit',
     commitId: 'completion-execution-1',
@@ -943,7 +963,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 60);
+  assert.equal(names.length, 61);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -1188,6 +1208,48 @@ test('workflow publication pins one immutable Conductor definition', () => {
     ...publication,
     runtimeDefinitionRef: ref('workflow-definition', 'workflow-1', 2),
   }).success, false);
+});
+
+test('workflow catalog entry owns lifecycle without duplicating the definition body', () => {
+  const entry = {
+    contract: 'WorkflowCatalogEntry',
+    workflowId: 'workflow-1',
+    teamId: 'team-1',
+    creatorRef: ref('user', 'user-1'),
+    currentDefinitionRef: ref(
+      'workflow-definition',
+      'workflow-1:release:2',
+      3,
+    ),
+    lifecycle: 'ACTIVE',
+    asset: {
+      preset: false,
+      marketplacePublished: false,
+      sort: 0,
+      notAuthorized: false,
+    },
+    createdAt: '2026-07-31T00:00:00.000Z',
+    updatedAt: '2026-07-31T00:01:00.000Z',
+  };
+
+  assert.equal(
+    schemas.WorkflowCatalogEntrySchema.safeParse(entry).success,
+    true,
+  );
+  assert.equal(
+    schemas.WorkflowCatalogEntrySchema.safeParse({
+      ...entry,
+      lifecycle: 'DELETED',
+    }).success,
+    false,
+  );
+  assert.equal(
+    schemas.WorkflowCatalogEntrySchema.safeParse({
+      ...entry,
+      definition: fixtures['workflow-definition'],
+    }).success,
+    false,
+  );
 });
 
 test('exports only canonical contract and schema names', () => {
