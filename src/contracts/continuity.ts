@@ -47,7 +47,7 @@ export const ApplicationRunSchema = z
     contract: z.literal('ApplicationRun'),
     runId: ContractIdentifierSchema,
     definitionRef: EntityRefSchema,
-    runtimeLedgerRef: EntityRefSchema,
+    runtimeLedgerRef: EntityRefSchema.optional(),
     requestId: ContractIdentifierSchema,
     actorRef: EntityRefSchema,
     status: z.enum(['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED']),
@@ -58,7 +58,44 @@ export const ApplicationRunSchema = z
     expiresAt: IsoDateTimeSchema.optional(),
     metadata: JsonObjectSchema.default({}),
   })
-  .strict();
+  .strict()
+  .superRefine((run, context) => {
+    if (run.definitionRef.kind !== 'workflow-definition') {
+      context.addIssue({
+        code: 'custom',
+        path: ['definitionRef', 'kind'],
+        message: 'definitionRef must reference a workflow-definition.',
+      });
+    }
+    if (run.runtimeLedgerRef && run.runtimeLedgerRef.kind !== 'workflow-run') {
+      context.addIssue({
+        code: 'custom',
+        path: ['runtimeLedgerRef', 'kind'],
+        message: 'runtimeLedgerRef must reference a workflow-run.',
+      });
+    }
+    if ((run.status === 'RUNNING' || run.status === 'COMPLETED' || run.status === 'CANCELLED') && !run.runtimeLedgerRef) {
+      context.addIssue({
+        code: 'custom',
+        path: ['runtimeLedgerRef'],
+        message: `${run.status} ApplicationRun requires runtimeLedgerRef.`,
+      });
+    }
+    if (run.status === 'RUNNING' && !run.startedAt) {
+      context.addIssue({
+        code: 'custom',
+        path: ['startedAt'],
+        message: 'RUNNING ApplicationRun requires startedAt.',
+      });
+    }
+    if (['COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(run.status) && !run.completedAt) {
+      context.addIssue({
+        code: 'custom',
+        path: ['completedAt'],
+        message: `Terminal ApplicationRun status ${run.status} requires completedAt.`,
+      });
+    }
+  });
 
 export const ExpiringAccessGrantSchema = z
   .object({

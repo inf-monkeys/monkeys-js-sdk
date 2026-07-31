@@ -295,7 +295,7 @@ const fixtures = {
   },
   'application-run': {
     contract: 'ApplicationRun', runId: 'run-1', definitionRef: ref('workflow-definition', 'workflow-1', 1),
-    runtimeLedgerRef: ref('workflow-execution', 'execution-1'), requestId: 'request-1', actorRef: ref('user', 'user-1'),
+    runtimeLedgerRef: ref('workflow-run', 'execution-1'), requestId: 'request-1', actorRef: ref('user', 'user-1'),
     status: 'RUNNING', inputRefs: [], outputRefs: [], startedAt: occurredAt, metadata: {},
   },
   'artifact-manifest': {
@@ -1208,6 +1208,33 @@ test('workflow publication pins one immutable Conductor definition', () => {
     ...publication,
     runtimeDefinitionRef: ref('workflow-definition', 'workflow-1', 2),
   }).success, false);
+});
+
+test('application runs only claim a Conductor ledger after execution starts', () => {
+  const pending = {
+    ...fixtures['application-run'],
+    status: 'PENDING',
+    runtimeLedgerRef: undefined,
+    startedAt: undefined,
+    completedAt: undefined,
+  };
+  assert.equal(schemas.ApplicationRunSchema.safeParse(pending).success, true);
+  assert.equal(
+    schemas.ApplicationRunSchema.safeParse({
+      ...pending,
+      status: 'RUNNING',
+      startedAt: occurredAt,
+    }).success,
+    false,
+  );
+  assert.equal(
+    schemas.ApplicationRunSchema.safeParse({
+      ...pending,
+      status: 'FAILED',
+      completedAt: occurredAt,
+    }).success,
+    true,
+  );
 });
 
 test('workflow catalog entry owns lifecycle without duplicating the definition body', () => {
