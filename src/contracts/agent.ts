@@ -77,6 +77,10 @@ export const AgentSessionCapabilitySchema = z.enum([
   'workspaceFiles',
   'terminal',
   'testResults',
+  'threadForking',
+  'editAndRerun',
+  'steering',
+  'summary',
 ]);
 
 export const AgentSessionCapabilitiesSchema = z
@@ -98,6 +102,10 @@ export const AgentSessionCapabilitiesSchema = z
     workspaceFiles: z.boolean().default(false),
     terminal: z.boolean().default(false),
     testResults: z.boolean().default(false),
+    threadForking: z.boolean().default(false),
+    editAndRerun: z.boolean().default(false),
+    steering: z.boolean().default(false),
+    summary: z.boolean().default(false),
   })
   .strict();
 
@@ -128,6 +136,10 @@ export const AGENT_SESSION_CAPABILITY_EVIDENCE = Object.freeze({
   workspaceFiles: { eventTypes: ['workspace-file'], commandTypes: [] },
   terminal: { eventTypes: ['terminal'], commandTypes: [] },
   testResults: { eventTypes: ['test-result'], commandTypes: [] },
+  threadForking: { eventTypes: [], commandTypes: ['fork'] },
+  editAndRerun: { eventTypes: [], commandTypes: ['edit-and-rerun'] },
+  steering: { eventTypes: [], commandTypes: ['steer'] },
+  summary: { eventTypes: ['summary'], commandTypes: [] },
 } as const) satisfies Readonly<Record<AgentSessionCapability, { readonly eventTypes: readonly string[]; readonly commandTypes: readonly string[] }>>;
 
 export function findUnsupportedAgentSessionCapabilities(
@@ -162,6 +174,35 @@ export const AgentSessionStatusSchema = z.enum([
 ]);
 
 export const AgentSessionTerminalStatusSchema = z.enum(['stopped', 'completed', 'failed']);
+
+export const AgentSessionLineageSchema = z
+  .object({
+    forkedFromThreadId: ContractIdentifierSchema,
+    forkedFromMessageId: ContractIdentifierSchema,
+    sourceRunId: ContractIdentifierSchema,
+  })
+  .strict();
+
+export const AgentSessionContextInheritanceSchema = z
+  .object({
+    messages: z.enum(['through-source-message', 'exclude']),
+    attachments: z.enum(['inherit', 'exclude']),
+    summaries: z.enum(['inherit', 'exclude']),
+    toolResults: z.enum(['inherit', 'exclude']),
+    codeChanges: z.enum(['inherit', 'exclude']),
+  })
+  .strict();
+
+export const AgentSessionActiveBranchSchema = z
+  .object({
+    branchId: ContractIdentifierSchema,
+    threadId: ContractIdentifierSchema,
+    sourceMessageId: ContractIdentifierSchema,
+    runId: ContractIdentifierSchema,
+    lineage: AgentSessionLineageSchema.optional(),
+    createdAt: IsoDateTimeSchema,
+  })
+  .strict();
 
 export const AgentSessionRunSchema = z
   .object({
@@ -231,7 +272,15 @@ export const AgentSessionRunSchema = z
     }
   });
 
-export const AgentSessionCommandTypeSchema = z.enum(['stop', 'resume', 'retry', 'approval']);
+export const AgentSessionCommandTypeSchema = z.enum([
+  'stop',
+  'resume',
+  'retry',
+  'approval',
+  'fork',
+  'edit-and-rerun',
+  'steer',
+]);
 
 const AgentSessionCommandHeaderSchema = z
   .object({
@@ -266,7 +315,32 @@ export const AgentSessionCommandSchema = z.discriminatedUnion('commandType', [
     decision: z.enum(['approved', 'rejected']),
     reason: z.string().trim().min(1).optional(),
   }),
-]);
+  sessionCommand('fork', {
+    sourceThreadId: ContractIdentifierSchema,
+    sourceMessageId: ContractIdentifierSchema,
+    sourceRunId: ContractIdentifierSchema,
+    inheritance: AgentSessionContextInheritanceSchema,
+  }),
+  sessionCommand('edit-and-rerun', {
+    sourceThreadId: ContractIdentifierSchema,
+    sourceMessageId: ContractIdentifierSchema,
+    sourceRunId: ContractIdentifierSchema,
+    replacementParts: z.array(JsonValueSchema).min(1),
+    inheritance: AgentSessionContextInheritanceSchema,
+  }),
+  sessionCommand('steer', {
+    targetRunId: ContractIdentifierSchema,
+    guidanceParts: z.array(JsonValueSchema).min(1),
+  }),
+]).superRefine((value, context) => {
+  if (value.commandType === 'steer' && value.runId !== value.payload.targetRunId) {
+    context.addIssue({
+      code: 'custom',
+      path: ['payload', 'targetRunId'],
+      message: 'Steering targetRunId must match the command runId.',
+    });
+  }
+});
 
 export const AgentSessionTargetedCommandSchema = AgentSessionCommandSchema.and(
   z.object({ runId: ContractIdentifierSchema }),
@@ -285,6 +359,11 @@ export const AgentSessionCommandErrorCodeSchema = z.enum([
   'TARGET_EVENT_NOT_RETRYABLE',
   'APPROVAL_NOT_FOUND',
   'APPROVAL_ALREADY_RESOLVED',
+  'SOURCE_THREAD_NOT_FOUND',
+  'SOURCE_MESSAGE_NOT_FOUND',
+  'SOURCE_RUN_NOT_FOUND',
+  'SOURCE_LINEAGE_INVALID',
+  'ACTIVE_BRANCH_NOT_FOUND',
   'COMMAND_EXECUTION_FAILED',
 ]);
 
@@ -299,6 +378,13 @@ export const AgentSessionCommandResultSchema = z
     sessionStatus: AgentSessionStatusSchema,
     acceptedSequence: z.number().int().nonnegative().optional(),
     resultEventIds: z.array(ContractIdentifierSchema).default([]),
+    operation: z
+      .object({
+        lineage: AgentSessionLineageSchema,
+        activeBranch: AgentSessionActiveBranchSchema,
+      })
+      .strict()
+      .optional(),
     termination: z.enum(['requested', 'confirmed']).optional(),
     error: z
       .object({
@@ -336,6 +422,36 @@ export const AgentSessionCommandResultSchema = z
         message: 'A confirmed termination requires a terminal run status.',
       });
     }
+    if (value.operation && !value.operation.activeBranch.lineage) {
+      context.addIssue({
+        code: 'custom',
+        path: ['operation', 'activeBranch', 'lineage'],
+        message: 'A branch operation result requires lineage on its active branch.',
+      });
+    }
+    const operation = value.operation;
+    if (operation?.activeBranch.lineage) {
+      const { lineage } = operation;
+      const branchLineage = operation.activeBranch.lineage;
+      if (
+        lineage.forkedFromThreadId !== branchLineage.forkedFromThreadId ||
+        lineage.forkedFromMessageId !== branchLineage.forkedFromMessageId ||
+        lineage.sourceRunId !== branchLineage.sourceRunId
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['operation', 'activeBranch', 'lineage'],
+          message: 'Active branch lineage must match the operation lineage.',
+        });
+      }
+    }
+    if (value.operation && value.runId !== value.operation.activeBranch.runId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['operation', 'activeBranch', 'runId'],
+        message: 'Active branch runId must match the command result runId.',
+      });
+    }
   });
 
 const AGENT_SESSION_COMMAND_TRANSITIONS: Record<AgentSessionCommandType, Partial<Record<AgentSessionStatus, AgentSessionStatus>>> = {
@@ -343,7 +459,92 @@ const AGENT_SESSION_COMMAND_TRANSITIONS: Record<AgentSessionCommandType, Partial
   resume: { stopped: 'queued', completed: 'queued', failed: 'queued' },
   retry: { failed: 'queued' },
   approval: { waiting_approval: 'running' },
+  fork: {},
+  'edit-and-rerun': {},
+  steer: {},
 };
+
+export const AgentSessionCommandPolicySchema = z
+  .object({
+    capability: AgentSessionCapabilitySchema.optional(),
+    allowedStatuses: z.array(AgentSessionStatusSchema).min(1),
+    requiresRunId: z.boolean(),
+    sourceSessionEffect: z.enum(['transition', 'preserve']),
+    idempotencyScope: z.literal('session-command'),
+    sequenceRule: z.literal('match-current'),
+  })
+  .strict();
+
+const sessionCommandPolicy = (policy: z.input<typeof AgentSessionCommandPolicySchema>) =>
+  AgentSessionCommandPolicySchema.parse(policy);
+
+export const AGENT_SESSION_COMMAND_POLICIES = Object.freeze({
+  stop: sessionCommandPolicy({
+    allowedStatuses: ['queued', 'running', 'waiting_approval'],
+    requiresRunId: true,
+    sourceSessionEffect: 'transition',
+    idempotencyScope: 'session-command',
+    sequenceRule: 'match-current',
+  }),
+  resume: sessionCommandPolicy({
+    capability: 'resume',
+    allowedStatuses: ['stopped', 'completed', 'failed'],
+    requiresRunId: true,
+    sourceSessionEffect: 'transition',
+    idempotencyScope: 'session-command',
+    sequenceRule: 'match-current',
+  }),
+  retry: sessionCommandPolicy({
+    allowedStatuses: ['failed'],
+    requiresRunId: true,
+    sourceSessionEffect: 'transition',
+    idempotencyScope: 'session-command',
+    sequenceRule: 'match-current',
+  }),
+  approval: sessionCommandPolicy({
+    capability: 'approval',
+    allowedStatuses: ['waiting_approval'],
+    requiresRunId: true,
+    sourceSessionEffect: 'transition',
+    idempotencyScope: 'session-command',
+    sequenceRule: 'match-current',
+  }),
+  fork: sessionCommandPolicy({
+    capability: 'threadForking',
+    allowedStatuses: AgentSessionStatusSchema.options,
+    requiresRunId: false,
+    sourceSessionEffect: 'preserve',
+    idempotencyScope: 'session-command',
+    sequenceRule: 'match-current',
+  }),
+  'edit-and-rerun': sessionCommandPolicy({
+    capability: 'editAndRerun',
+    allowedStatuses: ['stopped', 'completed', 'failed'],
+    requiresRunId: false,
+    sourceSessionEffect: 'preserve',
+    idempotencyScope: 'session-command',
+    sequenceRule: 'match-current',
+  }),
+  steer: sessionCommandPolicy({
+    capability: 'steering',
+    allowedStatuses: ['queued', 'running'],
+    requiresRunId: true,
+    sourceSessionEffect: 'preserve',
+    idempotencyScope: 'session-command',
+    sequenceRule: 'match-current',
+  }),
+}) satisfies Readonly<Record<AgentSessionCommandType, AgentSessionCommandPolicy>>;
+
+export function getAgentSessionCommandPolicy(commandType: AgentSessionCommandType): AgentSessionCommandPolicy {
+  return AGENT_SESSION_COMMAND_POLICIES[commandType];
+}
+
+export function canIssueAgentSessionCommand(
+  status: AgentSessionStatus,
+  commandType: AgentSessionCommandType,
+): boolean {
+  return getAgentSessionCommandPolicy(commandType).allowedStatuses.includes(status);
+}
 
 export function resolveAgentSessionCommandTransition(
   status: AgentSessionStatus,
@@ -503,7 +704,23 @@ export const AgentSessionEventSchema = z.discriminatedUnion('eventType', [
     durationMs: z.number().nonnegative().optional(),
     output: z.string().optional(),
   }),
-]);
+  sessionEvent('summary', {
+    summaryId: ContractIdentifierSchema,
+    runId: ContractIdentifierSchema,
+    text: z.string(),
+    highlights: z.array(z.string()),
+    pendingItems: z.array(z.string()),
+    status: z.enum(['generating', 'completed', 'failed']),
+  }),
+]).superRefine((value, context) => {
+  if (value.eventType === 'summary' && value.runId !== value.payload.runId) {
+    context.addIssue({
+      code: 'custom',
+      path: ['payload', 'runId'],
+      message: 'Summary payload runId must match the event runId.',
+    });
+  }
+});
 
 export const AgentSessionRunEventSchema = AgentSessionEventSchema.superRefine((value, context) => {
   if (!value.runId) {
@@ -554,6 +771,8 @@ export const AgentSessionViewModelSchema = z
     events: z.array(AgentSessionEventSchema),
     lastSequence: z.number().int().min(-1),
     resumable: z.boolean().default(false),
+    lineage: AgentSessionLineageSchema.optional(),
+    activeBranch: AgentSessionActiveBranchSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -614,12 +833,16 @@ export type AgentSessionCapabilities = z.infer<typeof AgentSessionCapabilitiesSc
 export type AgentSessionSnapshot = z.infer<typeof AgentSessionSnapshotSchema>;
 export type AgentSessionStatus = z.infer<typeof AgentSessionStatusSchema>;
 export type AgentSessionTerminalStatus = z.infer<typeof AgentSessionTerminalStatusSchema>;
+export type AgentSessionLineage = z.infer<typeof AgentSessionLineageSchema>;
+export type AgentSessionContextInheritance = z.infer<typeof AgentSessionContextInheritanceSchema>;
+export type AgentSessionActiveBranch = z.infer<typeof AgentSessionActiveBranchSchema>;
 export type AgentSessionRun = z.infer<typeof AgentSessionRunSchema>;
 export type AgentSessionCommandType = z.infer<typeof AgentSessionCommandTypeSchema>;
 export type AgentSessionCommand = z.infer<typeof AgentSessionCommandSchema>;
 export type AgentSessionTargetedCommand = z.infer<typeof AgentSessionTargetedCommandSchema>;
 export type AgentSessionCommandErrorCode = z.infer<typeof AgentSessionCommandErrorCodeSchema>;
 export type AgentSessionCommandResult = z.infer<typeof AgentSessionCommandResultSchema>;
+export type AgentSessionCommandPolicy = z.infer<typeof AgentSessionCommandPolicySchema>;
 export type AgentSessionEvent = z.infer<typeof AgentSessionEventSchema>;
 export type AgentSessionRunEvent = z.infer<typeof AgentSessionRunEventSchema>;
 export type AgentSessionViewModel = z.infer<typeof AgentSessionViewModelSchema>;

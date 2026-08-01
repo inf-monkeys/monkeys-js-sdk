@@ -21,7 +21,11 @@
       "diff": false,
       "workspaceFiles": true,
       "terminal": true,
-      "testResults": false
+      "testResults": false,
+      "threadForking": false,
+      "editAndRerun": false,
+      "steering": false,
+      "summary": false
     }
   },
   "status": "running",

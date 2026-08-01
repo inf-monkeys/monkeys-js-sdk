@@ -31,6 +31,190 @@ test('publishes Agent session contracts in the canonical schema registry', () =>
   assert.equal(schemas.canonicalContractSchemas['agent-session-run-event'], contracts.AgentSessionRunEventSchema);
 });
 
+const inheritance = {
+  messages: 'through-source-message',
+  attachments: 'inherit',
+  summaries: 'inherit',
+  toolResults: 'exclude',
+  codeChanges: 'inherit',
+};
+
+const commandHeader = {
+  contract: 'AgentSessionCommand',
+  commandId: 'command-wp1',
+  sessionId: 'session-wp1',
+  idempotencyKey: 'session-wp1:command-wp1',
+  expectedSequence: 12,
+  issuedAt: '2026-08-01T00:00:00.000Z',
+};
+
+test('defines traceable fork, edit-and-rerun, and steering commands', () => {
+  const fork = {
+    ...commandHeader,
+    commandType: 'fork',
+    payload: {
+      sourceThreadId: 'thread-source',
+      sourceMessageId: 'message-source',
+      sourceRunId: 'run-source',
+      inheritance,
+    },
+  };
+  const editAndRerun = {
+    ...commandHeader,
+    commandId: 'command-edit',
+    idempotencyKey: 'session-wp1:command-edit',
+    commandType: 'edit-and-rerun',
+    payload: {
+      sourceThreadId: 'thread-source',
+      sourceMessageId: 'message-source',
+      sourceRunId: 'run-source',
+      replacementParts: [{ type: 'text', text: 'Use the corrected requirement.' }],
+      inheritance,
+    },
+  };
+  const steer = {
+    ...commandHeader,
+    commandId: 'command-steer',
+    idempotencyKey: 'session-wp1:command-steer',
+    runId: 'run-active',
+    commandType: 'steer',
+    payload: {
+      targetRunId: 'run-active',
+      guidanceParts: [{ type: 'text', text: 'Focus on the failing test.' }],
+    },
+  };
+
+  for (const command of [fork, editAndRerun, steer]) {
+    assert.deepEqual(contracts.AgentSessionCommandSchema.parse(command), command);
+  }
+  assert.equal(
+    contracts.AgentSessionCommandSchema.safeParse({
+      ...fork,
+      payload: { ...fork.payload, sourceRunId: undefined },
+    }).success,
+    false,
+  );
+  assert.equal(
+    contracts.AgentSessionCommandSchema.safeParse({
+      ...steer,
+      payload: { ...steer.payload, providerRuntime: 'codex' },
+    }).success,
+    false,
+  );
+  assert.equal(
+    contracts.AgentSessionCommandSchema.safeParse({
+      ...steer,
+      runId: 'run-other',
+    }).success,
+    false,
+  );
+});
+
+test('defines lineage, active branch, and command result provenance', () => {
+  const lineage = {
+    forkedFromThreadId: 'thread-source',
+    forkedFromMessageId: 'message-source',
+    sourceRunId: 'run-source',
+  };
+  const activeBranch = {
+    branchId: 'branch-created',
+    threadId: 'thread-created',
+    sourceMessageId: 'message-created',
+    runId: 'run-created',
+    lineage,
+    createdAt: '2026-08-01T00:00:01.000Z',
+  };
+  const result = {
+    contract: 'AgentSessionCommandResult',
+    commandId: 'command-wp1',
+    sessionId: 'session-wp1',
+    runId: 'run-created',
+    idempotencyKey: 'session-wp1:command-wp1',
+    outcome: 'accepted',
+    sessionStatus: 'queued',
+    acceptedSequence: 13,
+    resultEventIds: [],
+    operation: { lineage, activeBranch },
+    occurredAt: '2026-08-01T00:00:01.000Z',
+  };
+
+  assert.deepEqual(contracts.AgentSessionLineageSchema.parse(lineage), lineage);
+  assert.deepEqual(contracts.AgentSessionActiveBranchSchema.parse(activeBranch), activeBranch);
+  assert.deepEqual(contracts.AgentSessionCommandResultSchema.parse(result), result);
+  assert.equal(
+    contracts.AgentSessionCommandResultSchema.safeParse({
+      ...result,
+      runId: 'run-other',
+    }).success,
+    false,
+  );
+});
+
+test('validates summary events and binds them to their source run', () => {
+  const event = {
+    contract: 'AgentSessionEvent',
+    eventId: 'summary-event-1',
+    sessionId: 'session-wp1',
+    runId: 'run-source',
+    sourceMessageId: 'message-source',
+    sequence: 13,
+    idempotencyKey: 'session-wp1:summary-1',
+    occurredAt: '2026-08-01T00:00:01.000Z',
+    eventType: 'summary',
+    payload: {
+      summaryId: 'summary-1',
+      runId: 'run-source',
+      text: 'Implemented the contract foundation.',
+      highlights: ['Branching contracts added.'],
+      pendingItems: ['Persist the contracts on the Server.'],
+      status: 'completed',
+    },
+  };
+
+  assert.deepEqual(contracts.AgentSessionEventSchema.parse(event), event);
+  assert.equal(
+    contracts.AgentSessionEventSchema.safeParse({
+      ...event,
+      payload: { ...event.payload, runId: 'run-other' },
+    }).success,
+    false,
+  );
+});
+
+test('publishes command policies without changing source sessions for branch operations', () => {
+  assert.equal(contracts.canIssueAgentSessionCommand('completed', 'fork'), true);
+  assert.equal(contracts.canIssueAgentSessionCommand('running', 'fork'), true);
+  assert.equal(contracts.canIssueAgentSessionCommand('completed', 'edit-and-rerun'), true);
+  assert.equal(contracts.canIssueAgentSessionCommand('running', 'edit-and-rerun'), false);
+  assert.equal(contracts.canIssueAgentSessionCommand('running', 'steer'), true);
+  assert.equal(contracts.canIssueAgentSessionCommand('completed', 'steer'), false);
+  assert.equal(contracts.getAgentSessionCommandPolicy('fork').sourceSessionEffect, 'preserve');
+  assert.equal(contracts.getAgentSessionCommandPolicy('steer').requiresRunId, true);
+  assert.equal(contracts.getAgentSessionCommandPolicy('steer').sequenceRule, 'match-current');
+  assert.equal(contracts.resolveAgentSessionCommandTransition('completed', 'fork'), undefined);
+  for (const code of [
+    'SOURCE_THREAD_NOT_FOUND',
+    'SOURCE_MESSAGE_NOT_FOUND',
+    'SOURCE_RUN_NOT_FOUND',
+    'SOURCE_LINEAGE_INVALID',
+    'ACTIVE_BRANCH_NOT_FOUND',
+  ]) {
+    assert.equal(contracts.AgentSessionCommandErrorCodeSchema.safeParse(code).success, true, code);
+  }
+});
+
+test('keeps pre-WP1 session contracts parseable with new capabilities disabled', () => {
+  const legacy = structuredClone(readFixture('agent-session-agent.json'));
+  for (const capability of ['threadForking', 'editAndRerun', 'steering', 'summary']) {
+    delete legacy.snapshot.capabilities[capability];
+  }
+  const parsed = contracts.AgentSessionViewModelSchema.parse(legacy);
+  assert.equal(parsed.snapshot.capabilities.threadForking, false);
+  assert.equal(parsed.snapshot.capabilities.editAndRerun, false);
+  assert.equal(parsed.snapshot.capabilities.steering, false);
+  assert.equal(parsed.snapshot.capabilities.summary, false);
+});
+
 test('validates idempotent Agent session commands and results', () => {
   const fixture = readFixture('agent-session-commands.json');
   fixture.commands.forEach((command) => {
