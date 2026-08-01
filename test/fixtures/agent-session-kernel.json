@@ -44,7 +44,12 @@
       "idempotencyKey": "kernel-session-1:1",
       "occurredAt": "2026-07-30T08:00:01.000Z",
       "eventType": "workspace-file",
-      "payload": { "path": "src/index.ts", "operation": "upsert", "mimeType": "text/typescript", "size": 128 }
+      "payload": {
+        "path": "src/index.ts",
+        "operation": "upsert",
+        "mimeType": "text/typescript",
+        "size": 128
+      }
     },
     {
       "contract": "AgentSessionEvent",
@@ -54,9 +59,83 @@
       "idempotencyKey": "kernel-session-1:2",
       "occurredAt": "2026-07-30T08:00:02.000Z",
       "eventType": "terminal",
-      "payload": { "terminalId": "terminal-1", "stream": "stdout", "chunk": "Tests passed\n" }
+      "payload": {
+        "terminalId": "terminal-1",
+        "stream": "stdout",
+        "chunk": "Tests passed\n"
+      }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-4",
+      "sessionId": "kernel-session-1",
+      "sequence": 3,
+      "idempotencyKey": "kernel-session-1:3",
+      "occurredAt": "2026-07-30T08:00:03.000Z",
+      "eventType": "message",
+      "payload": {
+        "messageId": "kernel-message-1",
+        "role": "assistant",
+        "operation": "append",
+        "parts": [{ "type": "text", "text": "Tests passed" }],
+        "status": "completed"
+      }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-5",
+      "sessionId": "kernel-session-1",
+      "sequence": 4,
+      "idempotencyKey": "kernel-session-1:4",
+      "occurredAt": "2026-07-30T08:00:04.000Z",
+      "eventType": "reasoning",
+      "payload": {
+        "reasoningId": "kernel-reasoning-1",
+        "text": "Checking tests",
+        "status": "completed"
+      }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-6",
+      "sessionId": "kernel-session-1",
+      "sequence": 5,
+      "idempotencyKey": "kernel-session-1:5",
+      "occurredAt": "2026-07-30T08:00:05.000Z",
+      "eventType": "tool",
+      "payload": {
+        "toolCallId": "kernel-tool-1",
+        "toolName": "shell",
+        "status": "completed",
+        "output": "Tests passed"
+      }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-7",
+      "sessionId": "kernel-session-1",
+      "sequence": 6,
+      "idempotencyKey": "kernel-session-1:6",
+      "occurredAt": "2026-07-30T08:00:06.000Z",
+      "eventType": "artifact",
+      "payload": {
+        "artifactId": "kernel-artifact-1",
+        "name": "test.log",
+        "kind": "file",
+        "status": "ready"
+      }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "kernel-event-8",
+      "sessionId": "kernel-session-1",
+      "sequence": 7,
+      "idempotencyKey": "kernel-session-1:7",
+      "occurredAt": "2026-07-30T08:00:07.000Z",
+      "eventType": "resume",
+      "payload": { "resumable": true, "reason": "runtime_attached" }
     }
   ],
-  "lastSequence": 2,
+  "lastSequence": 7,
   "resumable": true
 }

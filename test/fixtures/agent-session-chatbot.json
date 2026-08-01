@@ -10,10 +10,10 @@
       "plan": false,
       "tasks": false,
       "tools": true,
-      "mcp": false,
+      "mcp": true,
       "shell": false,
       "fileChange": false,
-      "skills": false,
+      "skills": true,
       "approval": true,
       "artifacts": false,
       "usage": true,
@@ -49,10 +49,35 @@
       "sequence": 1,
       "idempotencyKey": "chatbot-session-1:1",
       "occurredAt": "2026-07-30T08:00:01.000Z",
+      "eventType": "tool",
+      "payload": {
+        "toolCallId": "tool-1",
+        "toolName": "search",
+        "status": "completed",
+        "output": { "count": 1 }
+      }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "chatbot-event-3",
+      "sessionId": "chatbot-session-1",
+      "sequence": 2,
+      "idempotencyKey": "chatbot-session-1:2",
+      "occurredAt": "2026-07-30T08:00:02.000Z",
       "eventType": "usage",
       "payload": { "inputTokens": 12, "outputTokens": 4, "totalTokens": 16 }
+    },
+    {
+      "contract": "AgentSessionEvent",
+      "eventId": "chatbot-event-4",
+      "sessionId": "chatbot-session-1",
+      "sequence": 3,
+      "idempotencyKey": "chatbot-session-1:3",
+      "occurredAt": "2026-07-30T08:00:03.000Z",
+      "eventType": "status",
+      "payload": { "status": "completed" }
     }
   ],
-  "lastSequence": 1,
+  "lastSequence": 3,
   "resumable": false
 }

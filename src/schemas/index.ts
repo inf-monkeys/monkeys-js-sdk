@@ -18,7 +18,10 @@ export {
   JsonValueSchema,
 } from '../contracts/common';
 export {
+  AgentConfigurationCapabilitySchema,
   AgentModeSchema,
+  AgentModeCapabilitiesSchema,
+  AgentResourceModeSupportSchema,
   AgentSessionCapabilitiesSchema,
   AgentSessionCapabilitySchema,
   AgentSessionCommandErrorCodeSchema,
@@ -143,6 +146,12 @@ export {
   WorkflowTriggerSchema,
   WorkflowValidationIssueSchema,
 } from '../contracts/workflow-definition';
+export {
+  WorkflowCatalogEntrySchema,
+  WorkflowCompletionCommitSchema,
+  WorkflowCompletionReceiptSchema,
+  WorkflowPublicationSchema,
+} from '../contracts/workflow-runtime';
 
 import { ArtifactManifestSchema, OutputRecordSchema } from '../contracts/artifact';
 import {
@@ -209,6 +218,12 @@ import {
   TrendSourceRecordSchema,
 } from '../contracts/trend';
 import { ConductorWorkflowDefinitionSchema, WorkflowDefinitionSchema } from '../contracts/workflow-definition';
+import {
+  WorkflowCatalogEntrySchema,
+  WorkflowCompletionCommitSchema,
+  WorkflowCompletionReceiptSchema,
+  WorkflowPublicationSchema,
+} from '../contracts/workflow-runtime';
 
 export const canonicalContractSchemas = {
   'agent-session-command': AgentSessionCommandSchema,
@@ -268,6 +283,10 @@ export const canonicalContractSchemas = {
   'trend-source-record': TrendSourceRecordSchema,
   'view-provider-descriptor': ViewProviderDescriptorSchema,
   'workflow-definition': WorkflowDefinitionSchema,
+  'workflow-catalog-entry': WorkflowCatalogEntrySchema,
+  'workflow-publication': WorkflowPublicationSchema,
+  'workflow-completion-commit': WorkflowCompletionCommitSchema,
+  'workflow-completion-receipt': WorkflowCompletionReceiptSchema,
 } as const;
 
 export type CanonicalContractSchemaName = keyof typeof canonicalContractSchemas;

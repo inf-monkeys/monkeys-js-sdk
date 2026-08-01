@@ -560,21 +560,22 @@ export const TenantApplicationConfigSchema = z
       .strict(),
     dataManagement: z
       .object({
-        favoriteBucketId: z.string().optional(),
-        pairedBucketId: z.string().optional(),
-        galleryBucketId: z.string().optional(),
-        dataBrowserDefaultBucketId: z.string().optional(),
-        workflowResultBucketId: z.string().optional(),
+        favoriteOntologyId: z.string().optional(),
+        pairedOntologyId: z.string().optional(),
+        galleryOntologyIds: z.array(ContractIdentifierSchema).max(20).optional(),
+        galleryOntologyId: z.string().optional(),
+        dataBrowserDefaultOntologyId: z.string().optional(),
+        workflowResultOntologyId: z.string().optional(),
         homeAdvertisement: z.object({
-          bucketId: ContractIdentifierSchema, viewId: ContractIdentifierSchema.optional(), viewType: z.enum(['filter', 'container', 'share_link']).optional(), teamId: ContractIdentifierSchema.optional(), teamOnly: z.boolean().optional(), pageSize: z.number().int().positive().optional(), sortBy: z.enum(['pin_order', 'asset_id', 'updated_timestamp', 'created_timestamp']).optional(), sortOrder: z.enum(['asc', 'desc']).optional(), fieldMap: z.record(z.string(), z.string()).optional(), columnIds: z.record(z.string(), z.string()).optional(),
+          ontologyId: ContractIdentifierSchema, viewId: ContractIdentifierSchema.optional(), viewType: z.enum(['filter', 'container', 'share_link']).optional(), teamId: ContractIdentifierSchema.optional(), teamOnly: z.boolean().optional(), pageSize: z.number().int().positive().optional(), sortBy: z.enum(['pin_order', 'asset_id', 'updated_timestamp', 'created_timestamp']).optional(), sortOrder: z.enum(['asc', 'desc']).optional(), fieldMap: z.record(z.string(), z.string()).optional(), columnIds: z.record(z.string(), z.string()).optional(),
         }).strict().optional(),
         homeTrendAssistant: z.object({
-          bucketId: ContractIdentifierSchema.optional(), viewId: ContractIdentifierSchema.optional(), viewInstanceId: ContractIdentifierSchema.optional(), viewName: z.string().optional(), teamId: ContractIdentifierSchema.optional(), designOptionsWorkflowId: ContractIdentifierSchema.optional(),
+          ontologyId: ContractIdentifierSchema.optional(), viewId: ContractIdentifierSchema.optional(), viewInstanceId: ContractIdentifierSchema.optional(), viewName: z.string().optional(), teamId: ContractIdentifierSchema.optional(), designOptionsWorkflowId: ContractIdentifierSchema.optional(),
           tep: z.object({ baseUrl: z.string().optional(), timeoutMs: z.number().int().positive().optional() }).strict().optional(),
           runtime: z.object({ appId: ContractIdentifierSchema, tepBaseUrlConfigured: z.boolean(), tepAuthorizationConfigured: z.boolean(), tepCookieConfigured: z.boolean() }).strict().optional(),
         }).strict().optional(),
         sharing: z.object({
-          silentViewLinks: z.object({ enabled: z.boolean().optional(), placement: z.object({ mode: z.enum(['sourceBucket', 'bucket']).optional(), bucketId: ContractIdentifierSchema.optional(), parentId: ContractIdentifierSchema.optional(), navId: ContractIdentifierSchema.optional() }).strict().optional() }).strict().optional(),
+          silentViewLinks: z.object({ enabled: z.boolean().optional(), placement: z.object({ mode: z.enum(['sourceOntology', 'ontology']).optional(), ontologyId: ContractIdentifierSchema.optional(), parentId: ContractIdentifierSchema.optional(), navId: ContractIdentifierSchema.optional() }).strict().optional() }).strict().optional(),
           shareAccess: z.object({ publicLinksEnabled: z.boolean().optional(), passwordGateEnabled: z.boolean().optional(), passwordAccessTtlSeconds: z.number().int().positive().optional(), defaultViewTreeDelivery: z.enum(['manual', 'auto']).optional() }).strict().optional(),
           shareDialog: z.object({
             audience: z.object({ enabled: z.boolean().optional(), allowed: z.array(z.enum(['user', 'team', 'public'])).optional(), default: z.enum(['user', 'team', 'public']).optional() }).strict().optional(),

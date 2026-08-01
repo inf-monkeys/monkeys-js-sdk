@@ -295,7 +295,7 @@ const fixtures = {
   },
   'application-run': {
     contract: 'ApplicationRun', runId: 'run-1', definitionRef: ref('workflow-definition', 'workflow-1', 1),
-    runtimeLedgerRef: ref('workflow-execution', 'execution-1'), requestId: 'request-1', actorRef: ref('user', 'user-1'),
+    runtimeLedgerRef: ref('workflow-run', 'execution-1'), requestId: 'request-1', actorRef: ref('user', 'user-1'),
     status: 'RUNNING', inputRefs: [], outputRefs: [], startedAt: occurredAt, metadata: {},
   },
   'artifact-manifest': {
@@ -839,6 +839,90 @@ const fixtures = {
     collectedAt: occurredAt,
   },
   'view-provider-descriptor': pageProviderDescriptor,
+  'workflow-catalog-entry': {
+    contract: 'WorkflowCatalogEntry',
+    workflowId: 'workflow-1',
+    teamId: 'team-1',
+    creatorRef: ref('user', 'user-1'),
+    currentDefinitionRef: ref(
+      'workflow-definition',
+      'workflow-1:release:1',
+      1,
+    ),
+    lifecycle: 'ACTIVE',
+    asset: {
+      preset: false,
+      marketplacePublished: false,
+      sort: 0,
+      notAuthorized: false,
+    },
+    createdAt: occurredAt,
+    updatedAt: occurredAt,
+  },
+  'workflow-completion-commit': {
+    contract: 'WorkflowCompletionCommit',
+    commitId: 'completion-execution-1',
+    run: {
+      contract: 'ApplicationRun',
+      runId: 'run-1',
+      definitionRef: ref('workflow-definition', 'workflow-1', 1),
+      runtimeLedgerRef: ref('workflow-run', 'execution-1'),
+      requestId: 'request-1',
+      actorRef: ref('user', 'user-1'),
+      status: 'COMPLETED',
+      inputRefs: [],
+      outputRefs: [ref('workflow-output', 'output-1')],
+      startedAt: occurredAt,
+      completedAt: occurredAt,
+      metadata: {},
+    },
+    outputs: [{
+      contract: 'OutputRecord',
+      outputId: 'output-1',
+      runRef: ref('application-run', 'run-1'),
+      outputPort: 'result',
+      artifactRefs: [ref('artifact', 'artifact-1')],
+      createdAt: occurredAt,
+    }],
+    artifacts: [{
+      contract: 'ArtifactManifest',
+      artifactId: 'artifact-1',
+      kind: 'image',
+      mimeType: 'image/png',
+      sha256: 'a'.repeat(64),
+      storage: { provider: 's3', key: 'outputs/artifact-1.png' },
+      runRef: ref('application-run', 'run-1'),
+      outputRef: ref('workflow-output', 'output-1'),
+      producer: { service: 'monkeys-conductor-worker', version: '1.0.0' },
+      access: { visibility: 'team', teamId: 'team-1' },
+      metadata: {},
+      createdAt: occurredAt,
+    }],
+    lineage: {
+      contract: 'LineageRecord',
+      lineageId: 'lineage-run-1',
+      subjectRef: ref('application-run', 'run-1'),
+      sourceRecords: [],
+      bodyRefs: [ref('workflow-definition', 'workflow-1', 1)],
+      runRefs: [ref('application-run', 'run-1')],
+      outputRefs: [ref('workflow-output', 'output-1')],
+      artifactRefs: [ref('artifact', 'artifact-1')],
+      actorRefs: [ref('user', 'user-1')],
+      evidenceRefs: [ref('workflow-run', 'execution-1')],
+      recordedAt: occurredAt,
+    },
+    completedAt: occurredAt,
+  },
+  'workflow-completion-receipt': {
+    contract: 'WorkflowCompletionReceipt',
+    commitId: 'completion-execution-1',
+    runRef: ref('application-run', 'run-1'),
+    outputRefs: [ref('workflow-output', 'output-1')],
+    artifactRefs: [ref('artifact', 'artifact-1')],
+    contentHash: 'c'.repeat(64),
+    committedAt: occurredAt,
+    idempotentReplay: false,
+  },
   'workflow-definition': {
     contract: 'WorkflowDefinition',
     metadata: { id: 'workflow-1', version: 1, name: { 'en-US': 'Workflow' }, role: 'workflow', teamId: 'team-1', creatorRef: ref('user', 'user-1'), tags: [] },
@@ -863,12 +947,23 @@ const fixtures = {
     governance: { activated: true, validated: true, validationIssues: [] },
     interfaces: { openai: { enabled: false } },
   },
+  'workflow-publication': {
+    contract: 'WorkflowPublication',
+    publicationId: 'workflow-1-1',
+    definitionRef: ref('workflow-definition', 'workflow-1', 1),
+    runtimeDefinitionRef: ref('conductor-workflow-definition', 'workflow-1', 1),
+    sourceHash: 'a'.repeat(64),
+    compiledHash: 'b'.repeat(64),
+    status: 'PUBLISHED',
+    publisherRef: ref('user', 'user-1'),
+    publishedAt: occurredAt,
+  },
 };
 
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 57);
+  assert.equal(names.length, 61);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -908,6 +1003,63 @@ test('rejects undeclared nested fields instead of silently normalizing them', ()
   }).success, false);
 });
 
+test('tenant application config accepts Ontology data bindings and rejects retired Bucket aliases', () => {
+  const canonical = {
+    ...applicationConfig,
+    dataManagement: {
+      favoriteOntologyId: 'favorite',
+      pairedOntologyId: 'paired',
+      galleryOntologyIds: ['gallery', 'trend-reports'],
+      galleryOntologyId: 'gallery',
+      dataBrowserDefaultOntologyId: 'assets',
+      workflowResultOntologyId: 'workflow-results',
+      homeAdvertisement: { ontologyId: 'home' },
+      homeTrendAssistant: { ontologyId: 'trends' },
+      sharing: {
+        silentViewLinks: {
+          placement: { mode: 'sourceOntology', ontologyId: 'assets' },
+        },
+      },
+    },
+  };
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(canonical).success, true);
+
+  const retiredBindings = [
+    { favoriteBucketId: 'favorite' },
+    { pairedBucketId: 'paired' },
+    { galleryBucketIds: ['gallery'] },
+    { galleryBucketId: 'gallery' },
+    { dataBrowserDefaultBucketId: 'assets' },
+    { workflowResultBucketId: 'workflow-results' },
+    { homeAdvertisement: { bucketId: 'home' } },
+    { homeTrendAssistant: { bucketId: 'trends' } },
+    { sharing: { silentViewLinks: { placement: { mode: 'sourceBucket', bucketId: 'assets' } } } },
+  ];
+  for (const dataManagement of retiredBindings) {
+    assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      dataManagement,
+    }).success, false);
+  }
+});
+
+test('tenant application config bounds canonical gallery Ontology bindings', () => {
+  const withGalleryOntologyIds = (galleryOntologyIds) => ({
+    ...applicationConfig,
+    dataManagement: { galleryOntologyIds },
+  });
+
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
+    withGalleryOntologyIds(Array.from({ length: 20 }, (_, index) => `gallery-${index}`)),
+  ).success, true);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
+    withGalleryOntologyIds(Array.from({ length: 21 }, (_, index) => `gallery-${index}`)),
+  ).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
+    withGalleryOntologyIds(['']),
+  ).success, false);
+});
+
 test('WorkflowDefinition rejects duplicate nodes and dangling edges', () => {
   const fixture = fixtures['workflow-definition'];
   const duplicate = {
@@ -942,14 +1094,14 @@ test('WorkflowDefinition preserves webhook identity and custom event configurati
       enabled: true,
       event: {
         eventType: 'third_party__asset_created',
-        configuration: { bucketId: 'bucket-1' },
+        configuration: { sourceId: 'source-1' },
       },
     },
   ];
 
   const parsed = schemas.WorkflowDefinitionSchema.parse(workflow);
   assert.equal(parsed.triggers[0].webhook.path, 'stable-webhook-path');
-  assert.deepEqual(parsed.triggers[1].event.configuration, { bucketId: 'bucket-1' });
+  assert.deepEqual(parsed.triggers[1].event.configuration, { sourceId: 'source-1' });
 });
 
 test('WorkflowDefinition preserves canonical ComfyUI workflow port bindings', () => {
@@ -968,6 +1120,163 @@ test('WorkflowDefinition preserves canonical ComfyUI workflow port bindings', ()
     node: 10,
     key: 'text',
   });
+});
+
+test('workflow runtime contracts preserve one authoritative completion graph', () => {
+  const run = {
+    contract: 'ApplicationRun',
+    runId: 'run-1',
+    definitionRef: ref('workflow-definition', 'workflow-1', 2),
+    runtimeLedgerRef: ref('workflow-run', 'execution-1'),
+    requestId: 'request-1',
+    actorRef: ref('user', 'user-1'),
+    status: 'COMPLETED',
+    inputRefs: [],
+    outputRefs: [ref('workflow-output', 'output-1')],
+    startedAt: '2026-07-31T00:00:00.000Z',
+    completedAt: '2026-07-31T00:01:00.000Z',
+    metadata: {},
+  };
+  const output = {
+    contract: 'OutputRecord',
+    outputId: 'output-1',
+    runRef: ref('application-run', 'run-1'),
+    outputPort: 'result',
+    value: { text: 'done' },
+    artifactRefs: [ref('artifact', 'artifact-1')],
+    createdAt: '2026-07-31T00:01:00.000Z',
+  };
+  const artifact = {
+    contract: 'ArtifactManifest',
+    artifactId: 'artifact-1',
+    kind: 'image',
+    mimeType: 'image/png',
+    sha256: 'a'.repeat(64),
+    storage: { provider: 's3', bucket: 'assets', key: 'generated/result.png' },
+    runRef: ref('application-run', 'run-1'),
+    outputRef: ref('workflow-output', 'output-1'),
+    producer: { service: 'monkeys-conductor-worker', version: '1' },
+    access: { teamId: 'team-1', visibility: 'team' },
+    metadata: {},
+    createdAt: '2026-07-31T00:01:00.000Z',
+  };
+  const lineage = {
+    contract: 'LineageRecord',
+    lineageId: 'lineage-1',
+    subjectRef: ref('application-run', 'run-1'),
+    sourceRecords: [],
+    bodyRefs: [ref('workflow-definition', 'workflow-1', 2)],
+    runRefs: [ref('application-run', 'run-1')],
+    outputRefs: [ref('workflow-output', 'output-1')],
+    artifactRefs: [ref('artifact', 'artifact-1')],
+    actorRefs: [ref('user', 'user-1')],
+    evidenceRefs: [ref('workflow-run', 'execution-1')],
+    recordedAt: '2026-07-31T00:01:00.000Z',
+  };
+  const commit = {
+    contract: 'WorkflowCompletionCommit',
+    commitId: 'completion-execution-1',
+    run,
+    outputs: [output],
+    artifacts: [artifact],
+    lineage,
+    completedAt: '2026-07-31T00:01:00.000Z',
+  };
+
+  assert.equal(schemas.WorkflowCompletionCommitSchema.safeParse(commit).success, true);
+  assert.equal(schemas.WorkflowCompletionCommitSchema.safeParse({
+    ...commit,
+    outputs: [{ ...output, runRef: ref('application-run', 'other-run') }],
+  }).success, false);
+});
+
+test('workflow publication pins one immutable Conductor definition', () => {
+  const publication = {
+    contract: 'WorkflowPublication',
+    publicationId: 'workflow-1-2',
+    definitionRef: ref('workflow-definition', 'workflow-1', 2),
+    runtimeDefinitionRef: ref('conductor-workflow-definition', 'workflow-1', 2),
+    sourceHash: 'a'.repeat(64),
+    compiledHash: 'b'.repeat(64),
+    status: 'PUBLISHED',
+    publisherRef: ref('user', 'user-1'),
+    publishedAt: '2026-07-31T00:00:00.000Z',
+  };
+
+  assert.equal(schemas.WorkflowPublicationSchema.safeParse(publication).success, true);
+  assert.equal(schemas.WorkflowPublicationSchema.safeParse({
+    ...publication,
+    runtimeDefinitionRef: ref('workflow-definition', 'workflow-1', 2),
+  }).success, false);
+});
+
+test('application runs only claim a Conductor ledger after execution starts', () => {
+  const pending = {
+    ...fixtures['application-run'],
+    status: 'PENDING',
+    runtimeLedgerRef: undefined,
+    startedAt: undefined,
+    completedAt: undefined,
+  };
+  assert.equal(schemas.ApplicationRunSchema.safeParse(pending).success, true);
+  assert.equal(
+    schemas.ApplicationRunSchema.safeParse({
+      ...pending,
+      status: 'RUNNING',
+      startedAt: occurredAt,
+    }).success,
+    false,
+  );
+  assert.equal(
+    schemas.ApplicationRunSchema.safeParse({
+      ...pending,
+      status: 'FAILED',
+      completedAt: occurredAt,
+    }).success,
+    true,
+  );
+});
+
+test('workflow catalog entry owns lifecycle without duplicating the definition body', () => {
+  const entry = {
+    contract: 'WorkflowCatalogEntry',
+    workflowId: 'workflow-1',
+    teamId: 'team-1',
+    creatorRef: ref('user', 'user-1'),
+    currentDefinitionRef: ref(
+      'workflow-definition',
+      'workflow-1:release:2',
+      3,
+    ),
+    lifecycle: 'ACTIVE',
+    asset: {
+      preset: false,
+      marketplacePublished: false,
+      sort: 0,
+      notAuthorized: false,
+    },
+    createdAt: '2026-07-31T00:00:00.000Z',
+    updatedAt: '2026-07-31T00:01:00.000Z',
+  };
+
+  assert.equal(
+    schemas.WorkflowCatalogEntrySchema.safeParse(entry).success,
+    true,
+  );
+  assert.equal(
+    schemas.WorkflowCatalogEntrySchema.safeParse({
+      ...entry,
+      lifecycle: 'DELETED',
+    }).success,
+    false,
+  );
+  assert.equal(
+    schemas.WorkflowCatalogEntrySchema.safeParse({
+      ...entry,
+      definition: fixtures['workflow-definition'],
+    }).success,
+    false,
+  );
 });
 
 test('exports only canonical contract and schema names', () => {

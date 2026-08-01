@@ -3,6 +3,62 @@ import { ContractIdentifierSchema, IsoDateTimeSchema, JsonObjectSchema, JsonValu
 
 export const AgentModeSchema = z.enum(['chatbot', 'agent']);
 
+export const AgentConfigurationCapabilitySchema = z.enum([
+  'models',
+  'skills',
+  'tools',
+  'mcp',
+  'reasoning',
+]);
+
+export const AgentModeCapabilitiesSchema = z
+  .object({
+    models: z.boolean(),
+    skills: z.boolean(),
+    tools: z.boolean(),
+    mcp: z.boolean(),
+    reasoning: z.boolean(),
+  })
+  .strict();
+
+export const AgentResourceModeSupportSchema = z
+  .object({
+    modes: z.array(AgentModeSchema).min(1),
+  })
+  .strict();
+
+export const AGENT_MODE_CAPABILITIES = Object.freeze({
+  chatbot: AgentModeCapabilitiesSchema.parse({
+    models: true,
+    skills: true,
+    tools: true,
+    mcp: true,
+    reasoning: false,
+  }),
+  agent: AgentModeCapabilitiesSchema.parse({
+    models: true,
+    skills: true,
+    tools: true,
+    mcp: true,
+    reasoning: true,
+  }),
+}) satisfies Readonly<Record<AgentMode, AgentModeCapabilities>>;
+
+export function getAgentModeCapabilities(mode: AgentMode): AgentModeCapabilities {
+  return AGENT_MODE_CAPABILITIES[mode];
+}
+
+export function agentModeHasCapability(mode: AgentMode, capability: AgentConfigurationCapability): boolean {
+  return getAgentModeCapabilities(mode)[capability];
+}
+
+export function isAgentResourceModeCompatible(
+  support: AgentResourceModeSupport | undefined,
+  mode: AgentMode,
+): boolean {
+  return support?.modes.includes(mode) ?? false;
+}
+
 export const AgentSessionCapabilitySchema = z.enum([
   'text',
   'reasoning',
@@ -44,6 +100,48 @@ export const AgentSessionCapabilitiesSchema = z
     testResults: z.boolean().default(false),
   })
   .strict();
+
+export const AGENT_SESSION_RUNTIME_CAPABILITIES = Object.freeze({
+  chatbot: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, skills: true, approval: true, usage: true }),
+  agent: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true }),
+}) satisfies Readonly<Record<AgentMode, AgentSessionCapabilities>>;
+
+export function getAgentSessionRuntimeCapabilities(mode: AgentMode): AgentSessionCapabilities {
+  return AGENT_SESSION_RUNTIME_CAPABILITIES[mode];
+}
+
+export const AGENT_SESSION_CAPABILITY_EVIDENCE = Object.freeze({
+  text: { eventTypes: ['message'], commandTypes: [] },
+  reasoning: { eventTypes: ['reasoning'], commandTypes: [] },
+  plan: { eventTypes: ['plan'], commandTypes: [] },
+  tasks: { eventTypes: ['task'], commandTypes: [] },
+  tools: { eventTypes: ['tool'], commandTypes: [] },
+  mcp: { eventTypes: ['tool'], commandTypes: [] },
+  shell: { eventTypes: ['tool', 'terminal'], commandTypes: [] },
+  fileChange: { eventTypes: ['tool', 'diff', 'workspace-file'], commandTypes: [] },
+  skills: { eventTypes: ['tool'], commandTypes: [] },
+  approval: { eventTypes: ['approval'], commandTypes: ['approval'] },
+  artifacts: { eventTypes: ['artifact'], commandTypes: [] },
+  usage: { eventTypes: ['usage'], commandTypes: [] },
+  resume: { eventTypes: ['resume'], commandTypes: ['resume'] },
+  diff: { eventTypes: ['diff'], commandTypes: [] },
+  workspaceFiles: { eventTypes: ['workspace-file'], commandTypes: [] },
+  terminal: { eventTypes: ['terminal'], commandTypes: [] },
+  testResults: { eventTypes: ['test-result'], commandTypes: [] },
+} as const) satisfies Readonly<Record<AgentSessionCapability, { readonly eventTypes: readonly string[]; readonly commandTypes: readonly string[] }>>;
+
+export function findUnsupportedAgentSessionCapabilities(
+  capabilities: AgentSessionCapabilities,
+  evidence: { eventTypes?: readonly string[]; commandTypes?: readonly string[] },
+): AgentSessionCapability[] {
+  const eventTypes = new Set(evidence.eventTypes || []);
+  const commandTypes = new Set(evidence.commandTypes || []);
+  return AgentSessionCapabilitySchema.options.filter((capability) => {
+    if (!capabilities[capability]) return false;
+    const requirement = AGENT_SESSION_CAPABILITY_EVIDENCE[capability];
+    return !requirement.eventTypes.some((eventType) => eventTypes.has(eventType)) && !requirement.commandTypes.some((commandType) => commandTypes.has(commandType));
+  });
+}
 
 export const AgentSessionSnapshotSchema = z
   .object({
@@ -348,6 +446,9 @@ export const AgentSessionViewModelSchema = z
   });
 
 export type AgentMode = z.infer<typeof AgentModeSchema>;
+export type AgentConfigurationCapability = z.infer<typeof AgentConfigurationCapabilitySchema>;
+export type AgentModeCapabilities = z.infer<typeof AgentModeCapabilitiesSchema>;
+export type AgentResourceModeSupport = z.infer<typeof AgentResourceModeSupportSchema>;
 export type AgentSessionCapability = z.infer<typeof AgentSessionCapabilitySchema>;
 export type AgentSessionCapabilities = z.infer<typeof AgentSessionCapabilitiesSchema>;
 export type AgentSessionSnapshot = z.infer<typeof AgentSessionSnapshotSchema>;

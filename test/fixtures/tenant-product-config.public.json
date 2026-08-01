@@ -138,16 +138,17 @@
       "rememberWorkflowModelSelection": true
     },
     "dataManagement": {
-      "favoriteBucketId": "favorite",
+      "favoriteOntologyId": "favorite",
+      "galleryOntologyIds": ["gallery", "trend-reports"],
       "homeAdvertisement": {
-        "bucketId": "home",
+        "ontologyId": "home",
         "viewType": "container",
         "pageSize": 20,
         "sortBy": "updated_timestamp",
         "sortOrder": "desc"
       },
       "homeTrendAssistant": {
-        "bucketId": "trends",
+        "ontologyId": "trends",
         "tep": { "baseUrl": "https://tep.example.test", "timeoutMs": 5000 },
         "runtime": {
           "appId": "concept",
