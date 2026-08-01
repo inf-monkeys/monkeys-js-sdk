@@ -39,6 +39,28 @@
       "issuedAt": "2026-07-30T00:03:00.000Z",
       "commandType": "approval",
       "payload": { "approvalId": "approval-1", "decision": "approved" }
+    },
+    {
+      "contract": "AgentSessionCommand",
+      "commandId": "command-edit-1",
+      "sessionId": "agent-session-1",
+      "idempotencyKey": "agent-session-1:edit:1",
+      "expectedSequence": 10,
+      "issuedAt": "2026-07-30T00:04:00.000Z",
+      "commandType": "edit-and-rerun",
+      "payload": {
+        "sourceThreadId": "agent-session-1",
+        "sourceMessageId": "message-user-1",
+        "sourceRunId": "run-1",
+        "replacementParts": [{ "type": "text", "text": "Updated request" }],
+        "inheritance": {
+          "messages": "through-source-message",
+          "attachments": "inherit",
+          "summaries": "inherit",
+          "toolResults": "exclude",
+          "codeChanges": "exclude"
+        }
+      }
     }
   ],
   "results": [

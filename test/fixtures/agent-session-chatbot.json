@@ -23,7 +23,7 @@
       "terminal": false,
       "testResults": false,
       "threadForking": false,
-      "editAndRerun": false,
+      "editAndRerun": true,
       "steering": false,
       "summary": true
     }
