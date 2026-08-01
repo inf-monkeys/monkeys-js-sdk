@@ -110,8 +110,8 @@ export const AgentSessionCapabilitiesSchema = z
   .strict();
 
 export const AGENT_SESSION_RUNTIME_CAPABILITIES = Object.freeze({
-  chatbot: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, skills: true, approval: true, usage: true }),
-  agent: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true }),
+  chatbot: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, skills: true, approval: true, usage: true, summary: true }),
+  agent: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true, summary: true }),
 }) satisfies Readonly<Record<AgentMode, AgentSessionCapabilities>>;
 
 export function getAgentSessionRuntimeCapabilities(mode: AgentMode): AgentSessionCapabilities {

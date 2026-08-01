@@ -25,7 +25,7 @@
       "threadForking": false,
       "editAndRerun": false,
       "steering": false,
-      "summary": false
+      "summary": true
     }
   },
   "status": "waiting_approval",

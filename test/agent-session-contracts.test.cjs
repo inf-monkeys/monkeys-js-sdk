@@ -452,8 +452,9 @@ test('keeps runtime capability truth backed by canonical events or commands', ()
     const fixture = readFixture(`agent-session-${mode}.json`);
     assert.deepEqual(fixture.snapshot.capabilities, contracts.getAgentSessionRuntimeCapabilities(mode));
     assert.deepEqual(contracts.findUnsupportedAgentSessionCapabilities(fixture.snapshot.capabilities, {
-      eventTypes: fixture.events.map((event) => event.eventType), commandTypes,
+      eventTypes: [...fixture.events.map((event) => event.eventType), 'summary'], commandTypes,
     }), []);
+    assert.equal(fixture.snapshot.capabilities.summary, true);
   }
   const kernel = readFixture('agent-session-kernel.json');
   assert.deepEqual(contracts.findUnsupportedAgentSessionCapabilities(kernel.snapshot.capabilities, {
