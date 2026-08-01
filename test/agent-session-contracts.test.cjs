@@ -21,6 +21,14 @@ for (const name of ['agent-session-chatbot.json', 'agent-session-agent.json', 'a
 test('publishes Agent session contracts in the canonical schema registry', () => {
   assert.equal(schemas.canonicalContractSchemas['agent-session-command'], contracts.AgentSessionCommandSchema);
   assert.equal(schemas.canonicalContractSchemas['agent-session-command-result'], contracts.AgentSessionCommandResultSchema);
+  assert.equal(
+    schemas.canonicalContractSchemas['agent-session-continuation-request'],
+    contracts.AgentSessionContinuationRequestSchema,
+  );
+  assert.equal(
+    schemas.canonicalContractSchemas['agent-session-continuation-result'],
+    contracts.AgentSessionContinuationResultSchema,
+  );
   assert.equal(schemas.canonicalContractSchemas['agent-session-event'], contracts.AgentSessionEventSchema);
   assert.equal(schemas.canonicalContractSchemas['agent-session-view-model'], contracts.AgentSessionViewModelSchema);
   assert.equal(schemas.canonicalContractSchemas['agent-session-run'], contracts.AgentSessionRunSchema);
@@ -29,6 +37,55 @@ test('publishes Agent session contracts in the canonical schema registry', () =>
     contracts.AgentSessionTargetedCommandSchema,
   );
   assert.equal(schemas.canonicalContractSchemas['agent-session-run-event'], contracts.AgentSessionRunEventSchema);
+});
+
+test('defines idempotent continuation requests and bounded inherited context', () => {
+  const request = {
+    contract: 'AgentSessionContinuationRequest',
+    idempotencyKey: 'continuation-request-1',
+    sourceMessageId: 'message-source',
+    sourceRunId: 'run-source',
+    inheritance,
+  };
+  const lineage = {
+    forkedFromThreadId: 'thread-source',
+    forkedFromMessageId: 'message-source',
+    sourceRunId: 'run-source',
+  };
+  const result = {
+    contract: 'AgentSessionContinuationResult',
+    idempotencyKey: request.idempotencyKey,
+    threadId: 'thread-created',
+    lineage,
+    inheritance,
+    unavailableResources: [],
+    duplicate: false,
+    createdAt: '2026-08-01T00:00:01.000Z',
+  };
+  const inheritedContext = {
+    sourceThreadId: lineage.forkedFromThreadId,
+    sourceMessageId: lineage.forkedFromMessageId,
+    sourceRunId: lineage.sourceRunId,
+    messages: [{ messageId: 'message-source', role: 'user', parts: [{ type: 'text', text: 'Source task' }] }],
+    summary: 'The source task reached a stable result.',
+    unavailableResources: [],
+    capturedAt: result.createdAt,
+  };
+
+  assert.deepEqual(contracts.AgentSessionContinuationRequestSchema.parse(request), request);
+  assert.deepEqual(contracts.AgentSessionContinuationResultSchema.parse(result), result);
+  assert.deepEqual(contracts.AgentSessionInheritedContextSchema.parse(inheritedContext), inheritedContext);
+  assert.equal(
+    contracts.AgentSessionInheritedContextSchema.safeParse({
+      ...inheritedContext,
+      messages: Array.from({ length: 25 }, (_, index) => ({
+        messageId: `message-${index}`,
+        role: 'user',
+        parts: [{ type: 'text', text: 'Too much context' }],
+      })),
+    }).success,
+    false,
+  );
 });
 
 const inheritance = {

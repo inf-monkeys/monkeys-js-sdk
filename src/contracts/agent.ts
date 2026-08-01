@@ -193,6 +193,57 @@ export const AgentSessionContextInheritanceSchema = z
   })
   .strict();
 
+export const AgentSessionInheritedContextMessageSchema = z
+  .object({
+    messageId: ContractIdentifierSchema,
+    role: z.enum(['user', 'assistant']),
+    parts: z.array(JsonValueSchema).min(1),
+  })
+  .strict();
+
+export const AgentSessionUnavailableResourceSchema = z
+  .object({
+    messageId: ContractIdentifierSchema,
+    kind: z.enum(['attachment', 'tool-result', 'code-change']),
+    reason: z.enum(['excluded', 'unavailable', 'unsupported']),
+  })
+  .strict();
+
+export const AgentSessionInheritedContextSchema = z
+  .object({
+    sourceThreadId: ContractIdentifierSchema,
+    sourceMessageId: ContractIdentifierSchema,
+    sourceRunId: ContractIdentifierSchema,
+    messages: z.array(AgentSessionInheritedContextMessageSchema).max(24),
+    summary: z.string().trim().min(1).optional(),
+    unavailableResources: z.array(AgentSessionUnavailableResourceSchema).default([]),
+    capturedAt: IsoDateTimeSchema,
+  })
+  .strict();
+
+export const AgentSessionContinuationRequestSchema = z
+  .object({
+    contract: z.literal('AgentSessionContinuationRequest'),
+    idempotencyKey: ContractIdentifierSchema,
+    sourceMessageId: ContractIdentifierSchema,
+    sourceRunId: ContractIdentifierSchema,
+    inheritance: AgentSessionContextInheritanceSchema,
+  })
+  .strict();
+
+export const AgentSessionContinuationResultSchema = z
+  .object({
+    contract: z.literal('AgentSessionContinuationResult'),
+    idempotencyKey: ContractIdentifierSchema,
+    threadId: ContractIdentifierSchema,
+    lineage: AgentSessionLineageSchema,
+    inheritance: AgentSessionContextInheritanceSchema,
+    unavailableResources: z.array(AgentSessionUnavailableResourceSchema).default([]),
+    duplicate: z.boolean(),
+    createdAt: IsoDateTimeSchema,
+  })
+  .strict();
+
 export const AgentSessionActiveBranchSchema = z
   .object({
     branchId: ContractIdentifierSchema,
@@ -835,6 +886,11 @@ export type AgentSessionStatus = z.infer<typeof AgentSessionStatusSchema>;
 export type AgentSessionTerminalStatus = z.infer<typeof AgentSessionTerminalStatusSchema>;
 export type AgentSessionLineage = z.infer<typeof AgentSessionLineageSchema>;
 export type AgentSessionContextInheritance = z.infer<typeof AgentSessionContextInheritanceSchema>;
+export type AgentSessionInheritedContextMessage = z.infer<typeof AgentSessionInheritedContextMessageSchema>;
+export type AgentSessionUnavailableResource = z.infer<typeof AgentSessionUnavailableResourceSchema>;
+export type AgentSessionInheritedContext = z.infer<typeof AgentSessionInheritedContextSchema>;
+export type AgentSessionContinuationRequest = z.infer<typeof AgentSessionContinuationRequestSchema>;
+export type AgentSessionContinuationResult = z.infer<typeof AgentSessionContinuationResultSchema>;
 export type AgentSessionActiveBranch = z.infer<typeof AgentSessionActiveBranchSchema>;
 export type AgentSessionRun = z.infer<typeof AgentSessionRunSchema>;
 export type AgentSessionCommandType = z.infer<typeof AgentSessionCommandTypeSchema>;

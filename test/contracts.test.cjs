@@ -230,6 +230,39 @@ const fixtures = {
     resultEventIds: ['status-event-1'],
     occurredAt,
   },
+  'agent-session-continuation-request': {
+    contract: 'AgentSessionContinuationRequest',
+    idempotencyKey: 'continuation-1',
+    sourceMessageId: 'message-1',
+    sourceRunId: 'run-1',
+    inheritance: {
+      messages: 'through-source-message',
+      attachments: 'inherit',
+      summaries: 'inherit',
+      toolResults: 'exclude',
+      codeChanges: 'exclude',
+    },
+  },
+  'agent-session-continuation-result': {
+    contract: 'AgentSessionContinuationResult',
+    idempotencyKey: 'continuation-1',
+    threadId: 'agent-session-2',
+    lineage: {
+      forkedFromThreadId: 'agent-session-1',
+      forkedFromMessageId: 'message-1',
+      sourceRunId: 'run-1',
+    },
+    inheritance: {
+      messages: 'through-source-message',
+      attachments: 'inherit',
+      summaries: 'inherit',
+      toolResults: 'exclude',
+      codeChanges: 'exclude',
+    },
+    unavailableResources: [],
+    duplicate: false,
+    createdAt: occurredAt,
+  },
   'agent-session-event': {
     contract: 'AgentSessionEvent',
     eventId: 'agent-session-event-1',
@@ -993,7 +1026,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 64);
+  assert.equal(names.length, 66);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
