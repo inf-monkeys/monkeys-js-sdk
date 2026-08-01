@@ -24,7 +24,7 @@
       "testResults": false,
       "threadForking": false,
       "editAndRerun": true,
-      "steering": false,
+      "steering": true,
       "summary": true
     }
   },

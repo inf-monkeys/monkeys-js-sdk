@@ -137,7 +137,7 @@ test('defines traceable fork, edit-and-rerun, and steering commands', () => {
     commandType: 'steer',
     payload: {
       targetRunId: 'run-active',
-      guidanceParts: [{ type: 'text', text: 'Focus on the failing test.' }],
+      text: 'Focus on the failing test.',
     },
   };
 
@@ -162,6 +162,13 @@ test('defines traceable fork, edit-and-rerun, and steering commands', () => {
     contracts.AgentSessionCommandSchema.safeParse({
       ...steer,
       runId: 'run-other',
+    }).success,
+    false,
+  );
+  assert.equal(
+    contracts.AgentSessionCommandSchema.safeParse({
+      ...steer,
+      payload: { ...steer.payload, text: '   ' },
     }).success,
     false,
   );
@@ -238,6 +245,61 @@ test('validates summary events and binds them to their source run', () => {
   );
 });
 
+test('validates durable steering lifecycle events', () => {
+  const event = {
+    contract: 'AgentSessionEvent',
+    eventId: 'steer-event-1',
+    sessionId: 'session-wp1',
+    runId: 'run-active',
+    sourceMessageId: 'message-source',
+    sequence: 13,
+    idempotencyKey: 'session-wp1:steer-1:accepted',
+    occurredAt: '2026-08-01T00:00:01.000Z',
+    eventType: 'steer',
+    payload: {
+      commandId: 'command-steer',
+      targetRunId: 'run-active',
+      text: 'Focus on the failing test.',
+      status: 'accepted',
+    },
+  };
+
+  for (const status of ['accepted', 'applied']) {
+    assert.equal(
+      contracts.AgentSessionEventSchema.safeParse({
+        ...event,
+        payload: { ...event.payload, status },
+      }).success,
+      true,
+    );
+  }
+  assert.equal(
+    contracts.AgentSessionEventSchema.safeParse({
+      ...event,
+      payload: {
+        ...event.payload,
+        status: 'failed',
+        error: { code: 'ACTIVE_RUN_NOT_FOUND', message: 'The target run is no longer active.', retryable: false },
+      },
+    }).success,
+    true,
+  );
+  assert.equal(
+    contracts.AgentSessionEventSchema.safeParse({
+      ...event,
+      payload: { ...event.payload, status: 'failed' },
+    }).success,
+    false,
+  );
+  assert.equal(
+    contracts.AgentSessionEventSchema.safeParse({
+      ...event,
+      runId: 'run-other',
+    }).success,
+    false,
+  );
+});
+
 test('publishes command policies without changing source sessions for branch operations', () => {
   assert.equal(contracts.canIssueAgentSessionCommand('completed', 'fork'), true);
   assert.equal(contracts.canIssueAgentSessionCommand('running', 'fork'), true);
@@ -250,6 +312,7 @@ test('publishes command policies without changing source sessions for branch ope
   assert.equal(contracts.getAgentSessionCommandPolicy('steer').sequenceRule, 'match-current');
   assert.equal(contracts.resolveAgentSessionCommandTransition('completed', 'fork'), undefined);
   for (const code of [
+    'ACTIVE_RUN_NOT_FOUND',
     'SOURCE_THREAD_NOT_FOUND',
     'SOURCE_MESSAGE_NOT_FOUND',
     'SOURCE_RUN_NOT_FOUND',

@@ -61,6 +61,20 @@
           "codeChanges": "exclude"
         }
       }
+    },
+    {
+      "contract": "AgentSessionCommand",
+      "commandId": "command-steer-1",
+      "sessionId": "agent-session-1",
+      "runId": "run-1",
+      "idempotencyKey": "agent-session-1:steer:1",
+      "expectedSequence": 11,
+      "issuedAt": "2026-07-30T00:04:30.000Z",
+      "commandType": "steer",
+      "payload": {
+        "targetRunId": "run-1",
+        "text": "Focus on the failing test."
+      }
     }
   ],
   "results": [

@@ -111,7 +111,7 @@ export const AgentSessionCapabilitiesSchema = z
 
 export const AGENT_SESSION_RUNTIME_CAPABILITIES = Object.freeze({
   chatbot: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, skills: true, approval: true, usage: true, editAndRerun: true, summary: true }),
-  agent: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true, editAndRerun: true, summary: true }),
+  agent: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true, editAndRerun: true, steering: true, summary: true }),
 }) satisfies Readonly<Record<AgentMode, AgentSessionCapabilities>>;
 
 export function getAgentSessionRuntimeCapabilities(mode: AgentMode): AgentSessionCapabilities {
@@ -138,7 +138,7 @@ export const AGENT_SESSION_CAPABILITY_EVIDENCE = Object.freeze({
   testResults: { eventTypes: ['test-result'], commandTypes: [] },
   threadForking: { eventTypes: [], commandTypes: ['fork'] },
   editAndRerun: { eventTypes: [], commandTypes: ['edit-and-rerun'] },
-  steering: { eventTypes: [], commandTypes: ['steer'] },
+  steering: { eventTypes: ['steer'], commandTypes: ['steer'] },
   summary: { eventTypes: ['summary'], commandTypes: [] },
 } as const) satisfies Readonly<Record<AgentSessionCapability, { readonly eventTypes: readonly string[]; readonly commandTypes: readonly string[] }>>;
 
@@ -381,7 +381,7 @@ export const AgentSessionCommandSchema = z.discriminatedUnion('commandType', [
   }),
   sessionCommand('steer', {
     targetRunId: ContractIdentifierSchema,
-    guidanceParts: z.array(JsonValueSchema).min(1),
+    text: z.string().trim().min(1),
   }),
 ]).superRefine((value, context) => {
   if (value.commandType === 'steer' && value.runId !== value.payload.targetRunId) {
@@ -400,6 +400,7 @@ export const AgentSessionTargetedCommandSchema = AgentSessionCommandSchema.and(
 export const AgentSessionCommandErrorCodeSchema = z.enum([
   'SESSION_NOT_FOUND',
   'RUN_NOT_FOUND',
+  'ACTIVE_RUN_NOT_FOUND',
   'RUN_ALREADY_FINISHED',
   'STOP_TIMEOUT',
   'COMMAND_NOT_SUPPORTED',
@@ -755,6 +756,20 @@ export const AgentSessionEventSchema = z.discriminatedUnion('eventType', [
     durationMs: z.number().nonnegative().optional(),
     output: z.string().optional(),
   }),
+  sessionEvent('steer', {
+    commandId: ContractIdentifierSchema,
+    targetRunId: ContractIdentifierSchema,
+    text: z.string().trim().min(1),
+    status: z.enum(['accepted', 'applied', 'failed']),
+    error: z
+      .object({
+        code: AgentSessionCommandErrorCodeSchema,
+        message: z.string(),
+        retryable: z.boolean(),
+      })
+      .strict()
+      .optional(),
+  }),
   sessionEvent('summary', {
     summaryId: ContractIdentifierSchema,
     runId: ContractIdentifierSchema,
@@ -764,6 +779,25 @@ export const AgentSessionEventSchema = z.discriminatedUnion('eventType', [
     status: z.enum(['generating', 'completed', 'failed']),
   }),
 ]).superRefine((value, context) => {
+  if (value.eventType === 'steer') {
+    if (value.runId !== value.payload.targetRunId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['payload', 'targetRunId'],
+        message: 'Steering payload targetRunId must match the event runId.',
+      });
+    }
+    const requiresError = value.payload.status === 'failed';
+    if (requiresError !== Boolean(value.payload.error)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['payload', 'error'],
+        message: requiresError
+          ? 'Failed steering events require an error.'
+          : 'Accepted and applied steering events must not contain an error.',
+      });
+    }
+  }
   if (value.eventType === 'summary' && value.runId !== value.payload.runId) {
     context.addIssue({
       code: 'custom',
