@@ -161,6 +161,76 @@ export const AgentSessionStatusSchema = z.enum([
   'failed',
 ]);
 
+export const AgentSessionTerminalStatusSchema = z.enum(['stopped', 'completed', 'failed']);
+
+export const AgentSessionRunSchema = z
+  .object({
+    runId: ContractIdentifierSchema,
+    sessionId: ContractIdentifierSchema,
+    sourceMessageId: ContractIdentifierSchema,
+    status: AgentSessionStatusSchema,
+    startedAt: IsoDateTimeSchema,
+    stoppingRequestedAt: IsoDateTimeSchema.optional(),
+    stoppedAt: IsoDateTimeSchema.optional(),
+    completedAt: IsoDateTimeSchema.optional(),
+    failedAt: IsoDateTimeSchema.optional(),
+    durationMs: z.number().nonnegative().optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const terminalTimestamps = [value.stoppedAt, value.completedAt, value.failedAt].filter(Boolean);
+    if (terminalTimestamps.length > 1) {
+      context.addIssue({
+        code: 'custom',
+        path: ['status'],
+        message: 'A run may declare only one terminal timestamp.',
+      });
+    }
+    const expectedTimestamp =
+      value.status === 'stopped'
+        ? value.stoppedAt
+        : value.status === 'completed'
+          ? value.completedAt
+          : value.status === 'failed'
+            ? value.failedAt
+            : undefined;
+    if (AgentSessionTerminalStatusSchema.safeParse(value.status).success && !expectedTimestamp) {
+      context.addIssue({
+        code: 'custom',
+        path: [value.status === 'stopped' ? 'stoppedAt' : value.status === 'completed' ? 'completedAt' : 'failedAt'],
+        message: `Run status ${value.status} requires its matching terminal timestamp.`,
+      });
+    }
+    if (!AgentSessionTerminalStatusSchema.safeParse(value.status).success && terminalTimestamps.length > 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['status'],
+        message: 'A non-terminal run must not declare a terminal timestamp.',
+      });
+    }
+    if ((value.status === 'stopping' || value.status === 'stopped') && !value.stoppingRequestedAt) {
+      context.addIssue({
+        code: 'custom',
+        path: ['stoppingRequestedAt'],
+        message: `Run status ${value.status} requires stoppingRequestedAt.`,
+      });
+    }
+    if (!isAgentSessionTerminalStatus(value.status) && value.durationMs !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['durationMs'],
+        message: 'Only a terminal run may declare durationMs.',
+      });
+    }
+    if (isAgentSessionTerminalStatus(value.status) && value.durationMs === undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['durationMs'],
+        message: `Terminal run status ${value.status} requires durationMs.`,
+      });
+    }
+  });
+
 export const AgentSessionCommandTypeSchema = z.enum(['stop', 'resume', 'retry', 'approval']);
 
 const AgentSessionCommandHeaderSchema = z
@@ -168,6 +238,7 @@ const AgentSessionCommandHeaderSchema = z
     contract: z.literal('AgentSessionCommand'),
     commandId: ContractIdentifierSchema,
     sessionId: ContractIdentifierSchema,
+    runId: ContractIdentifierSchema.optional(),
     idempotencyKey: ContractIdentifierSchema,
     expectedSequence: z.number().int().min(-1),
     issuedAt: IsoDateTimeSchema,
@@ -197,8 +268,15 @@ export const AgentSessionCommandSchema = z.discriminatedUnion('commandType', [
   }),
 ]);
 
+export const AgentSessionTargetedCommandSchema = AgentSessionCommandSchema.and(
+  z.object({ runId: ContractIdentifierSchema }),
+);
+
 export const AgentSessionCommandErrorCodeSchema = z.enum([
   'SESSION_NOT_FOUND',
+  'RUN_NOT_FOUND',
+  'RUN_ALREADY_FINISHED',
+  'STOP_TIMEOUT',
   'COMMAND_NOT_SUPPORTED',
   'CAPABILITY_UNAVAILABLE',
   'SEQUENCE_CONFLICT',
@@ -215,11 +293,13 @@ export const AgentSessionCommandResultSchema = z
     contract: z.literal('AgentSessionCommandResult'),
     commandId: ContractIdentifierSchema,
     sessionId: ContractIdentifierSchema,
+    runId: ContractIdentifierSchema.optional(),
     idempotencyKey: ContractIdentifierSchema,
     outcome: z.enum(['accepted', 'duplicate', 'rejected', 'failed']),
     sessionStatus: AgentSessionStatusSchema,
     acceptedSequence: z.number().int().nonnegative().optional(),
     resultEventIds: z.array(ContractIdentifierSchema).default([]),
+    termination: z.enum(['requested', 'confirmed']).optional(),
     error: z
       .object({
         code: AgentSessionCommandErrorCodeSchema,
@@ -242,6 +322,20 @@ export const AgentSessionCommandResultSchema = z
           : 'Accepted and duplicate command results must not contain an error.',
       });
     }
+    if (value.termination === 'requested' && value.sessionStatus !== 'stopping') {
+      context.addIssue({
+        code: 'custom',
+        path: ['termination'],
+        message: 'A requested termination must leave the run in stopping status.',
+      });
+    }
+    if (value.termination === 'confirmed' && !isAgentSessionTerminalStatus(value.sessionStatus)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['termination'],
+        message: 'A confirmed termination requires a terminal run status.',
+      });
+    }
   });
 
 const AGENT_SESSION_COMMAND_TRANSITIONS: Record<AgentSessionCommandType, Partial<Record<AgentSessionStatus, AgentSessionStatus>>> = {
@@ -258,11 +352,31 @@ export function resolveAgentSessionCommandTransition(
   return AGENT_SESSION_COMMAND_TRANSITIONS[commandType][status];
 }
 
+export function isAgentSessionTerminalStatus(status: AgentSessionStatus): status is AgentSessionTerminalStatus {
+  return AgentSessionTerminalStatusSchema.safeParse(status).success;
+}
+
+export function canApplyAgentSessionRunStatus(current: AgentSessionStatus, next: AgentSessionStatus): boolean {
+  if (current === next) return true;
+  const transitions: Record<AgentSessionStatus, readonly AgentSessionStatus[]> = {
+    queued: ['running', 'stopping', 'failed'],
+    running: ['waiting_approval', 'stopping', 'completed', 'failed'],
+    waiting_approval: ['running', 'stopping', 'failed'],
+    stopping: ['stopped', 'completed', 'failed'],
+    stopped: [],
+    completed: [],
+    failed: [],
+  };
+  return transitions[current].includes(next);
+}
+
 const AgentSessionEventHeaderSchema = z
   .object({
     contract: z.literal('AgentSessionEvent'),
     eventId: ContractIdentifierSchema,
     sessionId: ContractIdentifierSchema,
+    runId: ContractIdentifierSchema.optional(),
+    sourceMessageId: ContractIdentifierSchema.optional(),
     sequence: z.number().int().nonnegative(),
     idempotencyKey: ContractIdentifierSchema,
     occurredAt: IsoDateTimeSchema,
@@ -329,6 +443,12 @@ export const AgentSessionEventSchema = z.discriminatedUnion('eventType', [
   sessionEvent('status', {
     status: AgentSessionStatusSchema,
     detail: z.string().optional(),
+    startedAt: IsoDateTimeSchema.optional(),
+    stoppingRequestedAt: IsoDateTimeSchema.optional(),
+    stoppedAt: IsoDateTimeSchema.optional(),
+    completedAt: IsoDateTimeSchema.optional(),
+    failedAt: IsoDateTimeSchema.optional(),
+    durationMs: z.number().nonnegative().optional(),
   }),
   sessionEvent('artifact', {
     artifactId: ContractIdentifierSchema,
@@ -384,6 +504,46 @@ export const AgentSessionEventSchema = z.discriminatedUnion('eventType', [
     output: z.string().optional(),
   }),
 ]);
+
+export const AgentSessionRunEventSchema = AgentSessionEventSchema.superRefine((value, context) => {
+  if (!value.runId) {
+    context.addIssue({ code: 'custom', path: ['runId'], message: 'Run events require runId.' });
+  }
+  if (!value.sourceMessageId) {
+    context.addIssue({
+      code: 'custom',
+      path: ['sourceMessageId'],
+      message: 'Run events require sourceMessageId.',
+    });
+  }
+  if (value.eventType !== 'status') return;
+  const requiredTimeField =
+    value.payload.status === 'running'
+      ? 'startedAt'
+      : value.payload.status === 'stopping'
+        ? 'stoppingRequestedAt'
+        : value.payload.status === 'stopped'
+          ? 'stoppedAt'
+          : value.payload.status === 'completed'
+            ? 'completedAt'
+            : value.payload.status === 'failed'
+              ? 'failedAt'
+              : undefined;
+  if (requiredTimeField && !value.payload[requiredTimeField]) {
+    context.addIssue({
+      code: 'custom',
+      path: ['payload', requiredTimeField],
+      message: `Run status ${value.payload.status} requires ${requiredTimeField}.`,
+    });
+  }
+  if (isAgentSessionTerminalStatus(value.payload.status) && value.payload.durationMs === undefined) {
+    context.addIssue({
+      code: 'custom',
+      path: ['payload', 'durationMs'],
+      message: `Terminal run status ${value.payload.status} requires durationMs.`,
+    });
+  }
+});
 
 export const AgentSessionViewModelSchema = z
   .object({
@@ -453,11 +613,15 @@ export type AgentSessionCapability = z.infer<typeof AgentSessionCapabilitySchema
 export type AgentSessionCapabilities = z.infer<typeof AgentSessionCapabilitiesSchema>;
 export type AgentSessionSnapshot = z.infer<typeof AgentSessionSnapshotSchema>;
 export type AgentSessionStatus = z.infer<typeof AgentSessionStatusSchema>;
+export type AgentSessionTerminalStatus = z.infer<typeof AgentSessionTerminalStatusSchema>;
+export type AgentSessionRun = z.infer<typeof AgentSessionRunSchema>;
 export type AgentSessionCommandType = z.infer<typeof AgentSessionCommandTypeSchema>;
 export type AgentSessionCommand = z.infer<typeof AgentSessionCommandSchema>;
+export type AgentSessionTargetedCommand = z.infer<typeof AgentSessionTargetedCommandSchema>;
 export type AgentSessionCommandErrorCode = z.infer<typeof AgentSessionCommandErrorCodeSchema>;
 export type AgentSessionCommandResult = z.infer<typeof AgentSessionCommandResultSchema>;
 export type AgentSessionEvent = z.infer<typeof AgentSessionEventSchema>;
+export type AgentSessionRunEvent = z.infer<typeof AgentSessionRunEventSchema>;
 export type AgentSessionViewModel = z.infer<typeof AgentSessionViewModelSchema>;
 
 // Kept as a source-compatible type alias while consumers move to the product-level name.

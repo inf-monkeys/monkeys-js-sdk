@@ -23,6 +23,12 @@ test('publishes Agent session contracts in the canonical schema registry', () =>
   assert.equal(schemas.canonicalContractSchemas['agent-session-command-result'], contracts.AgentSessionCommandResultSchema);
   assert.equal(schemas.canonicalContractSchemas['agent-session-event'], contracts.AgentSessionEventSchema);
   assert.equal(schemas.canonicalContractSchemas['agent-session-view-model'], contracts.AgentSessionViewModelSchema);
+  assert.equal(schemas.canonicalContractSchemas['agent-session-run'], contracts.AgentSessionRunSchema);
+  assert.equal(
+    schemas.canonicalContractSchemas['agent-session-targeted-command'],
+    contracts.AgentSessionTargetedCommandSchema,
+  );
+  assert.equal(schemas.canonicalContractSchemas['agent-session-run-event'], contracts.AgentSessionRunEventSchema);
 });
 
 test('validates idempotent Agent session commands and results', () => {
@@ -33,6 +39,118 @@ test('validates idempotent Agent session commands and results', () => {
   fixture.results.forEach((result) => {
     assert.deepEqual(contracts.AgentSessionCommandResultSchema.parse(result), result);
   });
+});
+
+test('keeps legacy commands compatible while requiring run identity at the upgraded boundary', () => {
+  const legacyStop = readFixture('agent-session-commands.json').commands[0];
+  assert.equal(contracts.AgentSessionCommandSchema.safeParse(legacyStop).success, true);
+  assert.equal(contracts.AgentSessionTargetedCommandSchema.safeParse(legacyStop).success, false);
+  assert.equal(
+    contracts.AgentSessionTargetedCommandSchema.safeParse({ ...legacyStop, runId: 'run-1' }).success,
+    true,
+  );
+});
+
+test('defines stable runs with one mutually exclusive terminal status', () => {
+  const completed = {
+    runId: 'run-1',
+    sessionId: 'agent-session-1',
+    sourceMessageId: 'message-1',
+    status: 'completed',
+    startedAt: '2026-07-30T00:00:00.000Z',
+    completedAt: '2026-07-30T00:00:10.000Z',
+    durationMs: 10000,
+  };
+  assert.deepEqual(contracts.AgentSessionRunSchema.parse(completed), completed);
+  assert.equal(
+    contracts.AgentSessionRunSchema.safeParse({
+      ...completed,
+      stoppedAt: '2026-07-30T00:00:09.000Z',
+    }).success,
+    false,
+  );
+  assert.equal(
+    contracts.AgentSessionRunSchema.safeParse({ ...completed, status: 'running' }).success,
+    false,
+  );
+  const { durationMs: _durationMs, ...withoutDuration } = completed;
+  assert.equal(contracts.AgentSessionRunSchema.safeParse(withoutDuration).success, false);
+});
+
+test('validates canonical run lifecycle fixtures and their required time points', () => {
+  const fixture = readFixture('agent-session-runs.json');
+  fixture.runs.forEach((run) => {
+    assert.deepEqual(contracts.AgentSessionRunSchema.parse(run), run);
+  });
+  fixture.events.forEach((event) => {
+    assert.deepEqual(contracts.AgentSessionRunEventSchema.parse(event), event);
+  });
+  assert.equal(
+    contracts.AgentSessionRunEventSchema.safeParse({
+      ...fixture.events[0],
+      payload: { status: 'stopped', stoppedAt: fixture.events[0].payload.stoppedAt },
+    }).success,
+    false,
+  );
+});
+
+test('distinguishes accepted stop requests from confirmed termination', () => {
+  const result = readFixture('agent-session-commands.json').results[0];
+  assert.equal(
+    contracts.AgentSessionCommandResultSchema.safeParse({
+      ...result,
+      runId: 'run-1',
+      termination: 'requested',
+    }).success,
+    true,
+  );
+  assert.equal(
+    contracts.AgentSessionCommandResultSchema.safeParse({
+      ...result,
+      sessionStatus: 'stopped',
+      termination: 'confirmed',
+    }).success,
+    true,
+  );
+  assert.equal(
+    contracts.AgentSessionCommandResultSchema.safeParse({
+      ...result,
+      sessionStatus: 'running',
+      termination: 'confirmed',
+    }).success,
+    false,
+  );
+});
+
+test('requires upgraded run events to identify their run and source message', () => {
+  const legacyEvent = readFixture('agent-session-agent.json').events[0];
+  assert.equal(contracts.AgentSessionEventSchema.safeParse(legacyEvent).success, true);
+  assert.equal(contracts.AgentSessionRunEventSchema.safeParse(legacyEvent).success, false);
+  assert.equal(
+    contracts.AgentSessionRunEventSchema.safeParse({
+      ...legacyEvent,
+      runId: 'run-1',
+      sourceMessageId: 'message-1',
+      payload: { ...legacyEvent.payload, startedAt: legacyEvent.occurredAt },
+    }).success,
+    true,
+  );
+});
+
+test('prevents terminal runs from accepting late status changes', () => {
+  assert.equal(contracts.canApplyAgentSessionRunStatus('running', 'stopping'), true);
+  assert.equal(contracts.canApplyAgentSessionRunStatus('stopping', 'stopped'), true);
+  assert.equal(contracts.canApplyAgentSessionRunStatus('stopping', 'completed'), true);
+  assert.equal(contracts.canApplyAgentSessionRunStatus('running', 'queued'), false);
+  assert.equal(contracts.canApplyAgentSessionRunStatus('queued', 'completed'), false);
+  assert.equal(contracts.canApplyAgentSessionRunStatus('stopped', 'completed'), false);
+  assert.equal(contracts.canApplyAgentSessionRunStatus('completed', 'running'), false);
+});
+
+test('publishes stop targeting, timeout, completion race, and sequence conflict errors', () => {
+  for (const code of ['RUN_NOT_FOUND', 'RUN_ALREADY_FINISHED', 'STOP_TIMEOUT', 'SEQUENCE_CONFLICT']) {
+    assert.equal(contracts.AgentSessionCommandErrorCodeSchema.safeParse(code).success, true, code);
+  }
 });
 
 test('fails closed for unknown commands, payload fields, and inconsistent results', () => {

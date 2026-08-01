@@ -29,8 +29,12 @@ export {
   AgentSessionCommandSchema,
   AgentSessionCommandTypeSchema,
   AgentSessionEventSchema,
+  AgentSessionRunEventSchema,
   AgentSessionSnapshotSchema,
   AgentSessionStatusSchema,
+  AgentSessionTerminalStatusSchema,
+  AgentSessionRunSchema,
+  AgentSessionTargetedCommandSchema,
   AgentSessionViewModelSchema,
   AgentExecutionModeSchema,
 } from '../contracts/agent';
@@ -158,6 +162,9 @@ import {
   AgentSessionCommandResultSchema,
   AgentSessionCommandSchema,
   AgentSessionEventSchema,
+  AgentSessionRunEventSchema,
+  AgentSessionRunSchema,
+  AgentSessionTargetedCommandSchema,
   AgentSessionViewModelSchema,
 } from '../contracts/agent';
 import { CapabilityManifestSchema, CapabilityRegistryDocumentSchema } from '../contracts/capability';
@@ -227,8 +234,11 @@ import {
 
 export const canonicalContractSchemas = {
   'agent-session-command': AgentSessionCommandSchema,
+  'agent-session-targeted-command': AgentSessionTargetedCommandSchema,
   'agent-session-command-result': AgentSessionCommandResultSchema,
   'agent-session-event': AgentSessionEventSchema,
+  'agent-session-run-event': AgentSessionRunEventSchema,
+  'agent-session-run': AgentSessionRunSchema,
   'agent-session-view-model': AgentSessionViewModelSchema,
   'agent-runtime-event': AgentRuntimeEventSchema,
   'application-run': ApplicationRunSchema,

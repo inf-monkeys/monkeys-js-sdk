@@ -208,6 +208,17 @@ const fixtures = {
     commandType: 'stop',
     payload: {},
   },
+  'agent-session-targeted-command': {
+    contract: 'AgentSessionCommand',
+    commandId: 'command-stop-1',
+    sessionId: 'agent-session-1',
+    runId: 'run-1',
+    idempotencyKey: 'agent-session-1:run-1:stop:1',
+    expectedSequence: 0,
+    issuedAt: occurredAt,
+    commandType: 'stop',
+    payload: {},
+  },
   'agent-session-command-result': {
     contract: 'AgentSessionCommandResult',
     commandId: 'command-stop-1',
@@ -228,6 +239,25 @@ const fixtures = {
     occurredAt,
     eventType: 'status',
     payload: { status: 'running' },
+  },
+  'agent-session-run-event': {
+    contract: 'AgentSessionEvent',
+    eventId: 'agent-session-run-event-1',
+    sessionId: 'agent-session-1',
+    runId: 'run-1',
+    sourceMessageId: 'message-1',
+    sequence: 0,
+    idempotencyKey: 'agent-session-1:run-1:0',
+    occurredAt,
+    eventType: 'status',
+    payload: { status: 'running', startedAt: occurredAt },
+  },
+  'agent-session-run': {
+    runId: 'run-1',
+    sessionId: 'agent-session-1',
+    sourceMessageId: 'message-1',
+    status: 'running',
+    startedAt: occurredAt,
   },
   'agent-session-view-model': {
     contract: 'AgentSessionViewModel',
@@ -963,7 +993,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 61);
+  assert.equal(names.length, 64);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
