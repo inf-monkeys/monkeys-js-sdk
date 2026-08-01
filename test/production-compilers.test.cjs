@@ -143,8 +143,9 @@ test('compiles desired tenant config into a resolved, source-free browser contra
         monkeysSpaceHeadbar: [
           {
             id: 'workbench',
+            showContentFrame: false,
             children: [
-              { id: 'studio-a', displayName: 'Studio A' },
+              { id: 'studio-a', displayName: 'Studio A', showContentFrame: true },
               { id: 'studio-b', displayName: 'Studio B', disabled: true },
             ],
           },

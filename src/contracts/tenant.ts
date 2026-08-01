@@ -122,6 +122,7 @@ const TenantHeadbarModuleLeafSchema = z
     icon: z.string().optional(),
     showQuickSwitcher: z.boolean().optional(),
     showSidebar: z.boolean().optional(),
+    showContentFrame: z.boolean().optional(),
   })
   .strict();
 
