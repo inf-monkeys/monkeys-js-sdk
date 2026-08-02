@@ -365,6 +365,21 @@ test('keeps pre-WP1 session contracts parseable with new capabilities disabled',
   assert.equal(parsed.snapshot.capabilities.summary, false);
 });
 
+test('validates session permission profiles without breaking legacy snapshots', () => {
+  const fixture = structuredClone(readFixture('agent-session-agent.json'));
+  assert.equal(contracts.AgentSessionViewModelSchema.safeParse(fixture).success, true);
+
+  fixture.snapshot.permissionProfile = 'approval-required';
+  assert.equal(contracts.AgentSessionViewModelSchema.safeParse(fixture).success, true);
+  assert.equal(
+    contracts.AgentSessionViewModelSchema.safeParse({
+      ...fixture,
+      snapshot: { ...fixture.snapshot, permissionProfile: 'unrestricted' },
+    }).success,
+    false,
+  );
+});
+
 test('validates idempotent Agent session commands and results', () => {
   const fixture = readFixture('agent-session-commands.json');
   fixture.commands.forEach((command) => {

@@ -109,6 +109,16 @@ export const AgentSessionCapabilitiesSchema = z
   })
   .strict();
 
+/**
+ * Session-level execution safety profile. This is a product contract; runtime
+ * adapters map it to their own approval and sandbox settings.
+ */
+export const AgentSessionPermissionProfileSchema = z.enum([
+  'approval-required',
+  'auto-approve',
+  'full-access',
+]);
+
 export const AGENT_SESSION_RUNTIME_CAPABILITIES = Object.freeze({
   chatbot: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, skills: true, approval: true, usage: true, editAndRerun: true, summary: true }),
   agent: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true, editAndRerun: true, steering: true, summary: true }),
@@ -160,6 +170,7 @@ export const AgentSessionSnapshotSchema = z
     mode: AgentModeSchema,
     modelId: z.string().trim().min(1),
     capabilities: AgentSessionCapabilitiesSchema,
+    permissionProfile: AgentSessionPermissionProfileSchema.optional(),
   })
   .strict();
 
@@ -936,6 +947,7 @@ export type AgentModeCapabilities = z.infer<typeof AgentModeCapabilitiesSchema>;
 export type AgentResourceModeSupport = z.infer<typeof AgentResourceModeSupportSchema>;
 export type AgentSessionCapability = z.infer<typeof AgentSessionCapabilitySchema>;
 export type AgentSessionCapabilities = z.infer<typeof AgentSessionCapabilitiesSchema>;
+export type AgentSessionPermissionProfile = z.infer<typeof AgentSessionPermissionProfileSchema>;
 export type AgentSessionSnapshot = z.infer<typeof AgentSessionSnapshotSchema>;
 export type AgentSessionStatus = z.infer<typeof AgentSessionStatusSchema>;
 export type AgentSessionTerminalStatus = z.infer<typeof AgentSessionTerminalStatusSchema>;

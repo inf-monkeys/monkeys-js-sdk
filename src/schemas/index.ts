@@ -24,6 +24,7 @@ export {
   AgentResourceModeSupportSchema,
   AgentSessionCapabilitiesSchema,
   AgentSessionCapabilitySchema,
+  AgentSessionPermissionProfileSchema,
   AgentSessionActiveBranchSchema,
   AgentSessionCommandPolicySchema,
   AgentSessionCommandErrorCodeSchema,
