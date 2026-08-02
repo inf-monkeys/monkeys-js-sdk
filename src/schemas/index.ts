@@ -43,6 +43,12 @@ export {
   AgentSessionRunSchema,
   AgentSessionTargetedCommandSchema,
   AgentSessionViewModelSchema,
+  AgentWorkbenchAgentItemSchema,
+  AgentWorkbenchCollectionStatusSchema,
+  AgentWorkbenchNavigationCapabilitiesSchema,
+  AgentWorkbenchNavigationItemStatusSchema,
+  AgentWorkbenchNavigationViewModelSchema,
+  AgentWorkbenchSessionItemSchema,
   AgentExecutionModeSchema,
 } from '../contracts/agent';
 export {
@@ -175,6 +181,7 @@ import {
   AgentSessionRunSchema,
   AgentSessionTargetedCommandSchema,
   AgentSessionViewModelSchema,
+  AgentWorkbenchNavigationViewModelSchema,
 } from '../contracts/agent';
 import { CapabilityManifestSchema, CapabilityRegistryDocumentSchema } from '../contracts/capability';
 import {
@@ -251,6 +258,7 @@ export const canonicalContractSchemas = {
   'agent-session-run-event': AgentSessionRunEventSchema,
   'agent-session-run': AgentSessionRunSchema,
   'agent-session-view-model': AgentSessionViewModelSchema,
+  'agent-workbench-navigation-view-model': AgentWorkbenchNavigationViewModelSchema,
   'agent-runtime-event': AgentRuntimeEventSchema,
   'application-run': ApplicationRunSchema,
   'application-handoff': ApplicationHandoffSchema,

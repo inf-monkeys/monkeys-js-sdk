@@ -941,6 +941,95 @@ export const AgentSessionViewModelSchema = z
     }
   });
 
+export const AgentWorkbenchNavigationItemStatusSchema = z.enum(['idle', 'running', 'completed', 'error']);
+
+export const AgentWorkbenchCollectionStatusSchema = z.enum(['loading', 'ready', 'error']);
+
+export const AgentWorkbenchAgentItemSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    name: z.string().min(1),
+    description: z.string().optional(),
+    iconUrl: z.string().url().optional(),
+    builtIn: z.boolean().default(false),
+    pinned: z.boolean().default(false),
+    pinPending: z.boolean().default(false),
+  })
+  .strict();
+
+export const AgentWorkbenchSessionItemSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    title: z.string().min(1),
+    updatedAt: IsoDateTimeSchema,
+    thumbnailUrl: z.string().url().optional(),
+    status: AgentWorkbenchNavigationItemStatusSchema.default('idle'),
+    pinned: z.boolean().default(false),
+    contextUsage: z
+      .object({
+        usedTokens: z.number().int().nonnegative(),
+        maxTokens: z.number().int().positive(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+export const AgentWorkbenchNavigationCapabilitiesSchema = z
+  .object({
+    createAgent: z.boolean().default(false),
+    createSession: z.boolean().default(true),
+    manageCapabilities: z.boolean().default(false),
+    manageAgentSettings: z.boolean().default(false),
+    pinAgents: z.boolean().default(false),
+    pinSessions: z.boolean().default(false),
+    renameSessions: z.boolean().default(false),
+    deleteSessions: z.boolean().default(false),
+  })
+  .strict();
+
+export const AgentWorkbenchNavigationViewModelSchema = z
+  .object({
+    contract: z.literal('AgentWorkbenchNavigationViewModel'),
+    activeTab: z.enum(['agents', 'sessions']).default('sessions'),
+    searchQuery: z.string().default(''),
+    selectedAgentId: ContractIdentifierSchema.optional(),
+    selectedSessionId: ContractIdentifierSchema.optional(),
+    agents: z
+      .object({
+        status: AgentWorkbenchCollectionStatusSchema,
+        items: z.array(AgentWorkbenchAgentItemSchema),
+        error: z.string().optional(),
+      })
+      .strict(),
+    sessions: z
+      .object({
+        status: AgentWorkbenchCollectionStatusSchema,
+        items: z.array(AgentWorkbenchSessionItemSchema),
+        error: z.string().optional(),
+      })
+      .strict(),
+    capabilities: AgentWorkbenchNavigationCapabilitiesSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const validateCollection = (
+      collection: { status: 'loading' | 'ready' | 'error'; error?: string },
+      path: 'agents' | 'sessions',
+    ) => {
+      if (collection.status === 'error' && !collection.error) {
+        context.addIssue({
+          code: 'custom',
+          path: [path, 'error'],
+          message: 'An error collection must include an error message.',
+        });
+      }
+    };
+
+    validateCollection(value.agents, 'agents');
+    validateCollection(value.sessions, 'sessions');
+  });
+
 export type AgentMode = z.infer<typeof AgentModeSchema>;
 export type AgentConfigurationCapability = z.infer<typeof AgentConfigurationCapabilitySchema>;
 export type AgentModeCapabilities = z.infer<typeof AgentModeCapabilitiesSchema>;
@@ -969,6 +1058,12 @@ export type AgentSessionCommandPolicy = z.infer<typeof AgentSessionCommandPolicy
 export type AgentSessionEvent = z.infer<typeof AgentSessionEventSchema>;
 export type AgentSessionRunEvent = z.infer<typeof AgentSessionRunEventSchema>;
 export type AgentSessionViewModel = z.infer<typeof AgentSessionViewModelSchema>;
+export type AgentWorkbenchNavigationItemStatus = z.infer<typeof AgentWorkbenchNavigationItemStatusSchema>;
+export type AgentWorkbenchCollectionStatus = z.infer<typeof AgentWorkbenchCollectionStatusSchema>;
+export type AgentWorkbenchAgentItem = z.infer<typeof AgentWorkbenchAgentItemSchema>;
+export type AgentWorkbenchSessionItem = z.infer<typeof AgentWorkbenchSessionItemSchema>;
+export type AgentWorkbenchNavigationCapabilities = z.infer<typeof AgentWorkbenchNavigationCapabilitiesSchema>;
+export type AgentWorkbenchNavigationViewModel = z.infer<typeof AgentWorkbenchNavigationViewModelSchema>;
 
 // Kept as a source-compatible type alias while consumers move to the product-level name.
 export const AgentExecutionModeSchema = AgentModeSchema;

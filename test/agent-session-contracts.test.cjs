@@ -83,6 +83,65 @@ test('publishes Agent session contracts in the canonical schema registry', () =>
     contracts.AgentSessionTargetedCommandSchema,
   );
   assert.equal(schemas.canonicalContractSchemas['agent-session-run-event'], contracts.AgentSessionRunEventSchema);
+  assert.equal(
+    schemas.canonicalContractSchemas['agent-workbench-navigation-view-model'],
+    contracts.AgentWorkbenchNavigationViewModelSchema,
+  );
+});
+
+test('validates the controlled Agent workbench navigation view model', () => {
+  const navigation = {
+    contract: 'AgentWorkbenchNavigationViewModel',
+    activeTab: 'sessions',
+    searchQuery: '',
+    selectedAgentId: 'agent-1',
+    selectedSessionId: 'session-1',
+    agents: {
+      status: 'ready',
+      items: [
+        {
+          id: 'agent-1',
+          name: 'Research Agent',
+          description: 'Finds and summarizes sources',
+          builtIn: false,
+          pinned: true,
+          pinPending: false,
+        },
+      ],
+    },
+    sessions: {
+      status: 'ready',
+      items: [
+        {
+          id: 'session-1',
+          title: 'Launch research',
+          updatedAt: '2026-08-02T08:00:00.000Z',
+          status: 'running',
+          pinned: false,
+          contextUsage: { usedTokens: 1024, maxTokens: 8192 },
+        },
+      ],
+    },
+    capabilities: {
+      createAgent: true,
+      createSession: true,
+      manageCapabilities: true,
+      manageAgentSettings: true,
+      pinAgents: true,
+      pinSessions: true,
+      renameSessions: true,
+      deleteSessions: true,
+    },
+  };
+
+  assert.deepEqual(contracts.AgentWorkbenchNavigationViewModelSchema.parse(navigation), navigation);
+  assert.equal(
+    contracts.AgentWorkbenchNavigationViewModelSchema.safeParse({
+      ...navigation,
+      sessions: { status: 'error', items: [] },
+    }).success,
+    false,
+  );
 });
 
 test('defines idempotent continuation requests and bounded inherited context', () => {

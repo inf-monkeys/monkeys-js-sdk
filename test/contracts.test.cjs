@@ -332,6 +332,45 @@ const fixtures = {
     lastSequence: 0,
     resumable: true,
   },
+  'agent-workbench-navigation-view-model': {
+    contract: 'AgentWorkbenchNavigationViewModel',
+    activeTab: 'sessions',
+    searchQuery: '',
+    selectedAgentId: 'agent-1',
+    selectedSessionId: 'agent-session-1',
+    agents: {
+      status: 'ready',
+      items: [{
+        id: 'agent-1',
+        name: 'Research Agent',
+        description: 'Finds and summarizes sources',
+        builtIn: false,
+        pinned: true,
+        pinPending: false,
+      }],
+    },
+    sessions: {
+      status: 'ready',
+      items: [{
+        id: 'agent-session-1',
+        title: 'Launch research',
+        updatedAt: occurredAt,
+        status: 'running',
+        pinned: false,
+        contextUsage: { usedTokens: 1024, maxTokens: 8192 },
+      }],
+    },
+    capabilities: {
+      createAgent: true,
+      createSession: true,
+      manageCapabilities: true,
+      manageAgentSettings: true,
+      pinAgents: true,
+      pinSessions: true,
+      renameSessions: true,
+      deleteSessions: true,
+    },
+  },
   'application-handoff': {
     contract: 'ApplicationHandoff',
     handoffId: 'handoff-1',
@@ -1026,7 +1065,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 66);
+  assert.equal(names.length, 67);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
