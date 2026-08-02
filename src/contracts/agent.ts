@@ -1030,6 +1030,101 @@ export const AgentWorkbenchNavigationViewModelSchema = z
     validateCollection(value.sessions, 'sessions');
   });
 
+export const AgentWorkbenchComposerStatusSchema = z.enum([
+  'idle',
+  'loading',
+  'streaming',
+  'stopping',
+  'error',
+]);
+
+export const AgentWorkbenchComposerAttachmentSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    name: z.string().min(1),
+    mediaType: z.string().min(1).optional(),
+    previewUrl: z.string().min(1).optional(),
+    status: z.enum(['uploading', 'ready', 'error']).default('ready'),
+  })
+  .strict();
+
+export const AgentWorkbenchComposerQueueItemSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    text: z.string(),
+    attachmentCount: z.number().int().nonnegative().default(0),
+    status: z.enum(['queued', 'sending', 'error']).default('queued'),
+  })
+  .strict();
+
+export const AgentWorkbenchComposerModelOptionSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    label: z.string().min(1),
+    provider: z.string().min(1).optional(),
+    mode: AgentModeSchema,
+    disabled: z.boolean().default(false),
+  })
+  .strict();
+
+export const AgentWorkbenchComposerCapabilitiesSchema = z
+  .object({
+    attachments: z.boolean().default(false),
+    voiceInput: z.boolean().default(false),
+    webSearch: z.boolean().default(false),
+    modelSelection: z.boolean().default(false),
+    reasoning: z.boolean().default(false),
+    permissions: z.boolean().default(false),
+    queue: z.boolean().default(false),
+    stop: z.boolean().default(false),
+  })
+  .strict();
+
+export const AgentWorkbenchComposerViewModelSchema = z
+  .object({
+    contract: z.literal('AgentWorkbenchComposerViewModel'),
+    value: z.string().default(''),
+    status: AgentWorkbenchComposerStatusSchema.default('idle'),
+    mode: AgentModeSchema,
+    placeholder: z.string().optional(),
+    attachments: z.array(AgentWorkbenchComposerAttachmentSchema).default([]),
+    queuedDrafts: z.array(AgentWorkbenchComposerQueueItemSchema).default([]),
+    model: z
+      .object({
+        selectedId: ContractIdentifierSchema.optional(),
+        options: z.array(AgentWorkbenchComposerModelOptionSchema),
+      })
+      .strict(),
+    reasoning: z
+      .object({
+        value: z.enum(['low', 'medium', 'high', 'xhigh']),
+        options: z.array(z.enum(['low', 'medium', 'high', 'xhigh'])).min(1),
+      })
+      .strict()
+      .optional(),
+    permissionProfile: AgentSessionPermissionProfileSchema.optional(),
+    webSearchEnabled: z.boolean().default(false),
+    error: z.string().optional(),
+    capabilities: AgentWorkbenchComposerCapabilitiesSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.status === 'error' && !value.error) {
+      context.addIssue({
+        code: 'custom',
+        path: ['error'],
+        message: 'An error composer must include an error message.',
+      });
+    }
+    if (value.model.selectedId && !value.model.options.some((option) => option.id === value.model.selectedId)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['model', 'selectedId'],
+        message: 'The selected model must exist in model options.',
+      });
+    }
+  });
+
 export type AgentMode = z.infer<typeof AgentModeSchema>;
 export type AgentConfigurationCapability = z.infer<typeof AgentConfigurationCapabilitySchema>;
 export type AgentModeCapabilities = z.infer<typeof AgentModeCapabilitiesSchema>;
@@ -1064,6 +1159,12 @@ export type AgentWorkbenchAgentItem = z.infer<typeof AgentWorkbenchAgentItemSche
 export type AgentWorkbenchSessionItem = z.infer<typeof AgentWorkbenchSessionItemSchema>;
 export type AgentWorkbenchNavigationCapabilities = z.infer<typeof AgentWorkbenchNavigationCapabilitiesSchema>;
 export type AgentWorkbenchNavigationViewModel = z.infer<typeof AgentWorkbenchNavigationViewModelSchema>;
+export type AgentWorkbenchComposerStatus = z.infer<typeof AgentWorkbenchComposerStatusSchema>;
+export type AgentWorkbenchComposerAttachment = z.infer<typeof AgentWorkbenchComposerAttachmentSchema>;
+export type AgentWorkbenchComposerQueueItem = z.infer<typeof AgentWorkbenchComposerQueueItemSchema>;
+export type AgentWorkbenchComposerModelOption = z.infer<typeof AgentWorkbenchComposerModelOptionSchema>;
+export type AgentWorkbenchComposerCapabilities = z.infer<typeof AgentWorkbenchComposerCapabilitiesSchema>;
+export type AgentWorkbenchComposerViewModel = z.infer<typeof AgentWorkbenchComposerViewModelSchema>;
 
 // Kept as a source-compatible type alias while consumers move to the product-level name.
 export const AgentExecutionModeSchema = AgentModeSchema;

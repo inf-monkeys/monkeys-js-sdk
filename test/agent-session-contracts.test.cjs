@@ -84,8 +84,70 @@ test('publishes Agent session contracts in the canonical schema registry', () =>
   );
   assert.equal(schemas.canonicalContractSchemas['agent-session-run-event'], contracts.AgentSessionRunEventSchema);
   assert.equal(
+    schemas.canonicalContractSchemas['agent-workbench-composer-view-model'],
+    contracts.AgentWorkbenchComposerViewModelSchema,
+  );
+  assert.equal(
     schemas.canonicalContractSchemas['agent-workbench-navigation-view-model'],
     contracts.AgentWorkbenchNavigationViewModelSchema,
+  );
+});
+
+test('validates the controlled Agent workbench composer view model', () => {
+  const composer = {
+    contract: 'AgentWorkbenchComposerViewModel',
+    value: 'Review the current changes',
+    status: 'streaming',
+    mode: 'agent',
+    placeholder: 'Ask anything',
+    attachments: [{
+      id: 'attachment-1',
+      name: 'screenshot.png',
+      mediaType: 'image/png',
+      previewUrl: 'https://example.test/screenshot.png',
+      status: 'ready',
+    }],
+    queuedDrafts: [{
+      id: 'draft-1',
+      text: 'Run the focused tests',
+      attachmentCount: 0,
+      status: 'queued',
+    }],
+    model: {
+      selectedId: 'gpt-5.5',
+      options: [{
+        id: 'gpt-5.5',
+        label: 'GPT 5.5',
+        provider: 'OpenAI',
+        mode: 'agent',
+        disabled: false,
+      }],
+    },
+    reasoning: {
+      value: 'high',
+      options: ['low', 'medium', 'high', 'xhigh'],
+    },
+    permissionProfile: 'full-access',
+    webSearchEnabled: true,
+    capabilities: {
+      attachments: true,
+      voiceInput: true,
+      webSearch: true,
+      modelSelection: true,
+      reasoning: true,
+      permissions: true,
+      queue: true,
+      stop: true,
+    },
+  };
+
+  assert.deepEqual(contracts.AgentWorkbenchComposerViewModelSchema.parse(composer), composer);
+  assert.equal(
+    contracts.AgentWorkbenchComposerViewModelSchema.safeParse({
+      ...composer,
+      model: { ...composer.model, selectedId: 'missing-model' },
+    }).success,
+    false,
   );
 });
 

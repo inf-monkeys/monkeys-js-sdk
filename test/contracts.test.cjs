@@ -371,6 +371,52 @@ const fixtures = {
       deleteSessions: true,
     },
   },
+  'agent-workbench-composer-view-model': {
+    contract: 'AgentWorkbenchComposerViewModel',
+    value: 'Review the current changes',
+    status: 'streaming',
+    mode: 'agent',
+    placeholder: 'Ask anything',
+    attachments: [{
+      id: 'attachment-1',
+      name: 'screenshot.png',
+      mediaType: 'image/png',
+      previewUrl: 'https://example.test/screenshot.png',
+      status: 'ready',
+    }],
+    queuedDrafts: [{
+      id: 'draft-1',
+      text: 'Run the focused tests',
+      attachmentCount: 0,
+      status: 'queued',
+    }],
+    model: {
+      selectedId: 'gpt-5.5',
+      options: [{
+        id: 'gpt-5.5',
+        label: 'GPT 5.5',
+        provider: 'OpenAI',
+        mode: 'agent',
+        disabled: false,
+      }],
+    },
+    reasoning: {
+      value: 'high',
+      options: ['low', 'medium', 'high', 'xhigh'],
+    },
+    permissionProfile: 'full-access',
+    webSearchEnabled: true,
+    capabilities: {
+      attachments: true,
+      voiceInput: true,
+      webSearch: true,
+      modelSelection: true,
+      reasoning: true,
+      permissions: true,
+      queue: true,
+      stop: true,
+    },
+  },
   'application-handoff': {
     contract: 'ApplicationHandoff',
     handoffId: 'handoff-1',
@@ -1065,7 +1111,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 67);
+  assert.equal(names.length, 68);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),

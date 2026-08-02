@@ -44,6 +44,12 @@ export {
   AgentSessionTargetedCommandSchema,
   AgentSessionViewModelSchema,
   AgentWorkbenchAgentItemSchema,
+  AgentWorkbenchComposerAttachmentSchema,
+  AgentWorkbenchComposerCapabilitiesSchema,
+  AgentWorkbenchComposerModelOptionSchema,
+  AgentWorkbenchComposerQueueItemSchema,
+  AgentWorkbenchComposerStatusSchema,
+  AgentWorkbenchComposerViewModelSchema,
   AgentWorkbenchCollectionStatusSchema,
   AgentWorkbenchNavigationCapabilitiesSchema,
   AgentWorkbenchNavigationItemStatusSchema,
@@ -181,6 +187,7 @@ import {
   AgentSessionRunSchema,
   AgentSessionTargetedCommandSchema,
   AgentSessionViewModelSchema,
+  AgentWorkbenchComposerViewModelSchema,
   AgentWorkbenchNavigationViewModelSchema,
 } from '../contracts/agent';
 import { CapabilityManifestSchema, CapabilityRegistryDocumentSchema } from '../contracts/capability';
@@ -258,6 +265,7 @@ export const canonicalContractSchemas = {
   'agent-session-run-event': AgentSessionRunEventSchema,
   'agent-session-run': AgentSessionRunSchema,
   'agent-session-view-model': AgentSessionViewModelSchema,
+  'agent-workbench-composer-view-model': AgentWorkbenchComposerViewModelSchema,
   'agent-workbench-navigation-view-model': AgentWorkbenchNavigationViewModelSchema,
   'agent-runtime-event': AgentRuntimeEventSchema,
   'application-run': ApplicationRunSchema,
