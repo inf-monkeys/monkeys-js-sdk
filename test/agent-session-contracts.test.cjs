@@ -94,8 +94,8 @@ test('validates the controlled Agent workbench navigation view model', () => {
     contract: 'AgentWorkbenchNavigationViewModel',
     activeTab: 'sessions',
     searchQuery: '',
-    selectedAgentId: 'agent-1',
-    selectedSessionId: 'session-1',
+    selectedAgentItem: 'agent-1',
+    selectedSessionItem: 'session-1',
     agents: {
       status: 'ready',
       items: [

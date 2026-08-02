@@ -336,8 +336,8 @@ const fixtures = {
     contract: 'AgentWorkbenchNavigationViewModel',
     activeTab: 'sessions',
     searchQuery: '',
-    selectedAgentId: 'agent-1',
-    selectedSessionId: 'agent-session-1',
+    selectedAgentItem: 'agent-1',
+    selectedSessionItem: 'agent-session-1',
     agents: {
       status: 'ready',
       items: [{

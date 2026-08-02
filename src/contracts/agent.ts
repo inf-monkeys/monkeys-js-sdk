@@ -993,8 +993,8 @@ export const AgentWorkbenchNavigationViewModelSchema = z
     contract: z.literal('AgentWorkbenchNavigationViewModel'),
     activeTab: z.enum(['agents', 'sessions']).default('sessions'),
     searchQuery: z.string().default(''),
-    selectedAgentId: ContractIdentifierSchema.optional(),
-    selectedSessionId: ContractIdentifierSchema.optional(),
+    selectedAgentItem: ContractIdentifierSchema.optional(),
+    selectedSessionItem: ContractIdentifierSchema.optional(),
     agents: z
       .object({
         status: AgentWorkbenchCollectionStatusSchema,
