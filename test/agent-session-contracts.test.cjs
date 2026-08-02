@@ -307,10 +307,13 @@ test('publishes command policies without changing source sessions for branch ope
   assert.equal(contracts.canIssueAgentSessionCommand('running', 'edit-and-rerun'), false);
   assert.equal(contracts.canIssueAgentSessionCommand('running', 'steer'), true);
   assert.equal(contracts.canIssueAgentSessionCommand('completed', 'steer'), false);
+  assert.equal(contracts.canIssueAgentSessionCommand('completed', 'retry-summary'), true);
+  assert.equal(contracts.canIssueAgentSessionCommand('running', 'retry-summary'), false);
   assert.equal(contracts.getAgentSessionCommandPolicy('fork').sourceSessionEffect, 'preserve');
   assert.equal(contracts.getAgentSessionCommandPolicy('steer').requiresRunId, true);
   assert.equal(contracts.getAgentSessionCommandPolicy('steer').sequenceRule, 'match-current');
   assert.equal(contracts.resolveAgentSessionCommandTransition('completed', 'fork'), undefined);
+  assert.equal(contracts.resolveAgentSessionCommandTransition('completed', 'retry-summary'), undefined);
   for (const code of [
     'ACTIVE_RUN_NOT_FOUND',
     'SOURCE_THREAD_NOT_FOUND',
@@ -321,6 +324,33 @@ test('publishes command policies without changing source sessions for branch ope
   ]) {
     assert.equal(contracts.AgentSessionCommandErrorCodeSchema.safeParse(code).success, true, code);
   }
+});
+
+test('defines summary-only retry without transitioning or rerunning the source task', () => {
+  const command = {
+    contract: 'AgentSessionCommand',
+    commandId: 'command-summary-retry',
+    sessionId: 'session-wp1',
+    runId: 'run-1',
+    idempotencyKey: 'session-wp1:summary-retry:1',
+    expectedSequence: 8,
+    issuedAt: '2026-08-02T00:00:00.000Z',
+    commandType: 'retry-summary',
+    payload: { sourceEventId: 'summary-failed-1', sourceRunId: 'run-1' },
+  };
+  assert.deepEqual(contracts.AgentSessionCommandSchema.parse(command), command);
+  const policy = contracts.getAgentSessionCommandPolicy('retry-summary');
+  assert.equal(policy.capability, 'summary');
+  assert.equal(policy.sourceSessionEffect, 'preserve');
+  assert.equal(policy.requiresRunId, true);
+  assert.deepEqual(contracts.AGENT_SESSION_CAPABILITY_EVIDENCE.summary.commandTypes, ['retry-summary']);
+  assert.equal(
+    contracts.AgentSessionCommandSchema.safeParse({
+      ...command,
+      payload: { ...command.payload, sourceRunId: 'run-other' },
+    }).success,
+    false,
+  );
 });
 
 test('keeps pre-WP1 session contracts parseable with new capabilities disabled', () => {

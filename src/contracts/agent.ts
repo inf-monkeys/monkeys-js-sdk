@@ -139,7 +139,7 @@ export const AGENT_SESSION_CAPABILITY_EVIDENCE = Object.freeze({
   threadForking: { eventTypes: [], commandTypes: ['fork'] },
   editAndRerun: { eventTypes: [], commandTypes: ['edit-and-rerun'] },
   steering: { eventTypes: ['steer'], commandTypes: ['steer'] },
-  summary: { eventTypes: ['summary'], commandTypes: [] },
+  summary: { eventTypes: ['summary'], commandTypes: ['retry-summary'] },
 } as const) satisfies Readonly<Record<AgentSessionCapability, { readonly eventTypes: readonly string[]; readonly commandTypes: readonly string[] }>>;
 
 export function findUnsupportedAgentSessionCapabilities(
@@ -327,6 +327,7 @@ export const AgentSessionCommandTypeSchema = z.enum([
   'stop',
   'resume',
   'retry',
+  'retry-summary',
   'approval',
   'fork',
   'edit-and-rerun',
@@ -361,6 +362,10 @@ export const AgentSessionCommandSchema = z.discriminatedUnion('commandType', [
   sessionCommand('retry', {
     sourceEventId: ContractIdentifierSchema,
   }),
+  sessionCommand('retry-summary', {
+    sourceEventId: ContractIdentifierSchema,
+    sourceRunId: ContractIdentifierSchema,
+  }),
   sessionCommand('approval', {
     approvalId: ContractIdentifierSchema,
     decision: z.enum(['approved', 'rejected']),
@@ -389,6 +394,13 @@ export const AgentSessionCommandSchema = z.discriminatedUnion('commandType', [
       code: 'custom',
       path: ['payload', 'targetRunId'],
       message: 'Steering targetRunId must match the command runId.',
+    });
+  }
+  if (value.commandType === 'retry-summary' && value.runId !== value.payload.sourceRunId) {
+    context.addIssue({
+      code: 'custom',
+      path: ['payload', 'sourceRunId'],
+      message: 'Summary retry sourceRunId must match the command runId.',
     });
   }
 });
@@ -510,6 +522,7 @@ const AGENT_SESSION_COMMAND_TRANSITIONS: Record<AgentSessionCommandType, Partial
   stop: { queued: 'stopping', running: 'stopping', waiting_approval: 'stopping' },
   resume: { stopped: 'queued', completed: 'queued', failed: 'queued' },
   retry: { failed: 'queued' },
+  'retry-summary': {},
   approval: { waiting_approval: 'running' },
   fork: {},
   'edit-and-rerun': {},
@@ -550,6 +563,14 @@ export const AGENT_SESSION_COMMAND_POLICIES = Object.freeze({
     allowedStatuses: ['failed'],
     requiresRunId: true,
     sourceSessionEffect: 'transition',
+    idempotencyScope: 'session-command',
+    sequenceRule: 'match-current',
+  }),
+  'retry-summary': sessionCommandPolicy({
+    capability: 'summary',
+    allowedStatuses: ['stopped', 'completed', 'failed'],
+    requiresRunId: true,
+    sourceSessionEffect: 'preserve',
     idempotencyScope: 'session-command',
     sequenceRule: 'match-current',
   }),
