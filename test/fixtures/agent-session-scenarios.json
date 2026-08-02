@@ -1,0 +1,328 @@
+{
+  "streamInterrupted": {
+    "contract": "AgentSessionViewModel",
+    "sessionId": "scenario-stream-interrupted",
+    "snapshot": {
+      "mode": "agent",
+      "modelId": "openai:gpt-5.1-codex",
+      "capabilities": { "text": true, "resume": true }
+    },
+    "status": "stopped",
+    "events": [
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "stream-status-running",
+        "sessionId": "scenario-stream-interrupted",
+        "sequence": 0,
+        "idempotencyKey": "scenario-stream-interrupted:0",
+        "occurredAt": "2026-08-02T01:00:00.000Z",
+        "eventType": "status",
+        "payload": { "status": "running" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "stream-message-partial",
+        "sessionId": "scenario-stream-interrupted",
+        "sequence": 1,
+        "idempotencyKey": "scenario-stream-interrupted:1",
+        "occurredAt": "2026-08-02T01:00:01.000Z",
+        "eventType": "message",
+        "payload": {
+          "messageId": "stream-assistant-message",
+          "role": "assistant",
+          "operation": "append",
+          "parts": [{ "type": "text", "text": "Partial response" }],
+          "status": "streaming"
+        }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "stream-resumable",
+        "sessionId": "scenario-stream-interrupted",
+        "sequence": 2,
+        "idempotencyKey": "scenario-stream-interrupted:2",
+        "occurredAt": "2026-08-02T01:00:02.000Z",
+        "eventType": "resume",
+        "payload": { "resumable": true, "reason": "user_stopped" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "stream-status-stopped",
+        "sessionId": "scenario-stream-interrupted",
+        "sequence": 3,
+        "idempotencyKey": "scenario-stream-interrupted:3",
+        "occurredAt": "2026-08-02T01:00:03.000Z",
+        "eventType": "status",
+        "payload": { "status": "stopped", "stoppedAt": "2026-08-02T01:00:03.000Z", "durationMs": 3000 }
+      }
+    ],
+    "lastSequence": 3,
+    "resumable": true
+  },
+  "approvalWaiting": {
+    "contract": "AgentSessionViewModel",
+    "sessionId": "scenario-approval-waiting",
+    "snapshot": {
+      "mode": "agent",
+      "modelId": "openai:gpt-5.1-codex",
+      "capabilities": { "tools": true, "approval": true, "resume": true }
+    },
+    "status": "waiting_approval",
+    "events": [
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "approval-tool-running",
+        "sessionId": "scenario-approval-waiting",
+        "sequence": 0,
+        "idempotencyKey": "scenario-approval-waiting:0",
+        "occurredAt": "2026-08-02T01:01:00.000Z",
+        "eventType": "tool",
+        "payload": { "toolCallId": "approval-tool", "toolName": "shell", "status": "running", "input": { "command": "npm test" } }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "approval-requested",
+        "sessionId": "scenario-approval-waiting",
+        "sequence": 1,
+        "idempotencyKey": "scenario-approval-waiting:1",
+        "occurredAt": "2026-08-02T01:01:01.000Z",
+        "eventType": "approval",
+        "payload": { "approvalId": "approval-request", "toolCallId": "approval-tool", "status": "requested", "title": "Run tests" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "approval-resumable",
+        "sessionId": "scenario-approval-waiting",
+        "sequence": 2,
+        "idempotencyKey": "scenario-approval-waiting:2",
+        "occurredAt": "2026-08-02T01:01:02.000Z",
+        "eventType": "resume",
+        "payload": { "resumable": true, "reason": "approval_required" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "approval-status-waiting",
+        "sessionId": "scenario-approval-waiting",
+        "sequence": 3,
+        "idempotencyKey": "scenario-approval-waiting:3",
+        "occurredAt": "2026-08-02T01:01:03.000Z",
+        "eventType": "status",
+        "payload": { "status": "waiting_approval" }
+      }
+    ],
+    "lastSequence": 3,
+    "resumable": true
+  },
+  "toolFailed": {
+    "contract": "AgentSessionViewModel",
+    "sessionId": "scenario-tool-failed",
+    "snapshot": {
+      "mode": "agent",
+      "modelId": "openai:gpt-5.1-codex",
+      "capabilities": { "tools": true }
+    },
+    "status": "failed",
+    "events": [
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "failed-tool",
+        "sessionId": "scenario-tool-failed",
+        "sequence": 0,
+        "idempotencyKey": "scenario-tool-failed:0",
+        "occurredAt": "2026-08-02T01:02:00.000Z",
+        "eventType": "tool",
+        "payload": { "toolCallId": "failed-tool-call", "toolName": "shell", "status": "failed", "input": { "command": "npm test" }, "output": "exit code 1", "error": "Tests failed" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "failed-error",
+        "sessionId": "scenario-tool-failed",
+        "sequence": 1,
+        "idempotencyKey": "scenario-tool-failed:1",
+        "occurredAt": "2026-08-02T01:02:01.000Z",
+        "eventType": "error",
+        "payload": { "code": "TOOL_EXECUTION_FAILED", "message": "Tests failed", "retryable": true, "sourceEventId": "failed-tool" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "failed-status",
+        "sessionId": "scenario-tool-failed",
+        "sequence": 2,
+        "idempotencyKey": "scenario-tool-failed:2",
+        "occurredAt": "2026-08-02T01:02:02.000Z",
+        "eventType": "status",
+        "payload": { "status": "failed", "failedAt": "2026-08-02T01:02:02.000Z", "durationMs": 2000 }
+      }
+    ],
+    "lastSequence": 2,
+    "resumable": false
+  },
+  "resumed": {
+    "contract": "AgentSessionViewModel",
+    "sessionId": "scenario-resumed",
+    "snapshot": {
+      "mode": "agent",
+      "modelId": "openai:gpt-5.1-codex",
+      "capabilities": { "text": true, "resume": true }
+    },
+    "status": "completed",
+    "events": [
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "resumed-status-stopped",
+        "sessionId": "scenario-resumed",
+        "sequence": 0,
+        "idempotencyKey": "scenario-resumed:0",
+        "occurredAt": "2026-08-02T01:03:00.000Z",
+        "eventType": "status",
+        "payload": { "status": "stopped", "stoppedAt": "2026-08-02T01:03:00.000Z", "durationMs": 1000 }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "resumed-available",
+        "sessionId": "scenario-resumed",
+        "sequence": 1,
+        "idempotencyKey": "scenario-resumed:1",
+        "occurredAt": "2026-08-02T01:03:01.000Z",
+        "eventType": "resume",
+        "payload": { "resumable": true, "reason": "user_stopped" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "resumed-status-queued",
+        "sessionId": "scenario-resumed",
+        "sequence": 2,
+        "idempotencyKey": "scenario-resumed:2",
+        "occurredAt": "2026-08-02T01:03:02.000Z",
+        "eventType": "status",
+        "payload": { "status": "queued" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "resumed-status-running",
+        "sessionId": "scenario-resumed",
+        "sequence": 3,
+        "idempotencyKey": "scenario-resumed:3",
+        "occurredAt": "2026-08-02T01:03:03.000Z",
+        "eventType": "status",
+        "payload": { "status": "running", "startedAt": "2026-08-02T01:03:03.000Z" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "resumed-message",
+        "sessionId": "scenario-resumed",
+        "sequence": 4,
+        "idempotencyKey": "scenario-resumed:4",
+        "occurredAt": "2026-08-02T01:03:04.000Z",
+        "eventType": "message",
+        "payload": { "messageId": "resumed-assistant-message", "role": "assistant", "operation": "append", "parts": [{ "type": "text", "text": "Recovered response" }], "status": "completed" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "resumed-status-completed",
+        "sessionId": "scenario-resumed",
+        "sequence": 5,
+        "idempotencyKey": "scenario-resumed:5",
+        "occurredAt": "2026-08-02T01:03:05.000Z",
+        "eventType": "status",
+        "payload": { "status": "completed", "completedAt": "2026-08-02T01:03:05.000Z", "durationMs": 2000 }
+      }
+    ],
+    "lastSequence": 5,
+    "resumable": false
+  },
+  "artifactCompleted": {
+    "contract": "AgentSessionViewModel",
+    "sessionId": "scenario-artifact-completed",
+    "snapshot": {
+      "mode": "agent",
+      "modelId": "openai:gpt-5.1-codex",
+      "capabilities": { "artifacts": true }
+    },
+    "status": "completed",
+    "events": [
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "artifact-pending",
+        "sessionId": "scenario-artifact-completed",
+        "sequence": 0,
+        "idempotencyKey": "scenario-artifact-completed:0",
+        "occurredAt": "2026-08-02T01:04:00.000Z",
+        "eventType": "artifact",
+        "payload": { "artifactId": "generated-image", "name": "output.png", "kind": "image", "status": "pending" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "artifact-ready",
+        "sessionId": "scenario-artifact-completed",
+        "sequence": 1,
+        "idempotencyKey": "scenario-artifact-completed:1",
+        "occurredAt": "2026-08-02T01:04:01.000Z",
+        "eventType": "artifact",
+        "payload": { "artifactId": "generated-image", "name": "output.png", "kind": "image", "status": "ready", "mimeType": "image/png", "url": "https://example.test/output.png" }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "artifact-status-completed",
+        "sessionId": "scenario-artifact-completed",
+        "sequence": 2,
+        "idempotencyKey": "scenario-artifact-completed:2",
+        "occurredAt": "2026-08-02T01:04:02.000Z",
+        "eventType": "status",
+        "payload": { "status": "completed", "completedAt": "2026-08-02T01:04:02.000Z", "durationMs": 2000 }
+      }
+    ],
+    "lastSequence": 2,
+    "resumable": false
+  },
+  "contextCompacted": {
+    "contract": "AgentSessionViewModel",
+    "sessionId": "scenario-context-compacted",
+    "snapshot": {
+      "mode": "agent",
+      "modelId": "openai:gpt-5.1-codex",
+      "capabilities": { "text": true, "usage": true }
+    },
+    "status": "running",
+    "events": [
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "compacted-message",
+        "sessionId": "scenario-context-compacted",
+        "sequence": 0,
+        "idempotencyKey": "scenario-context-compacted:0",
+        "occurredAt": "2026-08-02T01:05:00.000Z",
+        "eventType": "message",
+        "payload": {
+          "messageId": "compacted-assistant-message",
+          "role": "assistant",
+          "operation": "append",
+          "parts": [{ "type": "text", "text": "Context compacted", "metadata": { "debugContext": { "contextUsage": { "compressed": true } } } }],
+          "status": "completed"
+        }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "compacted-usage",
+        "sessionId": "scenario-context-compacted",
+        "sequence": 1,
+        "idempotencyKey": "scenario-context-compacted:1",
+        "occurredAt": "2026-08-02T01:05:01.000Z",
+        "eventType": "usage",
+        "payload": { "inputTokens": 12000, "outputTokens": 300, "totalTokens": 12300, "contextTokens": 24000, "contextWindow": 128000 }
+      },
+      {
+        "contract": "AgentSessionEvent",
+        "eventId": "compacted-status-running",
+        "sessionId": "scenario-context-compacted",
+        "sequence": 2,
+        "idempotencyKey": "scenario-context-compacted:2",
+        "occurredAt": "2026-08-02T01:05:02.000Z",
+        "eventType": "status",
+        "payload": { "status": "running" }
+      }
+    ],
+    "lastSequence": 2,
+    "resumable": false
+  }
+}

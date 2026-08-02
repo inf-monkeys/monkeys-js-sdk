@@ -18,6 +18,52 @@ for (const name of ['agent-session-chatbot.json', 'agent-session-agent.json', 'a
   });
 }
 
+test('validates the canonical Agent session lifecycle scenario set', () => {
+  const scenarios = readFixture('agent-session-scenarios.json');
+  assert.deepEqual(Object.keys(scenarios), [
+    'streamInterrupted',
+    'approvalWaiting',
+    'toolFailed',
+    'resumed',
+    'artifactCompleted',
+    'contextCompacted',
+  ]);
+
+  const parsed = Object.fromEntries(
+    Object.entries(scenarios).map(([name, scenario]) => [
+      name,
+      contracts.AgentSessionViewModelSchema.parse(scenario),
+    ]),
+  );
+  const eventTypes = (name) => parsed[name].events.map((event) => event.eventType);
+  const statuses = (name) =>
+    parsed[name].events
+      .filter((event) => event.eventType === 'status')
+      .map((event) => event.payload.status);
+
+  assert.equal(parsed.streamInterrupted.status, 'stopped');
+  assert.equal(parsed.streamInterrupted.resumable, true);
+  assert.equal(parsed.streamInterrupted.events.some((event) => event.eventType === 'message' && event.payload.status === 'streaming'), true);
+
+  assert.equal(parsed.approvalWaiting.status, 'waiting_approval');
+  assert.equal(parsed.approvalWaiting.events.some((event) => event.eventType === 'approval' && event.payload.status === 'requested'), true);
+
+  assert.equal(parsed.toolFailed.status, 'failed');
+  assert.equal(parsed.toolFailed.events.some((event) => event.eventType === 'tool' && event.payload.status === 'failed'), true);
+  assert.equal(parsed.toolFailed.events.some((event) => event.eventType === 'error'), true);
+
+  assert.deepEqual(statuses('resumed'), ['stopped', 'queued', 'running', 'completed']);
+  assert.equal(parsed.resumed.status, 'completed');
+
+  const artifactEvents = parsed.artifactCompleted.events.filter((event) => event.eventType === 'artifact');
+  assert.deepEqual(artifactEvents.map((event) => event.payload.status), ['pending', 'ready']);
+  assert.equal(artifactEvents[0].payload.artifactId, artifactEvents[1].payload.artifactId);
+  assert.equal(artifactEvents[1].payload.url, 'https://example.test/output.png');
+
+  assert.deepEqual(eventTypes('contextCompacted'), ['message', 'usage', 'status']);
+  assert.equal(parsed.contextCompacted.events[0].payload.parts[0].metadata.debugContext.contextUsage.compressed, true);
+});
+
 test('publishes Agent session contracts in the canonical schema registry', () => {
   assert.equal(schemas.canonicalContractSchemas['agent-session-command'], contracts.AgentSessionCommandSchema);
   assert.equal(schemas.canonicalContractSchemas['agent-session-command-result'], contracts.AgentSessionCommandResultSchema);
