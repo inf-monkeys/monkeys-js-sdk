@@ -329,9 +329,14 @@ const LoginPageSchema = z
   })
   .strict();
 
+const LandingPageHeadbarConfigShape = {
+  headbarMode: z.enum(['shared', 'hidden']).optional(),
+};
+
 const LandingPageDefaultConfigSchema = z
   .object({
     mode: z.literal('default'),
+    ...LandingPageHeadbarConfigShape,
   })
   .strict();
 
@@ -339,6 +344,7 @@ const LandingPageMarkdownConfigSchema = z
   .object({
     mode: z.literal('markdown'),
     content: z.string(),
+    ...LandingPageHeadbarConfigShape,
   })
   .strict();
 
@@ -346,12 +352,14 @@ const LandingPageHtmlConfigSchema = z
   .object({
     mode: z.literal('html'),
     content: z.string(),
+    ...LandingPageHeadbarConfigShape,
   })
   .strict();
 
 const LandingPageIframeConfigSchema = z
   .object({
     mode: z.literal('iframe'),
+    ...LandingPageHeadbarConfigShape,
     url: z
       .string()
       .refine((value) => {
