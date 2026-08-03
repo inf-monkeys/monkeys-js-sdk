@@ -479,6 +479,7 @@ test('publishes command policies without changing source sessions for branch ope
   assert.equal(contracts.getAgentSessionCommandPolicy('fork').sourceSessionEffect, 'preserve');
   assert.equal(contracts.getAgentSessionCommandPolicy('steer').requiresRunId, true);
   assert.equal(contracts.getAgentSessionCommandPolicy('steer').sequenceRule, 'match-current');
+  assert.equal(contracts.getAgentSessionCommandPolicy('stop').sequenceRule, 'target-run');
   assert.equal(contracts.resolveAgentSessionCommandTransition('completed', 'fork'), undefined);
   assert.equal(contracts.resolveAgentSessionCommandTransition('completed', 'retry-summary'), undefined);
   for (const code of [

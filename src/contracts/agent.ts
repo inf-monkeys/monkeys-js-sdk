@@ -547,7 +547,7 @@ export const AgentSessionCommandPolicySchema = z
     requiresRunId: z.boolean(),
     sourceSessionEffect: z.enum(['transition', 'preserve']),
     idempotencyScope: z.literal('session-command'),
-    sequenceRule: z.literal('match-current'),
+    sequenceRule: z.enum(['match-current', 'target-run']),
   })
   .strict();
 
@@ -560,7 +560,7 @@ export const AGENT_SESSION_COMMAND_POLICIES = Object.freeze({
     requiresRunId: true,
     sourceSessionEffect: 'transition',
     idempotencyScope: 'session-command',
-    sequenceRule: 'match-current',
+    sequenceRule: 'target-run',
   }),
   resume: sessionCommandPolicy({
     capability: 'resume',

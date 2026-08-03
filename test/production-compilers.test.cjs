@@ -167,11 +167,28 @@ test('compiles desired tenant config into a resolved, source-free browser contra
       headbar: { theme: 'fixed' },
     },
   }).success, false);
-  assert.deepEqual(schemas.TenantLandingPageConfigSchema.parse({ mode: 'default' }), { mode: 'default' });
-  assert.deepEqual(schemas.TenantLandingPageConfigSchema.parse({ mode: 'markdown', content: '# Welcome' }), {
-    mode: 'markdown',
-    content: '# Welcome',
-  });
+  const landingPageConfigs = [
+    { mode: 'default' },
+    { mode: 'markdown', content: '# Welcome' },
+    { mode: 'html', content: '<main>Welcome</main>' },
+    { mode: 'iframe', url: '/landing-pages/tenant/index.html' },
+  ];
+  for (const landingPageConfig of landingPageConfigs) {
+    for (const headbarMode of [undefined, 'shared', 'hidden']) {
+      const input = headbarMode === undefined
+        ? landingPageConfig
+        : { ...landingPageConfig, headbarMode };
+      assert.deepEqual(schemas.TenantLandingPageConfigSchema.parse(input), input);
+    }
+    assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+      ...landingPageConfig,
+      headbarMode: 'floating',
+    }).success, false);
+    assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
+      ...landingPageConfig,
+      undeclared: true,
+    }).success, false);
+  }
   assert.equal(schemas.TenantLandingPageConfigSchema.safeParse({
     mode: 'html',
     content: '<main>Welcome</main>',
