@@ -1191,6 +1191,32 @@ test('tenant application config accepts Ontology data bindings and rejects retir
   }
 });
 
+test('tenant application config accepts strict Trend Radar Ontology/View source roles', () => {
+  const parseTrendRadar = (trendRadar) => schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    dataManagement: { trendRadar },
+  });
+  const hotwords = { ontologyId: 'trend-hotwords', viewId: 'view-hotwords' };
+  const brands = { ontologyId: 'trend-brands', viewId: 'view-brands' };
+
+  assert.equal(parseTrendRadar({ hotwords, brands }).success, true);
+  assert.equal(parseTrendRadar({ hotwords }).success, true);
+  assert.equal(parseTrendRadar({ brands }).success, true);
+
+  const invalidRegistries = [
+    { hotwords: { ontologyId: 'trend-hotwords' } },
+    { hotwords: { viewId: 'view-hotwords' } },
+    { hotwords: { ontologyId: '', viewId: 'view-hotwords' } },
+    { hotwords: { ...hotwords, teamId: '0' } },
+    { hotwords: { ...hotwords, projectionRef: 'projection' } },
+    { hotwords: { ...hotwords, fieldMap: { title: 'column-title' } } },
+    { opportunities: hotwords },
+  ];
+  for (const trendRadar of invalidRegistries) {
+    assert.equal(parseTrendRadar(trendRadar).success, false);
+  }
+});
+
 test('tenant application config bounds canonical gallery Ontology bindings', () => {
   const withGalleryOntologyIds = (galleryOntologyIds) => ({
     ...applicationConfig,
