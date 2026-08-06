@@ -157,6 +157,16 @@
           "tepCookieConfigured": false
         }
       },
+      "trendRadar": {
+        "hotwords": {
+          "ontologyId": "trend-hotwords",
+          "viewId": "view-hotwords"
+        },
+        "brands": {
+          "ontologyId": "trend-brands",
+          "viewId": "view-brands"
+        }
+      },
       "sharing": {
         "shareAccess": {
           "publicLinksEnabled": true,

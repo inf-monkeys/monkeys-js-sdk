@@ -95,6 +95,22 @@ export const TenantDataBindingsSchema = z.record(
   TenantDataBindingSchema,
 );
 
+/** Browser-safe identity of one governed Ontology View used by Trend Radar. */
+export const TenantTrendRadarSourceSchema = z
+  .object({
+    ontologyId: ContractIdentifierSchema,
+    viewId: ContractIdentifierSchema,
+  })
+  .strict();
+
+/** Page-group source registry; roles are optional to support staged deployment. */
+export const TenantTrendRadarSourcesSchema = z
+  .object({
+    hotwords: TenantTrendRadarSourceSchema.optional(),
+    brands: TenantTrendRadarSourceSchema.optional(),
+  })
+  .strict();
+
 const AssetVariantsSchema = z
   .object({
     light: z.string().optional(),
@@ -582,6 +598,7 @@ export const TenantApplicationConfigSchema = z
           tep: z.object({ baseUrl: z.string().optional(), timeoutMs: z.number().int().positive().optional() }).strict().optional(),
           runtime: z.object({ appId: ContractIdentifierSchema, tepBaseUrlConfigured: z.boolean(), tepAuthorizationConfigured: z.boolean(), tepCookieConfigured: z.boolean() }).strict().optional(),
         }).strict().optional(),
+        trendRadar: TenantTrendRadarSourcesSchema.optional(),
         sharing: z.object({
           silentViewLinks: z.object({ enabled: z.boolean().optional(), placement: z.object({ mode: z.enum(['sourceOntology', 'ontology']).optional(), ontologyId: ContractIdentifierSchema.optional(), parentId: ContractIdentifierSchema.optional(), navId: ContractIdentifierSchema.optional() }).strict().optional() }).strict().optional(),
           shareAccess: z.object({ publicLinksEnabled: z.boolean().optional(), passwordGateEnabled: z.boolean().optional(), passwordAccessTtlSeconds: z.number().int().positive().optional(), defaultViewTreeDelivery: z.enum(['manual', 'auto']).optional() }).strict().optional(),
