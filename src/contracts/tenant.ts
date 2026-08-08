@@ -118,12 +118,134 @@ const AssetVariantsSchema = z
   })
   .strict();
 
+export const LEGACY_CURRENT_USER_MENU_ITEM_IDS = ['dark-mode', 'language', 'settings', 'logout'] as const;
+export const CURRENT_USER_MENU_CONTROL_REFS = ['dark-mode', 'language'] as const;
+export const CURRENT_USER_MENU_ACTION_REFS = ['logout'] as const;
+
+const CurrentUserMenuIdentifierSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/, 'Expected a stable current-user menu identifier.');
+
+export const CurrentUserMenuDisplayTextSchema = z.union([
+  z.string().trim().min(1),
+  z
+    .record(z.string().trim().min(1), z.string().trim().min(1))
+    .refine((value) => Object.keys(value).length > 0, 'Localized menu text must contain at least one locale.'),
+]);
+
+export const CurrentUserMenuNavigationItemSchema = z
+  .object({
+    id: CurrentUserMenuIdentifierSchema,
+    kind: z.literal('navigation'),
+    ref: CurrentUserMenuIdentifierSchema,
+  })
+  .strict();
+
+export const CurrentUserMenuControlItemSchema = z
+  .object({
+    id: CurrentUserMenuIdentifierSchema,
+    kind: z.literal('control'),
+    ref: z.enum(CURRENT_USER_MENU_CONTROL_REFS),
+  })
+  .strict();
+
+export const CurrentUserMenuActionItemSchema = z
+  .object({
+    id: CurrentUserMenuIdentifierSchema,
+    kind: z.literal('action'),
+    ref: z.enum(CURRENT_USER_MENU_ACTION_REFS),
+    tone: z.enum(['default', 'danger']).optional(),
+  })
+  .strict();
+
+export const CurrentUserMenuItemSchema = z.discriminatedUnion('kind', [
+  CurrentUserMenuNavigationItemSchema,
+  CurrentUserMenuControlItemSchema,
+  CurrentUserMenuActionItemSchema,
+]);
+
+export const CurrentUserMenuSectionSchema = z
+  .object({
+    id: CurrentUserMenuIdentifierSchema,
+    label: CurrentUserMenuDisplayTextSchema.optional(),
+    dividerBefore: z.boolean().optional(),
+    items: z.array(CurrentUserMenuItemSchema),
+  })
+  .strict();
+
+export const CurrentUserMenuConfigSchema = z
+  .object({
+    version: z.literal(1),
+    sections: z.array(CurrentUserMenuSectionSchema).max(20),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const sectionIds = new Set<string>();
+    const itemIds = new Set<string>();
+    let itemCount = 0;
+
+    value.sections.forEach((section, sectionIndex) => {
+      if (sectionIds.has(section.id)) {
+        context.addIssue({
+          code: 'custom',
+          message: `Duplicate current-user menu section id ${section.id}.`,
+          path: ['sections', sectionIndex, 'id'],
+        });
+      }
+      sectionIds.add(section.id);
+      itemCount += section.items.length;
+
+      section.items.forEach((item, itemIndex) => {
+        if (itemIds.has(item.id)) {
+          context.addIssue({
+            code: 'custom',
+            message: `Duplicate current-user menu item id ${item.id}.`,
+            path: ['sections', sectionIndex, 'items', itemIndex, 'id'],
+          });
+        }
+        itemIds.add(item.id);
+      });
+    });
+
+    if (itemCount > 100) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Current-user menu supports at most 100 items.',
+        path: ['sections'],
+      });
+    }
+  });
+
+const LegacyCurrentUserMenuProfileSchema = z
+  .array(z.enum(LEGACY_CURRENT_USER_MENU_ITEM_IDS))
+  .superRefine((value, context) => {
+    const seen = new Set<string>();
+    value.forEach((item, index) => {
+      if (seen.has(item)) {
+        context.addIssue({
+          code: 'custom',
+          message: `Duplicate legacy current-user menu item ${item}.`,
+          path: [index],
+        });
+      }
+      seen.add(item);
+    });
+  });
+
+/** Backward-compatible current-user menu composition stored under theme.headbar.profile. */
+export const CurrentUserMenuProfileSchema = z.union([
+  z.literal('*'),
+  LegacyCurrentUserMenuProfileSchema,
+  CurrentUserMenuConfigSchema,
+]);
+
 export const ThemeHeadbarSchema = z
   .object({
     theme: z.enum(['card', 'glassy', 'ghost']).optional(),
     navPosition: z.enum(['left', 'center', 'right']).optional(),
     actions: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]).optional(),
-    profile: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]).optional(),
+    profile: CurrentUserMenuProfileSchema.optional(),
     showTeamQuota: z.boolean().optional(),
   })
   .strict();
@@ -704,6 +826,14 @@ export const TenantRuntimeConfigSchema = z
 export type TenantProductConfig = z.infer<typeof TenantProductConfigSchema>;
 export type TenantRuntimeConfig = z.infer<typeof TenantRuntimeConfigSchema>;
 export type TenantApplicationConfig = z.infer<typeof TenantApplicationConfigSchema>;
+export type CurrentUserMenuDisplayText = z.infer<typeof CurrentUserMenuDisplayTextSchema>;
+export type CurrentUserMenuNavigationItem = z.infer<typeof CurrentUserMenuNavigationItemSchema>;
+export type CurrentUserMenuControlItem = z.infer<typeof CurrentUserMenuControlItemSchema>;
+export type CurrentUserMenuActionItem = z.infer<typeof CurrentUserMenuActionItemSchema>;
+export type CurrentUserMenuItem = z.infer<typeof CurrentUserMenuItemSchema>;
+export type CurrentUserMenuSection = z.infer<typeof CurrentUserMenuSectionSchema>;
+export type CurrentUserMenuConfig = z.infer<typeof CurrentUserMenuConfigSchema>;
+export type CurrentUserMenuProfile = z.infer<typeof CurrentUserMenuProfileSchema>;
 export type TenantLandingPageConfig = z.infer<typeof TenantLandingPageConfigSchema>;
 export type TenantWorkbenchConfig = z.infer<typeof TenantWorkbenchConfigSchema>;
 export type TenantWorkbenchPageContext = z.infer<typeof TenantWorkbenchPageContextSchema>;

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "id": "appearance",
+      "items": [
+        { "id": "dark-mode", "ref": "dark-mode", "kind": "control" },
+        { "id": "language", "ref": "language", "kind": "control" }
+      ],
+      "dividerBefore": true
+    },
+    {
+      "id": "account",
+      "items": [
+        { "id": "settings", "ref": "settings", "kind": "navigation" },
+        { "id": "my-assets", "ref": "data-browser", "kind": "navigation" },
+        { "id": "logout", "ref": "logout", "kind": "action", "tone": "danger" }
+      ],
+      "dividerBefore": false
+    }
+  ]
+}

@@ -114,6 +114,14 @@ export {
   ProductDeclarationSchema,
 } from '../contracts/semantic';
 export {
+  CurrentUserMenuActionItemSchema,
+  CurrentUserMenuConfigSchema,
+  CurrentUserMenuControlItemSchema,
+  CurrentUserMenuDisplayTextSchema,
+  CurrentUserMenuItemSchema,
+  CurrentUserMenuNavigationItemSchema,
+  CurrentUserMenuProfileSchema,
+  CurrentUserMenuSectionSchema,
   TenantApplicationConfigSchema,
   TenantLandingPageConfigSchema,
   TenantProductConfigSchema,

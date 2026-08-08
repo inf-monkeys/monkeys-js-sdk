@@ -1459,6 +1459,80 @@ test('exports only canonical contract and schema names', () => {
   assert.deepEqual(Object.keys(schemas).filter((name) => versionSuffix.test(name)), []);
 });
 
+test('accepts the versioned UAT current-user menu profile at the tenant runtime boundary', () => {
+  const profile = JSON.parse(
+    readFileSync(resolve(__dirname, './fixtures/current-user-menu-profile.v1.json'), 'utf8'),
+  );
+  const runtimeConfig = {
+    ...fixtures['tenant-runtime-config'],
+    applicationConfig: {
+      ...applicationConfig,
+      theme: {
+        ...applicationConfig.theme,
+        headbar: { profile },
+      },
+    },
+  };
+
+  const parsed = schemas.TenantRuntimeConfigSchema.parse(runtimeConfig);
+  assert.deepEqual(parsed.applicationConfig.theme.headbar.profile, profile);
+  assert.deepEqual(schemas.CurrentUserMenuProfileSchema.parse(profile), profile);
+  assert.equal(typeof contracts.CurrentUserMenuProfileSchema.parse, 'function');
+});
+
+test('preserves legacy current-user profiles and rejects malformed versioned profiles', () => {
+  assert.equal(schemas.CurrentUserMenuProfileSchema.parse('*'), '*');
+  assert.deepEqual(
+    schemas.CurrentUserMenuProfileSchema.parse(['dark-mode', 'language', 'settings', 'logout']),
+    ['dark-mode', 'language', 'settings', 'logout'],
+  );
+
+  const invalidProfiles = [
+    ['duplicate legacy item', ['settings', 'settings']],
+    [
+      'duplicate section id',
+      {
+        version: 1,
+        sections: [
+          { id: 'account', items: [] },
+          { id: 'account', items: [] },
+        ],
+      },
+    ],
+    [
+      'duplicate global item id',
+      {
+        version: 1,
+        sections: [
+          { id: 'appearance', items: [{ id: 'shared', kind: 'control', ref: 'language' }] },
+          { id: 'account', items: [{ id: 'shared', kind: 'action', ref: 'logout' }] },
+        ],
+      },
+    ],
+    [
+      'arbitrary navigation URL',
+      {
+        version: 1,
+        sections: [
+          { id: 'account', items: [{ id: 'external', kind: 'navigation', ref: 'https://example.com' }] },
+        ],
+      },
+    ],
+    [
+      'unknown field',
+      { version: 1, sections: [], fallback: '*' },
+    ],
+  ];
+
+  for (const [name, profile] of invalidProfiles) {
+    assert.equal(
+      schemas.CurrentUserMenuProfileSchema.safeParse(profile).success,
+      false,
+      name,
+    );
+  }
+});
+
 test('rejects unpinned render capability and provider references', () => {
   assert.equal(schemas.RenderNodeSchema.safeParse({
     ...renderNode,
