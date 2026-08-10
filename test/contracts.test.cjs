@@ -10,6 +10,9 @@ const schemas = require('../lib/schemas');
 const runtime = require('../lib/runtime');
 
 const occurredAt = '2026-07-14T08:00:00.000Z';
+const menuDefinition = JSON.parse(
+  readFileSync(resolve(__dirname, 'fixtures/menu-definition.v1.json'), 'utf8'),
+);
 const ref = (kind, id, version, ownerRepo) => ({
   kind,
   id,
@@ -688,6 +691,49 @@ const fixtures = {
     commands: [],
     capabilities: [],
     pages: [],
+    menus: [],
+  },
+  'menu-definition': menuDefinition,
+  'menu-definition-set': {
+    version: 1,
+    definitions: [menuDefinition],
+  },
+  'menu-runtime-bundle': {
+    contract: 'MenuRuntimeBundle',
+    version: 1,
+    applicationId: 'studio',
+    sourceVersion: 'config-1',
+    contentHash: 'a'.repeat(64),
+    menus: [{
+      applicationId: 'studio',
+      surface: 'headerbar',
+      menuId: 'default',
+      nodes: [
+        menuDefinition.nodes[0],
+        {
+          nodeId: menuDefinition.nodes[1].nodeId,
+          kind: menuDefinition.nodes[1].kind,
+          parentNodeId: menuDefinition.nodes[1].parentNodeId,
+          order: menuDefinition.nodes[1].order,
+          label: menuDefinition.nodes[1].label,
+          behavior: menuDefinition.nodes[1].behavior,
+          access: {
+            authenticated: true,
+            permissionAllOf: [],
+            permissionAnyOf: [],
+            featureFlags: [],
+            requiredPermission: 'data_asset:read',
+          },
+        },
+      ],
+      contributions: [],
+    }],
+    navigationTargets: [{
+      page: { applicationId: 'studio', pageId: 'data-browser' },
+      activationId: 'mine',
+      input: { exposure: 'client', value: { scope: 'mine' } },
+    }],
+    sourceMap: {},
   },
   'page-definition': pageDefinition,
   'page-runtime-descriptor': {
@@ -1111,7 +1157,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 68);
+  assert.equal(names.length, 71);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -1628,9 +1674,11 @@ test('compiles declarations, validates commands, and computes transitive change 
       binding: { ontologyId: ontology.ontologyId, projectionRef: projection.projectionId },
       capabilityRefs: [],
     }],
+    menus: [menuDefinition],
   };
   const compiled = runtime.compileProductDeclaration(declaration);
   assert.equal(compiled.pagesById.get('workflow-page').binding.projectionRef, 'asset-gallery');
+  assert.equal(compiled.menusByKey.get('studio/headerbar/default').menuId, 'default');
   assert.throws(() => runtime.compileProductDeclaration({
     ...declaration,
     projections: [{ ...projection, ontologyIds: ['missing'] }],

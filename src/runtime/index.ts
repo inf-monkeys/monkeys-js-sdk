@@ -1,6 +1,7 @@
 export * from './capability-registry';
 export * from './agent-session-projector';
 export * from './declaration-compiler';
+export * from './menu-compiler';
 export * from './page-compiler';
 export * from './product-runtime';
 export * from './render-tree-compiler';

@@ -1,6 +1,7 @@
 import type { CapabilityManifest } from '../contracts/capability';
 import { CapabilityManifestSchema } from '../contracts/capability';
 import type { EntityRef } from '../contracts/common';
+import type { MenuDefinition } from '../contracts/menu';
 import type { PageDefinition } from '../contracts/page';
 import {
   ChangeImpactGraphSchema,
@@ -34,6 +35,7 @@ export interface CompiledProductDeclaration {
   commandsByName: ReadonlyMap<string, DomainCommandDefinition>;
   capabilitiesById: ReadonlyMap<string, CapabilityManifest>;
   pagesById: ReadonlyMap<string, PageDefinition>;
+  menusByKey: ReadonlyMap<string, MenuDefinition>;
   nodes: readonly EntityRef[];
   edges: readonly ChangeImpactGraph['edges'][number][];
 }
@@ -219,6 +221,11 @@ export const compileProductDeclaration = (input: ProductDeclaration): CompiledPr
   const commandsByName = uniqueIndex(declaration.commands, (value) => value.commandName, 'command name');
   const capabilitiesById = uniqueIndex(declaration.capabilities, (value) => value.id, 'capability id');
   const pagesById = uniqueIndex(declaration.pages, (value) => value.pageId, 'page id');
+  const menusByKey = uniqueIndex(
+    declaration.menus,
+    (value) => `${value.applicationId}/${value.surface}/${value.menuId}`,
+    'menu definition',
+  );
   const nodes: EntityRef[] = [];
   const edges: ChangeImpactGraph['edges'] = [];
 
@@ -236,6 +243,7 @@ export const compileProductDeclaration = (input: ProductDeclaration): CompiledPr
   }
   for (const command of declaration.commands) addNode('command', command.commandName);
   for (const capability of declaration.capabilities) addNode('capability', capability.id);
+  for (const menu of declaration.menus) addNode('menu', `${menu.applicationId}/${menu.surface}/${menu.menuId}`);
   for (const concept of declaration.concepts) {
     addNode('concept', concept.conceptId);
     if (concept.ontologyId) {
@@ -282,6 +290,7 @@ export const compileProductDeclaration = (input: ProductDeclaration): CompiledPr
     commandsByName,
     capabilitiesById,
     pagesById,
+    menusByKey,
     nodes: Object.freeze(nodes),
     edges: Object.freeze(edges),
   });

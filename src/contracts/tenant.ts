@@ -5,6 +5,7 @@ import {
   LocaleIdentifierSchema,
   LocalizedTextSchema,
 } from './common';
+import { MenuDefinitionSetSchema, MenuRuntimeBundleSchema } from './menu';
 import { PageDefinitionSchema } from './page';
 import { ResolvedThemeTokensSchema, ThemeTokensSchema } from './theme';
 
@@ -800,6 +801,7 @@ export const TenantProductConfigSchema = z
     dataBinding: TenantDataBindingsSchema,
     sourceMap: z.record(z.string(), ContractIdentifierSchema),
     warnings: z.array(z.string()).default([]),
+    menus: MenuDefinitionSetSchema.optional(),
     applicationConfig: TenantApplicationConfigSchema,
   })
   .strict();
@@ -819,6 +821,7 @@ export const TenantRuntimeConfigSchema = z
     dataBinding: TenantDataBindingsSchema,
     sourceMap: z.record(z.string(), ContractIdentifierSchema),
     warnings: z.array(z.string()).default([]),
+    menuBundle: MenuRuntimeBundleSchema.optional(),
     applicationConfig: TenantApplicationConfigSchema,
   })
   .strict();

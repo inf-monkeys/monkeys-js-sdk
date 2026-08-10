@@ -3,6 +3,7 @@ import type {
   TenantProductConfig,
   TenantRuntimeConfig,
 } from '../contracts/tenant';
+import type { MenuRuntimeBundle } from '../contracts/menu';
 import {
   TenantProductConfigSchema,
   TenantRuntimeConfigSchema,
@@ -12,6 +13,7 @@ import { resolveThemeTokens } from './theme-tokens';
 export interface CompileTenantRuntimeConfigInput {
   productConfig: TenantProductConfig;
   resolvedDesignTokens: ThemeTokens;
+  menuBundle?: MenuRuntimeBundle;
 }
 
 /**
@@ -38,6 +40,7 @@ export const compileTenantRuntimeConfig = (
     dataBinding: productConfig.dataBinding,
     sourceMap: productConfig.sourceMap,
     warnings: productConfig.warnings,
+    menuBundle: input.menuBundle,
     applicationConfig: productConfig.applicationConfig,
   }));
 };

@@ -10,6 +10,7 @@ test('runtime subpath preserves CommonJS resolution', () => {
   const runtime = require(`${PACKAGE_NAME}/runtime`);
 
   assert.equal(typeof runtime.resolveThemeTokens, 'function');
+  assert.equal(typeof runtime.compileMenuRuntimeBundle, 'function');
 });
 
 test('runtime subpath exposes native ESM named exports', async () => {
@@ -17,6 +18,7 @@ test('runtime subpath exposes native ESM named exports', async () => {
 
   assert.equal(typeof runtime.resolveThemeTokens, 'function');
   assert.equal(typeof runtime.mergeThemeTokenDocuments, 'function');
+  assert.equal(typeof runtime.compileMenuRuntimeBundle, 'function');
 });
 
 test('all public module subpaths resolve through ESM import conditions', async () => {
@@ -29,6 +31,8 @@ test('all public module subpaths resolve through ESM import conditions', async (
   assert.equal(typeof root.resolveThemeTokens, 'function');
   assert.equal(typeof contracts.ThemeTokensSchema?.parse, 'function');
   assert.equal(typeof schemas.ThemeTokensSchema?.parse, 'function');
+  assert.equal(typeof contracts.MenuDefinitionSchema?.parse, 'function');
+  assert.equal(typeof schemas.MenuRuntimeBundleSchema?.parse, 'function');
 });
 
 test('browser ESM runtime does not expose the CommonJS Ajv boundary', () => {

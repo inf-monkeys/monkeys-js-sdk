@@ -7,6 +7,7 @@ import {
   JsonObjectSchema,
 } from './common';
 import { OntologyDefinitionSchema, ProjectionSpecSchema } from './data';
+import { MenuDefinitionSchema } from './menu';
 import { PageDefinitionSchema } from './page';
 
 export const ConceptRelationshipSchema = z
@@ -83,6 +84,7 @@ export const ProductDeclarationSchema = z
     commands: z.array(DomainCommandDefinitionSchema).default([]),
     capabilities: z.array(CapabilityManifestSchema).default([]),
     pages: z.array(PageDefinitionSchema).default([]),
+    menus: z.array(MenuDefinitionSchema).default([]),
   })
   .strict();
 

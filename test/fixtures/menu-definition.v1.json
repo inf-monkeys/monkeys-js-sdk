@@ -1,0 +1,41 @@
+{
+  "contract": "MenuDefinition",
+  "version": 1,
+  "applicationId": "studio",
+  "surface": "headerbar",
+  "menuId": "default",
+  "nodes": [
+    {
+      "nodeId": "assets",
+      "kind": "group",
+      "order": 10,
+      "label": {
+        "zh-CN": "资产",
+        "en-US": "Assets"
+      }
+    },
+    {
+      "nodeId": "my-assets",
+      "kind": "item",
+      "parentNodeId": "assets",
+      "order": 10,
+      "label": "我的资产",
+      "requiredPermission": "data_asset:read",
+      "behavior": {
+        "kind": "navigate",
+        "page": {
+          "applicationId": "studio",
+          "pageId": "data-browser"
+        },
+        "activationId": "mine",
+        "input": {
+          "exposure": "client",
+          "value": {
+            "scope": "mine"
+          }
+        }
+      }
+    }
+  ],
+  "contributions": []
+}

@@ -78,6 +78,38 @@ export {
   SourceRecordRefSchema,
 } from '../contracts/data';
 export {
+  CompiledMenuActionBehaviorSchema,
+  CompiledMenuBehaviorSchema,
+  CompiledMenuDividerNodeSchema,
+  CompiledMenuGroupNodeSchema,
+  CompiledMenuItemAccessSchema,
+  CompiledMenuItemNodeSchema,
+  CompiledMenuNodeSchema,
+  CompiledMenuProjectionSchema,
+  CompiledMenuNavigateBehaviorSchema,
+  MenuAccessRequirementSchema,
+  MenuActionBehaviorSchema,
+  MenuActionRegistrationSchema,
+  MenuBehaviorSchema,
+  MenuBoundedInputSchema,
+  MenuContributionProviderRegistrationSchema,
+  MenuContributionResultSchema,
+  MenuContributionSchema,
+  MenuDefinitionSchema,
+  MenuDefinitionSetSchema,
+  MenuDividerNodeSchema,
+  MenuGroupNodeSchema,
+  MenuItemNodeSchema,
+  MenuNavigateBehaviorSchema,
+  MenuNavigationTargetSchema,
+  MenuNodeSchema,
+  MenuPageRefSchema,
+  MenuPageRegistrationSchema,
+  MenuRuntimeBundleSchema,
+  MenuRuntimeInputBindingSchema,
+  MenuSourceInputBindingSchema,
+} from '../contracts/menu';
+export {
   PageDefinitionSchema,
   PageGuardProjectionSchema,
   PageNavigationProjectionSchema,
@@ -218,6 +250,11 @@ import {
   OntologyDefinitionSchema,
   ProjectionSpecSchema,
 } from '../contracts/data';
+import {
+  MenuDefinitionSchema,
+  MenuDefinitionSetSchema,
+  MenuRuntimeBundleSchema,
+} from '../contracts/menu';
 import { PageDefinitionSchema, PageRuntimeDescriptorSchema, PageRuntimeProjectionSchema } from '../contracts/page';
 import {
   ApplicationHandoffSchema,
@@ -297,6 +334,9 @@ export const canonicalContractSchemas = {
   'expiring-access-grant': ExpiringAccessGrantSchema,
   'hotword-body': HotwordBodySchema,
   'lineage-record': LineageRecordSchema,
+  'menu-definition': MenuDefinitionSchema,
+  'menu-definition-set': MenuDefinitionSetSchema,
+  'menu-runtime-bundle': MenuRuntimeBundleSchema,
   'ontology-definition': OntologyDefinitionSchema,
   'overlay-node': OverlayNodeSchema,
   'output-record': OutputRecordSchema,

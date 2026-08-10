@@ -107,6 +107,12 @@ export const PageDefinitionSchema = z
     access: z.object({
       actions: z.array(z.enum(['read', 'write', 'execute', 'manage-permissions'])).default([]),
     }).strict(),
+    input: z
+      .object({
+        schemaRef: ContractIdentifierSchema,
+      })
+      .strict()
+      .optional(),
     rendererConfig: z.object({
       schemaRef: ContractIdentifierSchema,
       value: JsonObjectSchema,
