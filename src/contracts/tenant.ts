@@ -674,6 +674,7 @@ export const TenantApplicationConfigSchema = z
             logo: AssetVariantsSchema.optional(),
             brandDisplayMode: z.enum(['auto', 'logo-only', 'logo-name', 'name-only']).optional(),
             density: z.enum(['compact', 'default', 'comfortable']).optional(),
+            sessionCentric: z.boolean().optional(),
           })
           .strict()
           .optional(),

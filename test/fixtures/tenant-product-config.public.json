@@ -22,7 +22,8 @@
       "title": "Monkeys",
       "logo": { "light": "/logo-light.svg", "dark": "/logo-dark.svg" },
       "agent": {
-        "logo": { "light": "/agent-logo-light.svg", "dark": "/agent-logo-dark.svg" }
+        "logo": { "light": "/agent-logo-light.svg", "dark": "/agent-logo-dark.svg" },
+        "sessionCentric": true
       },
       "favicon": { "light": "/favicon-light.svg", "dark": "/favicon-dark.svg" },
       "form": { "variant": "bento" },
