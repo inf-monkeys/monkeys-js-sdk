@@ -963,6 +963,7 @@ export const AgentWorkbenchSessionItemSchema = z
     title: z.string().min(1),
     updatedAt: IsoDateTimeSchema,
     thumbnailUrl: z.string().url().optional(),
+    mode: AgentModeSchema.optional(),
     status: AgentWorkbenchNavigationItemStatusSchema.default('idle'),
     pinned: z.boolean().default(false),
     contextUsage: z

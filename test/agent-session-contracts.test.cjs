@@ -178,6 +178,7 @@ test('validates the controlled Agent workbench navigation view model', () => {
           id: 'session-1',
           title: 'Launch research',
           updatedAt: '2026-08-02T08:00:00.000Z',
+          mode: 'agent',
           status: 'running',
           pinned: false,
           contextUsage: { usedTokens: 1024, maxTokens: 8192 },
@@ -197,6 +198,16 @@ test('validates the controlled Agent workbench navigation view model', () => {
   };
 
   assert.deepEqual(contracts.AgentWorkbenchNavigationViewModelSchema.parse(navigation), navigation);
+  assert.equal(
+    contracts.AgentWorkbenchNavigationViewModelSchema.safeParse({
+      ...navigation,
+      sessions: {
+        ...navigation.sessions,
+        items: navigation.sessions.items.map((item) => ({ ...item, mode: 'unsupported' })),
+      },
+    }).success,
+    false,
+  );
   assert.equal(
     contracts.AgentWorkbenchNavigationViewModelSchema.safeParse({
       ...navigation,
