@@ -2,7 +2,7 @@
   "contract": "AgentSessionViewModel",
   "sessionId": "agent-session-1",
   "snapshot": {
-    "mode": "agent",
+    "mode": "work",
     "modelId": "openai:gpt-5.1-codex",
     "capabilities": {
       "text": true,

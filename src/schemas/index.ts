@@ -19,6 +19,7 @@ export {
 } from '../contracts/common';
 export {
   AgentConfigurationCapabilitySchema,
+  StudioAgentModeSchema,
   AgentModeSchema,
   AgentModeCapabilitiesSchema,
   AgentResourceModeSupportSchema,

@@ -2,7 +2,7 @@
   "contract": "AgentSessionViewModel",
   "sessionId": "kernel-session-1",
   "snapshot": {
-    "mode": "agent",
+    "mode": "work",
     "modelId": "kernel:claude-code",
     "capabilities": {
       "text": true,
