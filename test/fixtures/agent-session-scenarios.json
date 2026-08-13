@@ -3,7 +3,7 @@
     "contract": "AgentSessionViewModel",
     "sessionId": "scenario-stream-interrupted",
     "snapshot": {
-      "mode": "agent",
+      "mode": "work",
       "modelId": "openai:gpt-5.1-codex",
       "capabilities": { "text": true, "resume": true }
     },
@@ -63,7 +63,7 @@
     "contract": "AgentSessionViewModel",
     "sessionId": "scenario-approval-waiting",
     "snapshot": {
-      "mode": "agent",
+      "mode": "work",
       "modelId": "openai:gpt-5.1-codex",
       "capabilities": { "tools": true, "approval": true, "resume": true }
     },
@@ -117,7 +117,7 @@
     "contract": "AgentSessionViewModel",
     "sessionId": "scenario-tool-failed",
     "snapshot": {
-      "mode": "agent",
+      "mode": "work",
       "modelId": "openai:gpt-5.1-codex",
       "capabilities": { "tools": true }
     },
@@ -161,7 +161,7 @@
     "contract": "AgentSessionViewModel",
     "sessionId": "scenario-resumed",
     "snapshot": {
-      "mode": "agent",
+      "mode": "work",
       "modelId": "openai:gpt-5.1-codex",
       "capabilities": { "text": true, "resume": true }
     },
@@ -235,7 +235,7 @@
     "contract": "AgentSessionViewModel",
     "sessionId": "scenario-artifact-completed",
     "snapshot": {
-      "mode": "agent",
+      "mode": "work",
       "modelId": "openai:gpt-5.1-codex",
       "capabilities": { "artifacts": true }
     },
@@ -279,7 +279,7 @@
     "contract": "AgentSessionViewModel",
     "sessionId": "scenario-context-compacted",
     "snapshot": {
-      "mode": "agent",
+      "mode": "work",
       "modelId": "openai:gpt-5.1-codex",
       "capabilities": { "text": true, "usage": true }
     },

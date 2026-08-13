@@ -11,7 +11,7 @@ const runtime = require('../lib/runtime');
 
 const readFixture = (name) => JSON.parse(readFileSync(resolve(__dirname, 'fixtures', name), 'utf8'));
 
-for (const name of ['agent-session-chatbot.json', 'agent-session-agent.json', 'agent-session-kernel.json']) {
+for (const name of ['agent-session-chat.json', 'agent-session-work.json', 'agent-session-kernel.json']) {
   test(`validates ${name}`, () => {
     const fixture = readFixture(name);
     assert.deepEqual(contracts.AgentSessionViewModelSchema.parse(fixture), fixture);
@@ -98,7 +98,7 @@ test('validates the controlled Agent workbench composer view model', () => {
     contract: 'AgentWorkbenchComposerViewModel',
     value: 'Review the current changes',
     status: 'streaming',
-    mode: 'agent',
+    mode: 'work',
     placeholder: 'Ask anything',
     attachments: [{
       id: 'attachment-1',
@@ -119,7 +119,7 @@ test('validates the controlled Agent workbench composer view model', () => {
         id: 'gpt-5.5',
         label: 'GPT 5.5',
         provider: 'OpenAI',
-        mode: 'agent',
+        mode: 'work',
         disabled: false,
       }],
     },
@@ -178,7 +178,7 @@ test('validates the controlled Agent workbench navigation view model', () => {
           id: 'session-1',
           title: 'Launch research',
           updatedAt: '2026-08-02T08:00:00.000Z',
-          mode: 'agent',
+          mode: 'work',
           status: 'running',
           pinned: false,
           contextUsage: { usedTokens: 1024, maxTokens: 8192 },
@@ -533,7 +533,7 @@ test('defines summary-only retry without transitioning or rerunning the source t
 });
 
 test('keeps pre-WP1 session contracts parseable with new capabilities disabled', () => {
-  const legacy = structuredClone(readFixture('agent-session-agent.json'));
+  const legacy = structuredClone(readFixture('agent-session-work.json'));
   for (const capability of ['threadForking', 'editAndRerun', 'steering', 'summary']) {
     delete legacy.snapshot.capabilities[capability];
   }
@@ -545,7 +545,7 @@ test('keeps pre-WP1 session contracts parseable with new capabilities disabled',
 });
 
 test('validates session permission profiles without breaking legacy snapshots', () => {
-  const fixture = structuredClone(readFixture('agent-session-agent.json'));
+  const fixture = structuredClone(readFixture('agent-session-work.json'));
   assert.equal(contracts.AgentSessionViewModelSchema.safeParse(fixture).success, true);
 
   fixture.snapshot.permissionProfile = 'approval-required';
@@ -651,7 +651,7 @@ test('distinguishes accepted stop requests from confirmed termination', () => {
 });
 
 test('requires upgraded run events to identify their run and source message', () => {
-  const legacyEvent = readFixture('agent-session-agent.json').events[0];
+  const legacyEvent = readFixture('agent-session-work.json').events[0];
   assert.equal(contracts.AgentSessionEventSchema.safeParse(legacyEvent).success, true);
   assert.equal(contracts.AgentSessionRunEventSchema.safeParse(legacyEvent).success, false);
   assert.equal(
@@ -720,7 +720,7 @@ test('defines deterministic command state transitions', () => {
 });
 
 test('carries canonical session events through the durable runtime envelope', () => {
-  const sessionEvent = readFixture('agent-session-agent.json').events[0];
+  const sessionEvent = readFixture('agent-session-work.json').events[0];
   const envelope = {
     contract: 'AgentRuntimeEvent',
     runtimeEventId: 'runtime-event-1',
@@ -737,7 +737,7 @@ test('carries canonical session events through the durable runtime envelope', ()
 });
 
 test('fails closed for unknown event types and unknown payload fields', () => {
-  const fixture = readFixture('agent-session-agent.json').events[0];
+  const fixture = readFixture('agent-session-work.json').events[0];
   assert.equal(contracts.AgentSessionEventSchema.safeParse({ ...fixture, eventType: 'provider-secret-event' }).success, false);
   assert.equal(
     contracts.AgentSessionEventSchema.safeParse({
@@ -749,7 +749,7 @@ test('fails closed for unknown event types and unknown payload fields', () => {
 });
 
 test('requires ordered events, a matching session, and the declared last sequence', () => {
-  const fixture = readFixture('agent-session-agent.json');
+  const fixture = readFixture('agent-session-work.json');
   assert.equal(
     contracts.AgentSessionViewModelSchema.safeParse({ ...fixture, events: [...fixture.events].reverse() }).success,
     false,
@@ -765,34 +765,34 @@ test('requires ordered events, a matching session, and the declared last sequenc
 });
 
 test('normalizes legacy provider values only at the product boundary', () => {
-  assert.equal(contracts.normalizeAgentMode('codex'), 'agent');
-  assert.equal(contracts.normalizeAgentMode('vercel-ai'), 'chatbot');
+  assert.equal(contracts.normalizeAgentMode('codex'), 'work');
+  assert.equal(contracts.normalizeAgentMode('vercel-ai'), 'chat');
   assert.equal(contracts.normalizeAgentMode('unknown'), undefined);
 });
 
 test('publishes canonical configuration capabilities for each Agent mode', () => {
-  assert.deepEqual(contracts.getAgentModeCapabilities('chatbot'), {
+  assert.deepEqual(contracts.getAgentModeCapabilities('chat'), {
     models: true,
     skills: true,
     tools: true,
     mcp: true,
     reasoning: false,
   });
-  assert.equal(contracts.agentModeHasCapability('agent', 'reasoning'), true);
-  assert.equal(contracts.agentModeHasCapability('chatbot', 'reasoning'), false);
+  assert.equal(contracts.agentModeHasCapability('work', 'reasoning'), true);
+  assert.equal(contracts.agentModeHasCapability('chat', 'reasoning'), false);
 });
 
 test('requires resources to declare their compatible product modes', () => {
-  const agentOnly = contracts.AgentResourceModeSupportSchema.parse({ modes: ['agent'] });
-  assert.equal(contracts.isAgentResourceModeCompatible(agentOnly, 'agent'), true);
-  assert.equal(contracts.isAgentResourceModeCompatible(agentOnly, 'chatbot'), false);
-  assert.equal(contracts.isAgentResourceModeCompatible(undefined, 'agent'), false);
+  const agentOnly = contracts.AgentResourceModeSupportSchema.parse({ modes: ['work'] });
+  assert.equal(contracts.isAgentResourceModeCompatible(agentOnly, 'work'), true);
+  assert.equal(contracts.isAgentResourceModeCompatible(agentOnly, 'chat'), false);
+  assert.equal(contracts.isAgentResourceModeCompatible(undefined, 'work'), false);
   assert.equal(contracts.AgentResourceModeSupportSchema.safeParse({ modes: [] }).success, false);
 });
 
 test('keeps runtime capability truth backed by canonical events or commands', () => {
   const commandTypes = readFixture('agent-session-commands.json').commands.map((command) => command.commandType);
-  for (const mode of ['chatbot', 'agent']) {
+  for (const mode of ['chat', 'work']) {
     const fixture = readFixture(`agent-session-${mode}.json`);
     assert.deepEqual(fixture.snapshot.capabilities, contracts.getAgentSessionRuntimeCapabilities(mode));
     assert.deepEqual(contracts.findUnsupportedAgentSessionCapabilities(fixture.snapshot.capabilities, {
@@ -807,7 +807,7 @@ test('keeps runtime capability truth backed by canonical events or commands', ()
 });
 
 test('projects replayed and out-of-order events without advancing across a sequence gap', () => {
-  const fixture = readFixture('agent-session-agent.json');
+  const fixture = readFixture('agent-session-work.json');
   const initial = runtime.projectAgentSessionEvents(runtime.createAgentSessionEventProjection(fixture.sessionId), [fixture.events[1], fixture.events[0], fixture.events[0]]);
   assert.deepEqual(initial.events.map((event) => event.sequence), [0, 1]);
   const withGap = runtime.projectAgentSessionEvents(initial, [{ ...fixture.events[2], sequence: 3 }]);
@@ -819,7 +819,7 @@ test('projects replayed and out-of-order events without advancing across a seque
 });
 
 test('projects every shared session fixture into its declared view model', () => {
-  for (const name of ['chatbot', 'agent', 'kernel']) {
+  for (const name of ['chat', 'work', 'kernel']) {
     const fixture = readFixture(`agent-session-${name}.json`);
     const projection = runtime.projectAgentSessionEvents(
       runtime.createAgentSessionEventProjection(fixture.sessionId),
@@ -830,7 +830,7 @@ test('projects every shared session fixture into its declared view model', () =>
 });
 
 test('session projection fails closed for unknown, foreign, and conflicting events', () => {
-  const fixture = readFixture('agent-session-agent.json');
+  const fixture = readFixture('agent-session-work.json');
   const projection = runtime.createAgentSessionEventProjection(fixture.sessionId);
   assert.throws(() => runtime.projectAgentSessionEvents(projection, [{ ...fixture.events[0], eventType: 'unknown' }]));
   assert.throws(() => runtime.projectAgentSessionEvents(projection, [{ ...fixture.events[0], sessionId: 'foreign' }]));

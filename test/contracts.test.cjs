@@ -299,7 +299,7 @@ const fixtures = {
     contract: 'AgentSessionViewModel',
     sessionId: 'agent-session-1',
     snapshot: {
-      mode: 'agent',
+      mode: 'work',
       modelId: 'openai:gpt-5.1-codex',
       capabilities: {
         text: true,
@@ -378,7 +378,7 @@ const fixtures = {
     contract: 'AgentWorkbenchComposerViewModel',
     value: 'Review the current changes',
     status: 'streaming',
-    mode: 'agent',
+    mode: 'work',
     placeholder: 'Ask anything',
     attachments: [{
       id: 'attachment-1',
@@ -399,7 +399,7 @@ const fixtures = {
         id: 'gpt-5.5',
         label: 'GPT 5.5',
         provider: 'OpenAI',
-        mode: 'agent',
+        mode: 'work',
         disabled: false,
       }],
     },

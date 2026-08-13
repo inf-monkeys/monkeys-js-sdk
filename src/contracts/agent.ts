@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import { ContractIdentifierSchema, IsoDateTimeSchema, JsonObjectSchema, JsonValueSchema } from './common';
 
-export const AgentModeSchema = z.enum(['chatbot', 'agent']);
+export const StudioAgentModeSchema = z.enum(['chat', 'work']);
+
+/** @deprecated Use StudioAgentModeSchema. */
+export const AgentModeSchema = StudioAgentModeSchema;
 
 export const AgentConfigurationCapabilitySchema = z.enum([
   'models',
@@ -28,14 +31,14 @@ export const AgentResourceModeSupportSchema = z
   .strict();
 
 export const AGENT_MODE_CAPABILITIES = Object.freeze({
-  chatbot: AgentModeCapabilitiesSchema.parse({
+  chat: AgentModeCapabilitiesSchema.parse({
     models: true,
     skills: true,
     tools: true,
     mcp: true,
     reasoning: false,
   }),
-  agent: AgentModeCapabilitiesSchema.parse({
+  work: AgentModeCapabilitiesSchema.parse({
     models: true,
     skills: true,
     tools: true,
@@ -120,8 +123,8 @@ export const AgentSessionPermissionProfileSchema = z.enum([
 ]);
 
 export const AGENT_SESSION_RUNTIME_CAPABILITIES = Object.freeze({
-  chatbot: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, skills: true, approval: true, usage: true, editAndRerun: true, summary: true }),
-  agent: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true, editAndRerun: true, steering: true, summary: true }),
+  chat: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, skills: true, approval: true, usage: true, editAndRerun: true, summary: true }),
+  work: AgentSessionCapabilitiesSchema.parse({ text: true, tools: true, mcp: true, shell: true, fileChange: true, skills: true, approval: true, artifacts: true, usage: true, resume: true, editAndRerun: true, steering: true, summary: true }),
 }) satisfies Readonly<Record<AgentMode, AgentSessionCapabilities>>;
 
 export function getAgentSessionRuntimeCapabilities(mode: AgentMode): AgentSessionCapabilities {
@@ -1126,7 +1129,9 @@ export const AgentWorkbenchComposerViewModelSchema = z
     }
   });
 
-export type AgentMode = z.infer<typeof AgentModeSchema>;
+export type StudioAgentMode = z.infer<typeof StudioAgentModeSchema>;
+/** @deprecated Use StudioAgentMode. */
+export type AgentMode = StudioAgentMode;
 export type AgentConfigurationCapability = z.infer<typeof AgentConfigurationCapabilitySchema>;
 export type AgentModeCapabilities = z.infer<typeof AgentModeCapabilitiesSchema>;
 export type AgentResourceModeSupport = z.infer<typeof AgentResourceModeSupportSchema>;
@@ -1171,15 +1176,17 @@ export type AgentWorkbenchComposerViewModel = z.infer<typeof AgentWorkbenchCompo
 export const AgentExecutionModeSchema = AgentModeSchema;
 export type AgentExecutionMode = AgentMode;
 
-export function normalizeAgentMode(value: unknown): AgentMode | undefined {
+export function normalizeStudioAgentMode(value: unknown): StudioAgentMode | undefined {
   const normalized = String(value ?? '')
     .trim()
     .toLowerCase();
-  if (normalized === 'agent' || normalized === 'codex') return 'agent';
-  if (normalized === 'chatbot' || normalized === 'vercel-ai' || normalized === 'vercel' || normalized === 'ai-sdk') {
-    return 'chatbot';
+  if (normalized === 'work' || normalized === 'agent' || normalized === 'codex') return 'work';
+  if (normalized === 'chat' || normalized === 'chatbot' || normalized === 'vercel-ai' || normalized === 'vercel' || normalized === 'ai-sdk') {
+    return 'chat';
   }
   return undefined;
 }
 
-export const normalizeAgentExecutionMode = normalizeAgentMode;
+/** @deprecated Use normalizeStudioAgentMode. */
+export const normalizeAgentMode = normalizeStudioAgentMode;
+export const normalizeAgentExecutionMode = normalizeStudioAgentMode;
