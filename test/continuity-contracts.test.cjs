@@ -39,3 +39,32 @@ test('workflow relation and expiring run contracts are strict and version-aware'
     expiresAt: '2026-07-17T00:00:00.000Z',
   }).permissions.length, 2);
 });
+
+test('Trend Radar runs preserve legacy parsing while optionally carrying collection continuity', () => {
+  const legacy = {
+    contract: 'RadarAnalysisRun',
+    runId: 'run-1',
+    teamId: 'team-1',
+    selectionRef: ref('radar-selection', 'selection-1'),
+    workflowRef: ref('workflow', 'workflow-1'),
+    modelRef: ref('model', 'model-1'),
+    requestId: 'request-1',
+    idempotencyKey: 'launch-selection-1',
+    status: 'QUEUED',
+    createdAt: at,
+  };
+  assert.equal(contracts.RadarAnalysisRunSchema.parse(legacy).runId, 'run-1');
+
+  const collectionBound = {
+    ...legacy,
+    collectionAssetRef: ref('asset', 'asset-1'),
+    collectionProjectionWriteback: {
+      status: 'PENDING',
+      updatedAt: at,
+    },
+  };
+  assert.equal(
+    contracts.RadarAnalysisRunSchema.parse(collectionBound).collectionAssetRef.id,
+    'asset-1',
+  );
+});

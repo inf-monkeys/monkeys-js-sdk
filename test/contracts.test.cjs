@@ -929,6 +929,35 @@ const fixtures = {
     resultingVersion: 2,
     recordedAt: occurredAt,
   },
+  'trend-radar-collection-item': {
+    contract: 'TrendRadarCollectionItem',
+    schemaVersion: 1,
+    selectionRef: ref('radar-selection', 'selection-1', 2),
+    recipe: {
+      category: [{ subjectRef: ref('hotword', 'category-1'), label: 'Outdoor' }],
+      design: [{ subjectRef: ref('hotword', 'design-1'), label: 'Shell jacket' }],
+      audience: [{ subjectRef: ref('hotword', 'audience-1'), label: 'Commuters' }],
+    },
+    status: 'SUCCEEDED',
+    latestRunRef: ref('radar-analysis-run', 'run-1'),
+    decisionProjection: {
+      axes: [{ key: 'searchHeat', label: 'Search heat', value: 88 }],
+      overallScore: 88,
+      itemRank: 3,
+      sourceRefs: [ref('trend-source-record', 'source-1')],
+      outputRefs: [ref('workflow-output', 'output-1')],
+    },
+    artifactProjection: {
+      artifactRef: ref('artifact', 'artifact-1'),
+      url: 'https://example.com/generated.png',
+      thumbnailUrl: 'https://example.com/generated-thumbnail.png',
+      mimeType: 'image/png',
+      metadata: { width: 1024, height: 1024 },
+    },
+    createdAt: occurredAt,
+    updatedAt: occurredAt,
+    generatedAt: occurredAt,
+  },
   'request-scope': requestScope,
   'render-node': renderNode,
   'render-tree': {
@@ -1157,7 +1186,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 71);
+  assert.equal(names.length, 72);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
@@ -1242,24 +1271,86 @@ test('tenant application config accepts strict Trend Radar Ontology/View source 
     ...applicationConfig,
     dataManagement: { trendRadar },
   });
+  const products = { ontologyId: 'trend-products', viewId: 'view-products' };
   const hotwords = { ontologyId: 'trend-hotwords', viewId: 'view-hotwords' };
   const brands = { ontologyId: 'trend-brands', viewId: 'view-brands' };
+  const collection = { ontologyId: 'trend-radar-collection' };
 
-  assert.equal(parseTrendRadar({ hotwords, brands }).success, true);
+  assert.equal(parseTrendRadar({ products, hotwords, brands, collection }).success, true);
+  assert.equal(parseTrendRadar({ products }).success, true);
   assert.equal(parseTrendRadar({ hotwords }).success, true);
   assert.equal(parseTrendRadar({ brands }).success, true);
+  assert.equal(parseTrendRadar({ collection }).success, true);
+  assert.equal(parseTrendRadar({}).success, true);
 
   const invalidRegistries = [
+    { products: { ontologyId: 'trend-products' } },
     { hotwords: { ontologyId: 'trend-hotwords' } },
     { hotwords: { viewId: 'view-hotwords' } },
     { hotwords: { ontologyId: '', viewId: 'view-hotwords' } },
     { hotwords: { ...hotwords, teamId: '0' } },
     { hotwords: { ...hotwords, projectionRef: 'projection' } },
     { hotwords: { ...hotwords, fieldMap: { title: 'column-title' } } },
+    { collection: { ontologyId: '' } },
+    { collection: { ...collection, viewId: 'collection-view' } },
+    { collection: { ...collection, teamId: 'team-1' } },
+    { collection: { ...collection, userId: 'user-1' } },
+    { collection: { ...collection, payload: { score: 88 } } },
     { opportunities: hotwords },
   ];
   for (const trendRadar of invalidRegistries) {
     assert.equal(parseTrendRadar(trendRadar).success, false);
+  }
+});
+
+test('Trend Radar collection V1 contracts are strict, truthful, and additively bind analysis runs', () => {
+  const item = fixtures['trend-radar-collection-item'];
+  assert.deepEqual(schemas.TrendRadarCollectionItemSchema.parse(item), item);
+
+  const validRun = {
+    ...fixtures['radar-analysis-run'],
+    collectionAssetRef: ref('asset', 'asset-1'),
+    collectionProjectionWriteback: {
+      status: 'FAILED',
+      updatedAt: occurredAt,
+      error: { code: 'projection-write-failed', message: 'Retry projection', retryable: true },
+    },
+  };
+  assert.equal(schemas.RadarAnalysisRunSchema.safeParse(validRun).success, true);
+  assert.equal(schemas.RadarAnalysisRunSchema.safeParse(fixtures['radar-analysis-run']).success, true);
+
+  const invalidItems = [
+    { ...item, schemaVersion: 2 },
+    { ...item, ownerId: 'user-1' },
+    { ...item, selectionRef: ref('selection', 'selection-1') },
+    { ...item, recipe: { ...item.recipe, category: [], design: [], audience: [] } },
+    { ...item, recipe: { ...item.recipe, category: [{ subjectRef: ref('asset', 'category-1'), label: 'Outdoor' }] } },
+    { ...item, recipe: { ...item.recipe, category: [{ subjectRef: ref('hotword', 'category-1'), label: ' ' }] } },
+    { ...item, createdAt: 'not-a-timestamp' },
+    { ...item, decisionProjection: { axes: [{ key: 'searchHeat', value: Number.POSITIVE_INFINITY }] } },
+    { ...item, decisionProjection: { axes: [{ key: 'searchHeat', value: 1 }, { key: 'searchHeat', value: 2 }] } },
+    { ...item, decisionProjection: {} },
+    { ...item, artifactProjection: { artifactRef: ref('asset', 'artifact-1') } },
+  ];
+  for (const invalidItem of invalidItems) {
+    assert.equal(schemas.TrendRadarCollectionItemSchema.safeParse(invalidItem).success, false);
+  }
+
+  const invalidRuns = [
+    { ...validRun, collectionAssetRef: ref('data-asset', 'asset-1') },
+    { ...validRun, collectionAssetRef: { ...ref('asset', 'asset-1'), teamId: 'team-1' } },
+    { ...validRun, collectionProjectionWriteback: { status: 'FAILED', updatedAt: occurredAt } },
+    {
+      ...validRun,
+      collectionProjectionWriteback: {
+        status: 'APPLIED',
+        updatedAt: occurredAt,
+        error: { code: 'unexpected', message: 'Must not be present', retryable: false },
+      },
+    },
+  ];
+  for (const invalidRun of invalidRuns) {
+    assert.equal(schemas.RadarAnalysisRunSchema.safeParse(invalidRun).success, false);
   }
 });
 

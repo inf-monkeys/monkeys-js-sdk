@@ -3,6 +3,7 @@ import {
   ContractIdentifierSchema,
   EntityRefSchema,
   IsoDateTimeSchema,
+  JsonObjectSchema,
   JsonValueSchema,
   Sha256Schema,
 } from './common';
@@ -241,6 +242,168 @@ export const RadarSelectionSchema = z
   })
   .strict();
 
+const versionedRefFields = {
+  id: ContractIdentifierSchema,
+  version: z.union([z.number().int().positive(), z.string().trim().min(1)]).optional(),
+  ownerRepo: ContractIdentifierSchema.optional(),
+};
+
+export const TrendRadarCollectionAssetRefSchema = z
+  .object({
+    kind: z.literal('asset'),
+    ...versionedRefFields,
+  })
+  .strict();
+
+export const TrendRadarCollectionSelectionRefSchema = z
+  .object({
+    kind: z.literal('radar-selection'),
+    ...versionedRefFields,
+  })
+  .strict();
+
+export const TrendRadarCollectionRunRefSchema = z
+  .object({
+    kind: z.literal('radar-analysis-run'),
+    ...versionedRefFields,
+  })
+  .strict();
+
+export const TrendRadarCollectionSubjectRefSchema = z
+  .object({
+    kind: z.literal('hotword'),
+    ...versionedRefFields,
+  })
+  .strict();
+
+export const TrendRadarCollectionArtifactRefSchema = z
+  .object({
+    kind: z.literal('artifact'),
+    ...versionedRefFields,
+  })
+  .strict();
+
+export const TrendRadarCollectionRecipeEntrySchema = z
+  .object({
+    subjectRef: TrendRadarCollectionSubjectRefSchema,
+    label: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+export const TrendRadarCollectionRecipeSchema = z
+  .object({
+    category: z.array(TrendRadarCollectionRecipeEntrySchema),
+    design: z.array(TrendRadarCollectionRecipeEntrySchema),
+    audience: z.array(TrendRadarCollectionRecipeEntrySchema),
+  })
+  .strict()
+  .refine(
+    recipe => recipe.category.length + recipe.design.length + recipe.audience.length > 0,
+    'A Trend Radar collection recipe must contain at least one subject.',
+  );
+
+export const TrendRadarCollectionDecisionAxisSchema = z
+  .object({
+    key: ContractIdentifierSchema,
+    label: z.string().trim().min(1).max(200).optional(),
+    value: z.number().finite(),
+  })
+  .strict();
+
+export const TrendRadarCollectionDecisionProjectionSchema = z
+  .object({
+    axes: z.array(TrendRadarCollectionDecisionAxisSchema).max(32).optional(),
+    overallScore: z.number().finite().optional(),
+    itemRank: z.number().finite().optional(),
+    sourceRefs: z.array(EntityRefSchema).optional(),
+    outputRefs: z.array(EntityRefSchema).optional(),
+  })
+  .strict()
+  .superRefine((projection, context) => {
+    const hasProjection = Boolean(
+      projection.axes?.length
+      || projection.overallScore !== undefined
+      || projection.itemRank !== undefined
+      || projection.sourceRefs?.length
+      || projection.outputRefs?.length,
+    );
+    if (!hasProjection) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A decision projection must contain canonical decision data or references.',
+      });
+    }
+
+    const seenAxisKeys = new Set<string>();
+    projection.axes?.forEach((axis, index) => {
+      if (seenAxisKeys.has(axis.key)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['axes', index, 'key'],
+          message: `Duplicate decision axis key: ${axis.key}`,
+        });
+      }
+      seenAxisKeys.add(axis.key);
+    });
+  });
+
+export const TrendRadarCollectionArtifactProjectionSchema = z
+  .object({
+    artifactRef: TrendRadarCollectionArtifactRefSchema,
+    url: z.string().url().optional(),
+    thumbnailUrl: z.string().url().optional(),
+    mimeType: z.string().trim().min(1).optional(),
+    metadata: JsonObjectSchema.optional(),
+  })
+  .strict();
+
+export const TrendRadarCollectionProjectionWritebackSchema = z
+  .object({
+    status: z.enum(['PENDING', 'APPLIED', 'FAILED']),
+    updatedAt: IsoDateTimeSchema,
+    error: z
+      .object({
+        code: ContractIdentifierSchema,
+        message: z.string().trim().min(1),
+        retryable: z.boolean(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .superRefine((writeback, context) => {
+    if (writeback.status === 'FAILED' && !writeback.error) {
+      context.addIssue({
+        code: 'custom',
+        path: ['error'],
+        message: 'A failed collection projection writeback must include an error.',
+      });
+    }
+    if (writeback.status !== 'FAILED' && writeback.error) {
+      context.addIssue({
+        code: 'custom',
+        path: ['error'],
+        message: 'Only a failed collection projection writeback may include an error.',
+      });
+    }
+  });
+
+export const TrendRadarCollectionItemSchema = z
+  .object({
+    contract: z.literal('TrendRadarCollectionItem'),
+    schemaVersion: z.literal(1),
+    selectionRef: TrendRadarCollectionSelectionRefSchema,
+    recipe: TrendRadarCollectionRecipeSchema,
+    status: z.enum(['SAVED', 'QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'PARTIAL']),
+    latestRunRef: TrendRadarCollectionRunRefSchema.optional(),
+    decisionProjection: TrendRadarCollectionDecisionProjectionSchema.optional(),
+    artifactProjection: TrendRadarCollectionArtifactProjectionSchema.optional(),
+    createdAt: IsoDateTimeSchema,
+    updatedAt: IsoDateTimeSchema,
+    generatedAt: IsoDateTimeSchema.optional(),
+  })
+  .strict();
+
 export const RadarAnalysisRunSchema = z
   .object({
     contract: z.literal('RadarAnalysisRun'),
@@ -251,6 +414,8 @@ export const RadarAnalysisRunSchema = z
     executionRef: EntityRefSchema.optional(),
     designProjectRef: EntityRefSchema.optional(),
     replayedFromRef: EntityRefSchema.optional(),
+    collectionAssetRef: TrendRadarCollectionAssetRefSchema.optional(),
+    collectionProjectionWriteback: TrendRadarCollectionProjectionWritebackSchema.optional(),
     workflowDefinitionTeamId: ContractIdentifierSchema.optional(),
     workflowInput: z.record(z.string(), JsonValueSchema).default({}),
     createDesignProject: z.boolean().default(true),
@@ -341,6 +506,18 @@ export type RadarOpportunityMatrix = z.infer<typeof RadarOpportunityMatrixSchema
 export type RadarQueryBody = z.infer<typeof RadarQueryBodySchema>;
 export type SavedRadarQuery = z.infer<typeof SavedRadarQuerySchema>;
 export type RadarSelection = z.infer<typeof RadarSelectionSchema>;
+export type TrendRadarCollectionAssetRef = z.infer<typeof TrendRadarCollectionAssetRefSchema>;
+export type TrendRadarCollectionSelectionRef = z.infer<typeof TrendRadarCollectionSelectionRefSchema>;
+export type TrendRadarCollectionRunRef = z.infer<typeof TrendRadarCollectionRunRefSchema>;
+export type TrendRadarCollectionSubjectRef = z.infer<typeof TrendRadarCollectionSubjectRefSchema>;
+export type TrendRadarCollectionArtifactRef = z.infer<typeof TrendRadarCollectionArtifactRefSchema>;
+export type TrendRadarCollectionRecipeEntry = z.infer<typeof TrendRadarCollectionRecipeEntrySchema>;
+export type TrendRadarCollectionRecipe = z.infer<typeof TrendRadarCollectionRecipeSchema>;
+export type TrendRadarCollectionDecisionAxis = z.infer<typeof TrendRadarCollectionDecisionAxisSchema>;
+export type TrendRadarCollectionDecisionProjection = z.infer<typeof TrendRadarCollectionDecisionProjectionSchema>;
+export type TrendRadarCollectionArtifactProjection = z.infer<typeof TrendRadarCollectionArtifactProjectionSchema>;
+export type TrendRadarCollectionProjectionWriteback = z.infer<typeof TrendRadarCollectionProjectionWritebackSchema>;
+export type TrendRadarCollectionItem = z.infer<typeof TrendRadarCollectionItemSchema>;
 export type RadarAnalysisRun = z.infer<typeof RadarAnalysisRunSchema>;
 export type RadarAnalysisAsset = z.infer<typeof RadarAnalysisAssetSchema>;
 export type RadarAnalysisDetail = z.infer<typeof RadarAnalysisDetailSchema>;

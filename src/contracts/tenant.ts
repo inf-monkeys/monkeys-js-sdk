@@ -104,11 +104,20 @@ export const TenantTrendRadarSourceSchema = z
   })
   .strict();
 
-/** Page-group source registry; roles are optional to support staged deployment. */
+/** Browser-safe identity of the Team-scoped flat collection used by Trend Radar. */
+export const TenantTrendRadarCollectionTargetSchema = z
+  .object({
+    ontologyId: ContractIdentifierSchema,
+  })
+  .strict();
+
+/** Page-group source and collection registry; roles are optional to support staged deployment. */
 export const TenantTrendRadarSourcesSchema = z
   .object({
+    products: TenantTrendRadarSourceSchema.optional(),
     hotwords: TenantTrendRadarSourceSchema.optional(),
     brands: TenantTrendRadarSourceSchema.optional(),
+    collection: TenantTrendRadarCollectionTargetSchema.optional(),
   })
   .strict();
 
@@ -847,5 +856,8 @@ export type DesignTokenSource = z.infer<typeof DesignTokenSourceSchema>;
 export type TenantDesignTokensConfig = z.infer<typeof TenantDesignTokensConfigSchema>;
 export type TenantAuthBinding = z.infer<typeof TenantAuthBindingSchema>;
 export type TenantDataBinding = z.infer<typeof TenantDataBindingSchema>;
+export type TenantTrendRadarSource = z.infer<typeof TenantTrendRadarSourceSchema>;
+export type TenantTrendRadarCollectionTarget = z.infer<typeof TenantTrendRadarCollectionTargetSchema>;
+export type TenantTrendRadarSources = z.infer<typeof TenantTrendRadarSourcesSchema>;
 export type ThemeHeadbar = z.infer<typeof ThemeHeadbarSchema>;
 export type TenantHeadbarModuleItem = z.infer<typeof TenantHeadbarModuleItemSchema>;
