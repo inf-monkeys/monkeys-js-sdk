@@ -112,6 +112,7 @@ test('compiles desired tenant config into a resolved, source-free browser contra
   assert.equal(runtimeConfig.applicationConfig.theme.headbar.theme, 'glassy');
   assert.equal(runtimeConfig.applicationConfig.theme.agent.logo.light, '/agent-logo-light.svg');
   assert.equal(runtimeConfig.applicationConfig.theme.agent.sessionCentric, true);
+  assert.equal(runtimeConfig.applicationConfig.theme.agent.quickStartEnabled, true);
   assert.equal(runtimeConfig.authBinding.primary.providerId, 'oidc');
   assert.equal(runtimeConfig.dataBinding.analytics.projectionRef, 'usage-summary');
   assert.throws(() => schemas.TenantRuntimeConfigSchema.parse({
