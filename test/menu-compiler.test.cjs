@@ -177,8 +177,8 @@ const compile = (overrides = {}) => runtime.compileMenuRuntimeBundle({
   permissionCodes: permissions,
   inputValidators,
   sourceMap: {
-    'z.legacy': 'legacy-version-1',
-    'server.product.menus': 'tenant-version-42',
+    'z.other': 'other-version-1',
+    'server.ui.menus': 'tenant-version-42',
   },
   ...overrides,
 });
@@ -203,7 +203,7 @@ test('compiles only the requested application and strips server-bound values', (
   assert.equal(schemas.MenuRuntimeBundleSchema.safeParse(compiled.document).success, true);
   assert.equal(compiled.document.contentHash.length, 64);
   assert.equal(Object.isFrozen(compiled.document.menus[0].nodes[0]), true);
-  assert.deepEqual(Object.keys(compiled.document.sourceMap), ['server.product.menus', 'z.legacy']);
+  assert.deepEqual(Object.keys(compiled.document.sourceMap), ['server.ui.menus', 'z.other']);
 
   const { contentHash, ...unsigned } = compiled.document;
   assert.equal(
