@@ -420,6 +420,31 @@ const fixtures = {
       stop: true,
     },
   },
+  'agent-workbench-quick-start-view-model': {
+    contract: 'AgentWorkbenchQuickStartViewModel',
+    mode: 'work',
+    categories: [{
+      id: 'development',
+      label: 'Development',
+      icon: 'code',
+      sections: [{
+        id: 'quick-start',
+        label: 'Quick start',
+        templates: [{
+          id: 'investigate-bug',
+          title: 'Investigate a bug',
+          description: 'Trace the root cause and propose a fix.',
+          prompt: 'Investigate this bug and identify the root cause.',
+          action: 'prompt',
+          icon: 'search',
+          accept: '*/*',
+          multiple: false,
+          modes: ['work'],
+        }],
+      }],
+    }],
+    disabled: false,
+  },
   'application-handoff': {
     contract: 'ApplicationHandoff',
     handoffId: 'handoff-1',
@@ -1186,7 +1211,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 72);
+  assert.equal(names.length, 73);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
