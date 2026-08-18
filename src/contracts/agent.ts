@@ -1084,6 +1084,58 @@ export const AgentWorkbenchComposerCapabilitiesSchema = z
   })
   .strict();
 
+export const AgentWorkbenchQuickStartIconSchema = z.enum([
+  'sparkles',
+  'palette',
+  'search',
+  'file-text',
+  'code',
+  'shopping-bag',
+]);
+
+export const AgentWorkbenchQuickStartTemplateActionSchema = z.enum(['prompt', 'upload']);
+
+export const AgentWorkbenchQuickStartTemplateSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    title: z.string().min(1),
+    description: z.string().min(1).optional(),
+    prompt: z.string().min(1),
+    action: AgentWorkbenchQuickStartTemplateActionSchema.default('prompt'),
+    icon: AgentWorkbenchQuickStartIconSchema.optional(),
+    coverImageUrl: z.string().min(1).optional(),
+    accept: z.string().min(1).default('*/*'),
+    multiple: z.boolean().default(false),
+    modes: z.array(AgentModeSchema).min(1).optional(),
+  })
+  .strict();
+
+export const AgentWorkbenchQuickStartSectionSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    label: z.string().min(1),
+    templates: z.array(AgentWorkbenchQuickStartTemplateSchema).min(1),
+  })
+  .strict();
+
+export const AgentWorkbenchQuickStartCategorySchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    label: z.string().min(1),
+    icon: AgentWorkbenchQuickStartIconSchema.optional(),
+    sections: z.array(AgentWorkbenchQuickStartSectionSchema).min(1),
+  })
+  .strict();
+
+export const AgentWorkbenchQuickStartViewModelSchema = z
+  .object({
+    contract: z.literal('AgentWorkbenchQuickStartViewModel'),
+    mode: AgentModeSchema,
+    categories: z.array(AgentWorkbenchQuickStartCategorySchema).min(1),
+    disabled: z.boolean().default(false),
+  })
+  .strict();
+
 export const AgentWorkbenchComposerViewModelSchema = z
   .object({
     contract: z.literal('AgentWorkbenchComposerViewModel'),
@@ -1171,6 +1223,12 @@ export type AgentWorkbenchComposerQueueItem = z.infer<typeof AgentWorkbenchCompo
 export type AgentWorkbenchComposerModelOption = z.infer<typeof AgentWorkbenchComposerModelOptionSchema>;
 export type AgentWorkbenchComposerCapabilities = z.infer<typeof AgentWorkbenchComposerCapabilitiesSchema>;
 export type AgentWorkbenchComposerViewModel = z.infer<typeof AgentWorkbenchComposerViewModelSchema>;
+export type AgentWorkbenchQuickStartIcon = z.infer<typeof AgentWorkbenchQuickStartIconSchema>;
+export type AgentWorkbenchQuickStartTemplateAction = z.infer<typeof AgentWorkbenchQuickStartTemplateActionSchema>;
+export type AgentWorkbenchQuickStartTemplate = z.infer<typeof AgentWorkbenchQuickStartTemplateSchema>;
+export type AgentWorkbenchQuickStartSection = z.infer<typeof AgentWorkbenchQuickStartSectionSchema>;
+export type AgentWorkbenchQuickStartCategory = z.infer<typeof AgentWorkbenchQuickStartCategorySchema>;
+export type AgentWorkbenchQuickStartViewModel = z.infer<typeof AgentWorkbenchQuickStartViewModelSchema>;
 
 // Kept as a source-compatible type alias while consumers move to the product-level name.
 export const AgentExecutionModeSchema = AgentModeSchema;

@@ -91,6 +91,10 @@ test('publishes Agent session contracts in the canonical schema registry', () =>
     schemas.canonicalContractSchemas['agent-workbench-navigation-view-model'],
     contracts.AgentWorkbenchNavigationViewModelSchema,
   );
+  assert.equal(
+    schemas.canonicalContractSchemas['agent-workbench-quick-start-view-model'],
+    contracts.AgentWorkbenchQuickStartViewModelSchema,
+  );
 });
 
 test('validates the controlled Agent workbench composer view model', () => {
@@ -146,6 +150,41 @@ test('validates the controlled Agent workbench composer view model', () => {
     contracts.AgentWorkbenchComposerViewModelSchema.safeParse({
       ...composer,
       model: { ...composer.model, selectedId: 'missing-model' },
+    }).success,
+    false,
+  );
+});
+
+test('validates the Agent workbench quick start view model', () => {
+  const quickStart = {
+    contract: 'AgentWorkbenchQuickStartViewModel',
+    mode: 'chat',
+    categories: [{
+      id: 'design',
+      label: 'Design',
+      icon: 'palette',
+      sections: [{
+        id: 'quick-start',
+        label: 'Quick start',
+        templates: [{
+          id: 'collection-plan',
+          title: 'Collection plan',
+          prompt: 'Create a seasonal collection plan.',
+          action: 'prompt',
+          accept: '*/*',
+          multiple: false,
+          modes: ['chat', 'work'],
+        }],
+      }],
+    }],
+    disabled: false,
+  };
+
+  assert.deepEqual(contracts.AgentWorkbenchQuickStartViewModelSchema.parse(quickStart), quickStart);
+  assert.equal(
+    contracts.AgentWorkbenchQuickStartViewModelSchema.safeParse({
+      ...quickStart,
+      categories: [{ ...quickStart.categories[0], sections: [] }],
     }).success,
     false,
   );
