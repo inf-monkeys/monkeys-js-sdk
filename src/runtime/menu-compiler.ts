@@ -428,7 +428,10 @@ export const compileMenuRuntimeBundle = (
     }
     const compiledNodes: CompiledMenuNode[] = definition.nodes.map((node, nodeIndex) => {
       if (node.kind === 'divider') return node;
-      if (node.kind === 'group') return { ...node, disabled: node.disabled ?? false };
+      if (node.kind === 'group') {
+        const { disabled, ...presentation } = node;
+        return disabled === true ? { ...presentation, disabled } : presentation;
+      }
       const nodePath = `definitions[${definitionIndex}].nodes[${nodeIndex}]`;
       if (node.requiredPermission && !knownPermissions.has(node.requiredPermission)) {
         throw new MenuCompilationError(
@@ -495,10 +498,15 @@ export const compileMenuRuntimeBundle = (
         }
         if (definition.applicationId === applicationId) requestedTargetKeys.add(identity);
 
-        const { requiredPermission, behavior: _behavior, ...presentation } = node;
+        const {
+          requiredPermission,
+          behavior: _behavior,
+          disabled,
+          ...presentation
+        } = node;
         return CompiledMenuItemNodeSchema.parse({
           ...presentation,
-          disabled: node.disabled ?? false,
+          ...(disabled === true ? { disabled } : {}),
           behavior: {
             kind: 'navigate',
             page: node.behavior.page,
@@ -523,10 +531,15 @@ export const compileMenuRuntimeBundle = (
       const actionInput = node.behavior.input
         ? validateInput(node.behavior.input, action.inputSchemaRef, inputValidators, `${nodePath}.behavior.input`)
         : undefined;
-      const { requiredPermission, behavior: _behavior, ...presentation } = node;
+      const {
+        requiredPermission,
+        behavior: _behavior,
+        disabled,
+        ...presentation
+      } = node;
       return CompiledMenuItemNodeSchema.parse({
         ...presentation,
-        disabled: node.disabled ?? false,
+        ...(disabled === true ? { disabled } : {}),
         behavior: { kind: 'action', actionRef: node.behavior.actionRef, input: actionInput },
         access: { ...access, requiredPermission },
       });

@@ -226,6 +226,10 @@ test('produces a deterministic document independent of source definition and nod
 
 test('normalizes and preserves disabled state independently from access and navigation targets', () => {
   const withoutDisabled = compile().document;
+  const enabledHeaderbar = withoutDisabled.menus.find((menu) => menu.surface === 'headerbar');
+  for (const node of enabledHeaderbar.nodes) {
+    assert.equal(Object.hasOwn(node, 'disabled'), false);
+  }
   const withExplicitFalse = compile({
     definitions: [
       kernelMenu,
@@ -261,7 +265,9 @@ test('normalizes and preserves disabled state independently from access and navi
 
   assert.equal(group.disabled, true);
   assert.equal(disabledItem.disabled, true);
-  assert.equal(enabledItem.disabled, false);
+  assert.equal(Object.hasOwn(group, 'disabled'), true);
+  assert.equal(Object.hasOwn(disabledItem, 'disabled'), true);
+  assert.equal(Object.hasOwn(enabledItem, 'disabled'), false);
   assert.equal(Object.isFrozen(disabledItem), true);
   assert.notEqual(compiled.document.contentHash, withoutDisabled.contentHash);
   assert.equal(compiled.evaluateItemAccess(disabledItem, {
