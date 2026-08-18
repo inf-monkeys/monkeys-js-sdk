@@ -8,6 +8,17 @@ const Ajv2020 = require('ajv/dist/2020');
 
 const PACKAGE_NAME = '@inf-monkeys-tech/monkeys';
 
+test('generated tenant JSON Schemas expose optional Home entry availability on strict pages', () => {
+  for (const schemaName of ['tenant-product-config', 'tenant-runtime-config']) {
+    const schema = require(`${PACKAGE_NAME}/json-schema/${schemaName}.schema.json`);
+    const pages = schema.properties.applicationConfig.properties.theme.properties.pages;
+
+    assert.deepEqual(pages.properties.homeEntryEnabled, { type: 'boolean' });
+    assert.equal(pages.required.includes('homeEntryEnabled'), false);
+    assert.equal(pages.additionalProperties, false);
+  }
+});
+
 test('generated menu JSON Schemas expose optional disabled state only on groups and items', () => {
   const ajv = new Ajv2020({ strict: false });
   const definitionSchema = require(`${PACKAGE_NAME}/json-schema/menu-definition.schema.json`);

@@ -214,6 +214,67 @@ test('compiles desired tenant config into a resolved, source-free browser contra
   }).success, true);
 });
 
+test('round-trips optional Home entry availability through tenant config contracts', () => {
+  const compileWithPages = (pages) => {
+    const productConfig = schemas.TenantProductConfigSchema.parse({
+      ...representativeProductConfig,
+      authBinding: {
+        primary: { kind: 'auth-provider', providerId: 'oidc', policyRef: 'tenant-login' },
+      },
+      dataBinding: {
+        assets: { kind: 'data-provider', providerId: 'monkey-data', domainRef: 'assets' },
+      },
+      applicationConfig: {
+        ...applicationConfig,
+        theme: {
+          ...applicationConfig.theme,
+          pages,
+        },
+      },
+    });
+    const runtimeConfig = runtime.compileTenantRuntimeConfig({
+      productConfig,
+      resolvedDesignTokens: {
+        palette: { primary: { $type: 'color', $value: color('#336699', [0.2, 0.4, 0.6]) } },
+      },
+    });
+
+    return { productConfig, runtimeConfig };
+  };
+  const basePages = applicationConfig.theme.pages;
+
+  for (const homeEntryEnabled of [true, false]) {
+    const { productConfig, runtimeConfig } = compileWithPages({
+      ...basePages,
+      homeEntryEnabled,
+    });
+
+    assert.equal(productConfig.applicationConfig.theme.pages.homeEntryEnabled, homeEntryEnabled);
+    assert.equal(runtimeConfig.applicationConfig.theme.pages.homeEntryEnabled, homeEntryEnabled);
+  }
+
+  const omitted = compileWithPages(basePages);
+  assert.equal('homeEntryEnabled' in omitted.productConfig.applicationConfig.theme.pages, false);
+  assert.equal('homeEntryEnabled' in omitted.runtimeConfig.applicationConfig.theme.pages, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      pages: { ...basePages, homeEntryEnabled: 'true' },
+    },
+  }).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      pages: {
+        ...basePages,
+        unknownHomeEntrySetting: true,
+      },
+    },
+  }).success, false);
+});
+
 test('accepts empty tenant overrides or explicit inline, file and URL design-token sources', () => {
   const inlineDocument = {
     color: { primary: { $type: 'color', $value: color('#336699', [0.2, 0.4, 0.6]) } },
