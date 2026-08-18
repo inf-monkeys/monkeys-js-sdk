@@ -99,7 +99,9 @@ export interface CompiledMenuRuntimeBundle {
   menusByKey: ReadonlyMap<string, CompiledMenuProjection>;
   navigationTargetsByKey: ReadonlyMap<string, MenuNavigationTarget>;
   serverInputByTargetKey: ReadonlyMap<string, JsonObject>;
+  /** Evaluates visibility/access only. Callers must separately block dispatch when `item.disabled === true`. */
   evaluateItemAccess(item: CompiledMenuItemNode, context: MenuAccessContext): MenuAccessDecision;
+  /** Resolves route identity and input; it does not authorize interaction with a disabled placement. */
   resolveNavigationTarget(page: MenuPageRef, explicitActivationId?: string): MenuNavigationResolution;
   selectedNodeIds(menu: CompiledMenuProjection, page: MenuPageRef, activationId?: string): ReadonlySet<string>;
 }
@@ -425,7 +427,8 @@ export const compileMenuRuntimeBundle = (
       );
     }
     const compiledNodes: CompiledMenuNode[] = definition.nodes.map((node, nodeIndex) => {
-      if (node.kind !== 'item') return node;
+      if (node.kind === 'divider') return node;
+      if (node.kind === 'group') return { ...node, disabled: node.disabled ?? false };
       const nodePath = `definitions[${definitionIndex}].nodes[${nodeIndex}]`;
       if (node.requiredPermission && !knownPermissions.has(node.requiredPermission)) {
         throw new MenuCompilationError(
@@ -495,6 +498,7 @@ export const compileMenuRuntimeBundle = (
         const { requiredPermission, behavior: _behavior, ...presentation } = node;
         return CompiledMenuItemNodeSchema.parse({
           ...presentation,
+          disabled: node.disabled ?? false,
           behavior: {
             kind: 'navigate',
             page: node.behavior.page,
@@ -522,6 +526,7 @@ export const compileMenuRuntimeBundle = (
       const { requiredPermission, behavior: _behavior, ...presentation } = node;
       return CompiledMenuItemNodeSchema.parse({
         ...presentation,
+        disabled: node.disabled ?? false,
         behavior: { kind: 'action', actionRef: node.behavior.actionRef, input: actionInput },
         access: { ...access, requiredPermission },
       });

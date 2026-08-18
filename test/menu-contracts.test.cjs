@@ -15,6 +15,8 @@ const fixture = JSON.parse(
 test('accepts one application-scoped source menu and inheritance sentinel', () => {
   const parsed = schemas.MenuDefinitionSchema.parse(fixture);
   assert.equal(parsed.applicationId, 'studio');
+  assert.equal(parsed.nodes[0].disabled ?? false, false);
+  assert.equal(parsed.nodes[1].disabled ?? false, false);
   assert.equal(parsed.nodes[1].behavior.activationId, 'mine');
   assert.equal(schemas.MenuDefinitionSetSchema.parse('*'), '*');
   assert.deepEqual(
@@ -22,6 +24,34 @@ test('accepts one application-scoped source menu and inheritance sentinel', () =
     [parsed],
   );
   assert.equal(typeof contracts.MenuDefinitionSchema.parse, 'function');
+});
+
+test('normalizes disabled state on interactive nodes and rejects invalid placements with exact paths', () => {
+  const group = fixture.nodes[0];
+  const item = fixture.nodes[1];
+
+  assert.equal(schemas.MenuGroupNodeSchema.parse(group).disabled, undefined);
+  assert.equal(schemas.MenuGroupNodeSchema.parse({ ...group, disabled: true }).disabled, true);
+  assert.equal(schemas.MenuItemNodeSchema.parse({ ...item, disabled: false }).disabled, false);
+  assert.equal(schemas.MenuItemNodeSchema.parse({ ...item, disabled: true }).disabled, true);
+  assert.equal(schemas.MenuDividerNodeSchema.safeParse({
+    nodeId: 'divider',
+    kind: 'divider',
+    order: 20,
+    disabled: true,
+  }).success, false);
+
+  for (const nodeIndex of fixture.nodes.keys()) {
+    const result = schemas.MenuDefinitionSchema.safeParse({
+      ...fixture,
+      nodes: fixture.nodes.map((candidate, candidateIndex) => (
+        candidateIndex === nodeIndex ? { ...candidate, disabled: 'yes' } : candidate
+      )),
+    });
+    assert.equal(result.success, false);
+    assert.deepEqual(result.error.issues[0].path, ['nodes', nodeIndex, 'disabled']);
+    assert.match(result.error.issues[0].message, /boolean/i);
+  }
 });
 
 test('rejects duplicate nodes, non-group parents, cycles, and duplicate providers', () => {

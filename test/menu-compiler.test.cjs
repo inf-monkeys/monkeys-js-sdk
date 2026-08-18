@@ -224,6 +224,66 @@ test('produces a deterministic document independent of source definition and nod
   assert.deepEqual(reordered, first);
 });
 
+test('normalizes and preserves disabled state independently from access and navigation targets', () => {
+  const withoutDisabled = compile().document;
+  const withExplicitFalse = compile({
+    definitions: [
+      kernelMenu,
+      studioCurrentUser,
+      {
+        ...studioHeaderbar,
+        nodes: studioHeaderbar.nodes.map((node) => (
+          node.kind === 'divider' ? node : { ...node, disabled: false }
+        )),
+      },
+    ],
+  }).document;
+  assert.deepEqual(withExplicitFalse, withoutDisabled);
+
+  const compiled = compile({
+    definitions: [
+      kernelMenu,
+      studioCurrentUser,
+      {
+        ...studioHeaderbar,
+        nodes: studioHeaderbar.nodes.map((node) => (
+          node.nodeId === 'assets' || node.nodeId === 'my-assets'
+            ? { ...node, disabled: true }
+            : node
+        )),
+      },
+    ],
+  });
+  const headerbar = compiled.document.menus.find((menu) => menu.surface === 'headerbar');
+  const group = headerbar.nodes.find((node) => node.nodeId === 'assets');
+  const disabledItem = headerbar.nodes.find((node) => node.nodeId === 'my-assets');
+  const enabledItem = headerbar.nodes.find((node) => node.nodeId === 'all-assets');
+
+  assert.equal(group.disabled, true);
+  assert.equal(disabledItem.disabled, true);
+  assert.equal(enabledItem.disabled, false);
+  assert.equal(Object.isFrozen(disabledItem), true);
+  assert.notEqual(compiled.document.contentHash, withoutDisabled.contentHash);
+  assert.equal(compiled.evaluateItemAccess(disabledItem, {
+    sessionResolved: true,
+    authenticated: true,
+    permissionCodes: ['studio:access', 'data_asset:read', 'menu:assets'],
+    featureFlags: {},
+  }).allowed, true);
+  assert.equal(compiled.resolveNavigationTarget(
+    { applicationId: 'studio', pageId: 'data-browser' },
+    'mine',
+  ).status, 'resolved');
+  assert.deepEqual(
+    [...compiled.selectedNodeIds(
+      headerbar,
+      { applicationId: 'studio', pageId: 'data-browser' },
+      'mine',
+    )].sort(),
+    ['assets', 'my-assets'],
+  );
+});
+
 test('restores selected state from page and activation while ignoring business input', () => {
   const compiled = compile();
   const headerbar = compiled.document.menus.find((menu) => menu.surface === 'headerbar');
