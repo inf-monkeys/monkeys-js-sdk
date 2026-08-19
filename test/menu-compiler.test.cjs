@@ -177,8 +177,8 @@ const compile = (overrides = {}) => runtime.compileMenuRuntimeBundle({
   permissionCodes: permissions,
   inputValidators,
   sourceMap: {
-    'z.legacy': 'legacy-version-1',
-    'server.product.menus': 'tenant-version-42',
+    'z.other': 'other-version-1',
+    'server.ui.menus': 'tenant-version-42',
   },
   ...overrides,
 });
@@ -203,7 +203,7 @@ test('compiles only the requested application and strips server-bound values', (
   assert.equal(schemas.MenuRuntimeBundleSchema.safeParse(compiled.document).success, true);
   assert.equal(compiled.document.contentHash.length, 64);
   assert.equal(Object.isFrozen(compiled.document.menus[0].nodes[0]), true);
-  assert.deepEqual(Object.keys(compiled.document.sourceMap), ['server.product.menus', 'z.legacy']);
+  assert.deepEqual(Object.keys(compiled.document.sourceMap), ['server.ui.menus', 'z.other']);
 
   const { contentHash, ...unsigned } = compiled.document;
   assert.equal(
@@ -222,6 +222,72 @@ test('produces a deterministic document independent of source definition and nod
     ],
   }).document;
   assert.deepEqual(reordered, first);
+});
+
+test('normalizes and preserves disabled state independently from access and navigation targets', () => {
+  const withoutDisabled = compile().document;
+  const enabledHeaderbar = withoutDisabled.menus.find((menu) => menu.surface === 'headerbar');
+  for (const node of enabledHeaderbar.nodes) {
+    assert.equal(Object.hasOwn(node, 'disabled'), false);
+  }
+  const withExplicitFalse = compile({
+    definitions: [
+      kernelMenu,
+      studioCurrentUser,
+      {
+        ...studioHeaderbar,
+        nodes: studioHeaderbar.nodes.map((node) => (
+          node.kind === 'divider' ? node : { ...node, disabled: false }
+        )),
+      },
+    ],
+  }).document;
+  assert.deepEqual(withExplicitFalse, withoutDisabled);
+
+  const compiled = compile({
+    definitions: [
+      kernelMenu,
+      studioCurrentUser,
+      {
+        ...studioHeaderbar,
+        nodes: studioHeaderbar.nodes.map((node) => (
+          node.nodeId === 'assets' || node.nodeId === 'my-assets'
+            ? { ...node, disabled: true }
+            : node
+        )),
+      },
+    ],
+  });
+  const headerbar = compiled.document.menus.find((menu) => menu.surface === 'headerbar');
+  const group = headerbar.nodes.find((node) => node.nodeId === 'assets');
+  const disabledItem = headerbar.nodes.find((node) => node.nodeId === 'my-assets');
+  const enabledItem = headerbar.nodes.find((node) => node.nodeId === 'all-assets');
+
+  assert.equal(group.disabled, true);
+  assert.equal(disabledItem.disabled, true);
+  assert.equal(Object.hasOwn(group, 'disabled'), true);
+  assert.equal(Object.hasOwn(disabledItem, 'disabled'), true);
+  assert.equal(Object.hasOwn(enabledItem, 'disabled'), false);
+  assert.equal(Object.isFrozen(disabledItem), true);
+  assert.notEqual(compiled.document.contentHash, withoutDisabled.contentHash);
+  assert.equal(compiled.evaluateItemAccess(disabledItem, {
+    sessionResolved: true,
+    authenticated: true,
+    permissionCodes: ['studio:access', 'data_asset:read', 'menu:assets'],
+    featureFlags: {},
+  }).allowed, true);
+  assert.equal(compiled.resolveNavigationTarget(
+    { applicationId: 'studio', pageId: 'data-browser' },
+    'mine',
+  ).status, 'resolved');
+  assert.deepEqual(
+    [...compiled.selectedNodeIds(
+      headerbar,
+      { applicationId: 'studio', pageId: 'data-browser' },
+      'mine',
+    )].sort(),
+    ['assets', 'my-assets'],
+  );
 });
 
 test('restores selected state from page and activation while ignoring business input', () => {

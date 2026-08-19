@@ -112,6 +112,7 @@ export const MenuGroupNodeSchema = z
     kind: z.literal('group'),
     label: LocalizedTextSchema.optional(),
     iconRef: ContractIdentifierSchema.optional(),
+    disabled: z.boolean().optional(),
   })
   .strict();
 
@@ -129,6 +130,7 @@ export const MenuItemNodeSchema = z
     label: LocalizedTextSchema,
     iconRef: ContractIdentifierSchema.optional(),
     tone: z.enum(['default', 'danger']).optional(),
+    disabled: z.boolean().optional(),
     requiredPermission: ContractIdentifierSchema.optional(),
     behavior: MenuBehaviorSchema,
   })

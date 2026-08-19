@@ -2,9 +2,83 @@
 
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
+const { resolve } = require('node:path');
 const test = require('node:test');
+const Ajv2020 = require('ajv/dist/2020');
 
 const PACKAGE_NAME = '@inf-monkeys-tech/monkeys';
+
+test('generated tenant JSON Schemas expose optional Home entry availability on strict pages', () => {
+  for (const schemaName of ['tenant-product-config', 'tenant-runtime-config']) {
+    const schema = require(`${PACKAGE_NAME}/json-schema/${schemaName}.schema.json`);
+    const pages = schema.properties.applicationConfig.properties.theme.properties.pages;
+
+    assert.deepEqual(pages.properties.homeEntryEnabled, { type: 'boolean' });
+    assert.equal(pages.required.includes('homeEntryEnabled'), false);
+    assert.equal(pages.additionalProperties, false);
+  }
+});
+
+test('generated menu JSON Schemas expose optional disabled state only on groups and items', () => {
+  const ajv = new Ajv2020({ strict: false });
+  const definitionSchema = require(`${PACKAGE_NAME}/json-schema/menu-definition.schema.json`);
+  const runtimeSchema = require(`${PACKAGE_NAME}/json-schema/menu-runtime-bundle.schema.json`);
+  const fixture = JSON.parse(
+    readFileSync(resolve(__dirname, './fixtures/menu-definition.v1.json'), 'utf8'),
+  );
+  const validateDefinition = ajv.compile(definitionSchema);
+  const validateRuntime = ajv.compile(runtimeSchema);
+
+  assert.equal(validateDefinition(fixture), true);
+  assert.equal(validateDefinition({
+    ...fixture,
+    nodes: fixture.nodes.map((node, index) => ({ ...node, disabled: index === 0 })),
+  }), true);
+  assert.equal(validateDefinition({
+    ...fixture,
+    nodes: [...fixture.nodes, {
+      nodeId: 'divider',
+      kind: 'divider',
+      order: 20,
+      disabled: true,
+    }],
+  }), false);
+
+  assert.equal(validateRuntime({
+    contract: 'MenuRuntimeBundle',
+    version: 1,
+    applicationId: 'studio',
+    sourceVersion: 'config-42',
+    contentHash: 'a'.repeat(64),
+    menus: [{
+      applicationId: 'studio',
+      surface: 'headerbar',
+      menuId: 'default',
+      nodes: [{
+        nodeId: 'account',
+        kind: 'group',
+        order: 10,
+      }, {
+        nodeId: 'logout',
+        parentNodeId: 'account',
+        kind: 'item',
+        order: 10,
+        label: 'Logout',
+        disabled: true,
+        behavior: { kind: 'action', actionRef: 'logout' },
+        access: {
+          authenticated: true,
+          permissionAllOf: [],
+          permissionAnyOf: [],
+          featureFlags: [],
+        },
+      }],
+      contributions: [],
+    }],
+    navigationTargets: [],
+    sourceMap: {},
+  }), true);
+});
 
 test('runtime subpath preserves CommonJS resolution', () => {
   const runtime = require(`${PACKAGE_NAME}/runtime`);

@@ -675,6 +675,7 @@ export const TenantApplicationConfigSchema = z
           .object({
             allowPageKeys: z.union([z.literal('*'), z.array(ContractIdentifierSchema)]),
             defaultPageKey: ContractIdentifierSchema.optional(),
+            homeEntryEnabled: z.boolean().optional(),
           })
           .strict()
           .optional(),
