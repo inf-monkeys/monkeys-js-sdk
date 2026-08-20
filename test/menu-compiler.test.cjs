@@ -135,7 +135,7 @@ const kernelMenu = {
 
 const permissions = [
   'studio:access',
-  'kernel:access',
+  'kernel_base:access',
   'data_asset:read',
   'data_asset:manage',
   'menu:assets',
@@ -160,7 +160,7 @@ const compile = (overrides = {}) => runtime.compileMenuRuntimeBundle({
       applicationId: 'kernel',
       pageId: 'kernel-home',
       input: { schemaRef: 'schema://page/kernel-home-input' },
-      permissionAllOf: ['kernel:access'],
+      permissionAllOf: ['kernel_base:access'],
       permissionAnyOf: [],
     }),
   ],
@@ -375,20 +375,20 @@ test('applies target access and the simple menu permission as additive gates', (
     authenticated: true,
     permissionCodes: ['studio:access', 'data_asset:read', '*'],
     featureFlags: {},
-  }).allowed, true);
+  }).allowed, false);
   assert.equal(compiled.evaluateItemAccess(item, {
     sessionResolved: true,
     authenticated: true,
     permissionCodes: ['studio:access', 'data_asset:read'],
     featureFlags: {},
-    isKernelSuperAdmin: true,
-  }).allowed, true);
+    isSuperAdmin: true,
+  }).allowed, false);
   assert.deepEqual(compiled.evaluateItemAccess(item, {
     sessionResolved: true,
     authenticated: true,
     permissionCodes: ['*'],
     featureFlags: {},
-  }).reasons, ['permission-all', 'permission-any']);
+  }).reasons, ['permission-all', 'permission-any', 'required-permission']);
 });
 
 test('rejects unknown registries, permissions, invalid input, and conflicting target input with paths', () => {
