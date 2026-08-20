@@ -1,4 +1,10 @@
 export {
+  PermissionBundleSchema,
+  PermissionDefinitionSchema,
+  ProductAccessDeclarationSchema,
+  SystemGroupDefinitionSchema,
+} from '../contracts/access';
+export {
   ArtifactManifestSchema,
   OutputRecordSchema,
   StorageLocatorSchema,

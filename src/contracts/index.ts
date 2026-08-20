@@ -1,3 +1,4 @@
+export * from './access';
 export * from './artifact';
 export * from './agent';
 export * from './capability';

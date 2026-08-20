@@ -73,7 +73,6 @@ export interface MenuAccessContext {
   authenticated: boolean;
   permissionCodes: readonly string[];
   featureFlags: Readonly<Record<string, boolean>>;
-  isKernelSuperAdmin?: boolean;
 }
 
 export type MenuAccessDenialReason =
@@ -316,7 +315,6 @@ const evaluateAccess = (item: CompiledMenuItemNode, context: MenuAccessContext):
   if (item.access.authenticated && !context.authenticated) reasons.push('authentication');
 
   const granted = new Set(context.permissionCodes);
-  const elevated = context.isKernelSuperAdmin === true || granted.has('*');
   if (item.access.permissionAllOf.some((permission) => !granted.has(permission))) {
     reasons.push('permission-all');
   }
@@ -326,7 +324,7 @@ const evaluateAccess = (item: CompiledMenuItemNode, context: MenuAccessContext):
   ) {
     reasons.push('permission-any');
   }
-  if (!elevated && item.access.requiredPermission && !granted.has(item.access.requiredPermission)) {
+  if (item.access.requiredPermission && !granted.has(item.access.requiredPermission)) {
     reasons.push('required-permission');
   }
   if (item.access.featureFlags.some((flag) => context.featureFlags[flag] !== true)) {

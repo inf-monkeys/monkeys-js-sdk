@@ -16,3 +16,4 @@ export {
   compileToolCapabilityManifest,
   validateDomainCommand,
 } from './runtime/declaration-compiler';
+export { compileProductAccessDeclaration } from './runtime/access-compiler';
