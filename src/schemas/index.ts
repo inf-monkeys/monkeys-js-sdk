@@ -168,6 +168,7 @@ export {
   CurrentUserMenuProfileSchema,
   CurrentUserMenuSectionSchema,
   TenantApplicationConfigSchema,
+  TenantListFooterConfigSchema,
   TenantLandingPageConfigSchema,
   TenantProductConfigSchema,
   TenantRuntimeConfigSchema,

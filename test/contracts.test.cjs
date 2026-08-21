@@ -1291,6 +1291,26 @@ test('tenant application config accepts Ontology data bindings and rejects retir
   }
 });
 
+test('tenant application config validates shared list footer defaults', () => {
+  const parseListFooter = (listFooter) => schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: { ...applicationConfig.theme, listFooter },
+  });
+
+  assert.equal(parseListFooter({
+    showTotal: true,
+    showPageSize: true,
+    pageSizeOptions: [10, 20, 50, 100],
+    paginationMode: 'auto',
+    alignment: 'space-between',
+    density: 'default',
+  }).success, true);
+  assert.equal(parseListFooter({ pageSizeOptions: [10, 10] }).success, false);
+  assert.equal(parseListFooter({ pageSizeOptions: [0, 20] }).success, false);
+  assert.equal(parseListFooter({ pageSizeOptions: Array.from({ length: 11 }, (_, index) => index + 1) }).success, false);
+  assert.equal(parseListFooter({ paginationMode: 'infinite' }).success, false);
+});
+
 test('tenant application config accepts strict Trend Radar Ontology/View source roles', () => {
   const parseTrendRadar = (trendRadar) => schemas.TenantApplicationConfigSchema.safeParse({
     ...applicationConfig,

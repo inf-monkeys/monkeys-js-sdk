@@ -535,6 +535,35 @@ export const TenantLandingPageConfigSchema = z.discriminatedUnion('mode', [
   LandingPageIframeConfigSchema,
 ]);
 
+const ListFooterPageSizeOptionsSchema = z
+  .array(z.number().int().positive().max(1000))
+  .min(1)
+  .max(10)
+  .superRefine((options, context) => {
+    const seen = new Set<number>();
+    options.forEach((option, index) => {
+      if (seen.has(option)) {
+        context.addIssue({
+          code: 'custom',
+          message: `Duplicate list footer page size option ${option}.`,
+          path: [index],
+        });
+      }
+      seen.add(option);
+    });
+  });
+
+export const TenantListFooterConfigSchema = z
+  .object({
+    showTotal: z.boolean().optional(),
+    showPageSize: z.boolean().optional(),
+    pageSizeOptions: ListFooterPageSizeOptionsSchema.optional(),
+    paginationMode: z.enum(['auto', 'pages', 'compact']).optional(),
+    alignment: z.enum(['start', 'end', 'space-between']).optional(),
+    density: z.enum(['compact', 'default', 'comfortable']).optional(),
+  })
+  .strict();
+
 /** Public, application-specific values that are intentionally safe for browser clients. */
 export const TenantApplicationConfigSchema = z
   .object({
@@ -606,6 +635,7 @@ export const TenantApplicationConfigSchema = z
           .strict()
           .optional(),
         paginationPosition: z.enum(['left', 'right']).optional(),
+        listFooter: TenantListFooterConfigSchema.optional(),
         ugcViewIconOnlyMode: z.boolean().optional(),
         workflowPreviewExecutionGrid: z
           .object({
@@ -851,6 +881,7 @@ export const TenantRuntimeConfigSchema = z
 export type TenantProductConfig = z.infer<typeof TenantProductConfigSchema>;
 export type TenantRuntimeConfig = z.infer<typeof TenantRuntimeConfigSchema>;
 export type TenantApplicationConfig = z.infer<typeof TenantApplicationConfigSchema>;
+export type TenantListFooterConfig = z.infer<typeof TenantListFooterConfigSchema>;
 export type CurrentUserMenuDisplayText = z.infer<typeof CurrentUserMenuDisplayTextSchema>;
 export type CurrentUserMenuNavigationItem = z.infer<typeof CurrentUserMenuNavigationItemSchema>;
 export type CurrentUserMenuControlItem = z.infer<typeof CurrentUserMenuControlItemSchema>;
