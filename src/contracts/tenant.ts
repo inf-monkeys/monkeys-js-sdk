@@ -630,6 +630,16 @@ export const TenantApplicationConfigSchema = z
         teamAsUser: z.boolean().optional(),
         themeMode: z.enum(['shadow', 'border']).optional(),
         density: z.enum(['compact', 'default', 'comfortable']).optional(),
+        statusStates: z
+          .object({
+            loading: z.object({ variant: z.enum(['spinner', 'skeleton']).optional() }).strict().optional(),
+            empty: z.object({ variant: z.enum(['default', 'compact']).optional() }).strict().optional(),
+            error: z.object({ showRetry: z.boolean().optional() }).strict().optional(),
+            permission: z.object({ showRequestAccess: z.boolean().optional() }).strict().optional(),
+            density: z.enum(['compact', 'default', 'comfortable']).optional(),
+          })
+          .strict()
+          .optional(),
         pageZoom: z.number().positive().optional(),
         miniMode: z.object({ showPreviewViewExecutionResultGrid: z.boolean() }).strict().optional(),
         workflow: z.object({ allowConcurrentRuns: z.boolean() }).strict().optional(),

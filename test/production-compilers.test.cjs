@@ -90,6 +90,19 @@ test('rejects identity leaks and invalid values in view render models', () => {
 test('compiles desired tenant config into a resolved, source-free browser contract', () => {
   const productConfig = schemas.TenantProductConfigSchema.parse({
     ...representativeProductConfig,
+    applicationConfig: {
+      ...representativeProductConfig.applicationConfig,
+      theme: {
+        ...representativeProductConfig.applicationConfig.theme,
+        statusStates: {
+          loading: { variant: 'skeleton' },
+          empty: { variant: 'compact' },
+          error: { showRetry: false },
+          permission: { showRequestAccess: false },
+          density: 'comfortable',
+        },
+      },
+    },
     authBinding: {
       primary: { kind: 'auth-provider', providerId: 'oidc', policyRef: 'tenant-login' },
     },
@@ -113,6 +126,13 @@ test('compiles desired tenant config into a resolved, source-free browser contra
   assert.equal(runtimeConfig.applicationConfig.theme.agent.logo.light, '/agent-logo-light.svg');
   assert.equal(runtimeConfig.applicationConfig.theme.agent.sessionCentric, true);
   assert.equal(runtimeConfig.applicationConfig.theme.agent.quickStartEnabled, true);
+  assert.deepEqual(runtimeConfig.applicationConfig.theme.statusStates, {
+    loading: { variant: 'skeleton' },
+    empty: { variant: 'compact' },
+    error: { showRetry: false },
+    permission: { showRequestAccess: false },
+    density: 'comfortable',
+  });
   assert.equal(runtimeConfig.authBinding.primary.providerId, 'oidc');
   assert.equal(runtimeConfig.dataBinding.analytics.projectionRef, 'usage-summary');
   assert.throws(() => schemas.TenantRuntimeConfigSchema.parse({
