@@ -34,7 +34,7 @@ export const PageVisibilitySchema = z
     permissionAllOf: z.array(ContractIdentifierSchema).default([]),
     permissionAnyOf: z.array(ContractIdentifierSchema).default([]),
     featureFlags: z.array(ContractIdentifierSchema).default([]),
-    productContexts: z.array(z.enum(['studio', 'kernel', 'compute'])).min(1),
+    productContexts: z.array(z.enum(['studio', 'kernel'])).min(1),
   })
   .strict();
 
@@ -269,7 +269,7 @@ const duplicateProjectionIdentity = <T>(
 export const PageRuntimeProjectionSchema = z
   .object({
     contract: z.literal('PageRuntimeProjection'),
-    product: z.enum(['studio', 'kernel', 'compute']),
+    product: z.enum(['studio', 'kernel']),
     routes: z.array(PageRouteProjectionSchema),
     navigation: z.array(PageNavigationProjectionSchema),
     guards: z.array(PageGuardProjectionSchema),

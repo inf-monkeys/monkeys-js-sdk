@@ -1311,6 +1311,21 @@ test('tenant application config validates shared list footer defaults', () => {
   assert.equal(parseListFooter({ paginationMode: 'infinite' }).success, false);
 });
 
+test('tenant application config exposes Kernel runtime and rejects the retired Compute projection', () => {
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    kernelRuntime: {
+      integrations: {
+        gitlab: { baseUrl: 'https://gitlab.example.test' },
+      },
+    },
+  }).success, true);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    compute: { integrations: {} },
+  }).success, false);
+});
+
 test('tenant application config accepts strict Trend Radar Ontology/View source roles', () => {
   const parseTrendRadar = (trendRadar) => schemas.TenantApplicationConfigSchema.safeParse({
     ...applicationConfig,
