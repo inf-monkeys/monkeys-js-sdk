@@ -7,7 +7,7 @@ import {
   JsonObjectSchema,
 } from './common';
 
-export const ProductContextSchema = z.enum(['studio', 'kernel', 'compute']);
+export const ProductContextSchema = z.enum(['studio', 'kernel']);
 
 export const RenderNodeStateSchema = z.enum([
   'idle',

@@ -9,7 +9,7 @@
       { "type": "url", "url": "https://cdn.example.test/tenant.tokens.json" }
     ]
   },
-  "moduleRefs": ["studio", "kernel", "compute"],
+  "moduleRefs": ["studio", "kernel"],
   "pageRefs": ["workflow-page"],
   "featureFlags": { "enhanced": true },
   "authBinding": { "issuer": "auth.primary" },
@@ -178,7 +178,7 @@
         }
       }
     },
-    "compute": {
+    "kernelRuntime": {
       "integrations": {
         "harbor": { "endpoint": "https://harbor.example.test", "projectScopes": ["monkeys"] },
         "gitlab": { "baseUrl": "https://gitlab.example.test", "deploymentReportsEnabled": true },
