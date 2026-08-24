@@ -124,7 +124,7 @@ test('compiles desired tenant config into a resolved, source-free browser contra
   assert.equal(JSON.stringify(runtimeConfig).includes('tokenSources'), false);
   assert.equal(runtimeConfig.applicationConfig.theme.headbar.theme, 'glassy');
   assert.equal(runtimeConfig.applicationConfig.theme.agent.logo.light, '/agent-logo-light.svg');
-  assert.equal(runtimeConfig.applicationConfig.theme.agent.sessionCentric, true);
+  assert.equal(runtimeConfig.applicationConfig.theme.agent.navigationMode, 'trend');
   assert.equal(runtimeConfig.applicationConfig.theme.agent.quickStartEnabled, true);
   assert.deepEqual(runtimeConfig.applicationConfig.theme.statusStates, {
     loading: { variant: 'skeleton' },
@@ -144,6 +144,20 @@ test('compiles desired tenant config into a resolved, source-free browser contra
     designTokens: { alias: { $ref: '#/palette/primary' } },
   }), /invalid|\$ref|Pointer/i);
   assert.throws(() => schemas.TenantApplicationConfigSchema.parse({ ...applicationConfig, undeclared: true }));
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      agent: { ...applicationConfig.theme.agent, sessionCentric: true },
+    },
+  }).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      agent: { ...applicationConfig.theme.agent, navigationMode: 'custom' },
+    },
+  }).success, false);
   assert.throws(() => schemas.TenantProductConfigSchema.parse({
     ...productConfig,
     authBinding: {

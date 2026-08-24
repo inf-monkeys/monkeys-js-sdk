@@ -23,7 +23,7 @@
       "logo": { "light": "/logo-light.svg", "dark": "/logo-dark.svg" },
       "agent": {
         "logo": { "light": "/agent-logo-light.svg", "dark": "/agent-logo-dark.svg" },
-        "sessionCentric": true,
+        "navigationMode": "trend",
         "quickStartEnabled": true
       },
       "favicon": { "light": "/favicon-light.svg", "dark": "/favicon-dark.svg" },
