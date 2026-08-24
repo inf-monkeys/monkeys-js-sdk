@@ -407,6 +407,7 @@ test('requires canonical PageDefinition envelopes for tenant workbench pages', (
       ...applicationConfig.theme,
       workflowPreviewExecutionGrid: {
         clickBehavior: 'none',
+        aspectRatio: '4:3',
       },
       workbench: {
         pages: [canonicalPage],
@@ -419,6 +420,15 @@ test('requires canonical PageDefinition envelopes for tenant workbench pages', (
       },
     },
   }));
+  assert.throws(() => schemas.TenantApplicationConfigSchema.parse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      workflowPreviewExecutionGrid: {
+        aspectRatio: '2:1',
+      },
+    },
+  }), /invalid/i);
   assert.throws(() => schemas.TenantApplicationConfigSchema.parse({
     ...applicationConfig,
     theme: {

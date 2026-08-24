@@ -644,6 +644,7 @@ export const TenantApplicationConfigSchema = z
             showErrorFilter: z.boolean().optional(),
             displayType: z.enum(['grid', 'masonry']).optional(),
             showDetailButton: z.boolean().optional(),
+            aspectRatio: z.enum(['1:1', '4:3', '3:4', '16:9', '9:16']).optional(),
           })
           .strict()
           .optional(),
