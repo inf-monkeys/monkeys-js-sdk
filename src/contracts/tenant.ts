@@ -787,7 +787,7 @@ export const TenantApplicationConfigSchema = z
       })
       .strict()
       .optional(),
-    compute: z
+    kernelRuntime: z
       .object({
         integrations: z
           .object({

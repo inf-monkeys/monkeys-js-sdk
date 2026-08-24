@@ -575,7 +575,7 @@ const REQUIRED_SEMANTIC_COLOR_PATHS = [
   'neocard',
 ] as const;
 
-/** The complete semantic surface consumed by Studio, Kernel and Compute. */
+/** The complete semantic surface consumed by Studio and its Kernel surfaces. */
 export const MONKEYS_REQUIRED_THEME_TOKEN_PATHS: Readonly<Record<string, ThemeTokenType>> = Object.freeze({
   ...Object.fromEntries(
     REQUIRED_SEMANTIC_COLOR_PATHS.flatMap((name) => [

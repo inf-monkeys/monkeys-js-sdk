@@ -125,7 +125,7 @@ export const compileViewProviderRegistry = (
         throw new Error(`View capability ${capability.id} references missing provider ${providerRef.id}.`);
       }
     }
-    for (const product of ['studio', 'kernel', 'compute'] as const) {
+    for (const product of ['studio', 'kernel'] as const) {
       const candidates = capability.runtime.providerBindings.filter((binding) => binding.productContexts.length === 0 || binding.productContexts.includes(product));
       const priorities = candidates.map((binding) => binding.priority).sort((left, right) => right - left);
       if (priorities.length > 1 && priorities[0] === priorities[1]) {

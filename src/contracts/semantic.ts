@@ -63,7 +63,7 @@ export const DomainCommandSchema = z
     actorRef: EntityRefSchema,
     source: z
       .object({
-        product: z.enum(['studio', 'kernel', 'compute', 'agent', 'mcp', 'service']),
+        product: z.enum(['studio', 'kernel', 'agent', 'mcp', 'service']),
         pageId: ContractIdentifierSchema.optional(),
         capabilityId: ContractIdentifierSchema.optional(),
       })
