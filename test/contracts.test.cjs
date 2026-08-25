@@ -150,6 +150,16 @@ test('file contracts require stable identity and bounded upload metadata', () =>
     'attach-usage',
   );
   assert.equal(
+    contracts.ManagedFileCommandSchema.parse({
+      ...command,
+      commandId: 'command-detach-usage',
+      commandType: 'detach-usage',
+      expectedVersion: 2,
+      payload: { ownerType: 'data-asset', ownerId: 'asset-1', field: 'media' },
+    }).commandType,
+    'detach-usage',
+  );
+  assert.equal(
     contracts.ManagedFileEventSchema.parse({
       contract: 'ManagedFileEvent',
       contractVersion: 1,
