@@ -86,6 +86,23 @@ test('file contracts require stable identity and bounded upload metadata', () =>
   );
   assert.throws(() => contracts.FileReferenceSchema.parse({}));
   assert.throws(() => contracts.FileUploadCreateRequestSchema.parse({ purpose: '../escape', filename: 'x', mimeType: 'text/plain' }));
+  assert.equal(
+    contracts.FileUploadInstructionSchema.parse({
+      url: '/api/files/uploads/file-1/content',
+      method: 'PUT',
+      headers: { 'content-type': 'application/pdf' },
+      expiresAt: createdAt,
+    }).url,
+    '/api/files/uploads/file-1/content',
+  );
+  assert.throws(() =>
+    contracts.FileUploadInstructionSchema.parse({
+      url: '//attacker.example/upload',
+      method: 'PUT',
+      headers: {},
+      expiresAt: createdAt,
+    }),
+  );
 });
 
 const pageCapabilityManifest = {
