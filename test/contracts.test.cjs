@@ -57,6 +57,19 @@ const completionHeader = {
   occurredAt,
 };
 
+test('design token file sources accept Windows drive paths but reject URIs', () => {
+  assert.deepEqual(
+    contracts.DesignTokenSourceSchema.parse({ type: 'file', path: 'C:\\design-tokens\\tenant.json' }),
+    { type: 'file', path: 'C:\\design-tokens\\tenant.json' },
+  );
+  assert.deepEqual(
+    contracts.DesignTokenSourceSchema.parse({ type: 'file', path: 'D:/design-tokens/tenant.json' }),
+    { type: 'file', path: 'D:/design-tokens/tenant.json' },
+  );
+  assert.throws(() => contracts.DesignTokenSourceSchema.parse({ type: 'file', path: 'https://example.com/tokens.json' }));
+  assert.throws(() => contracts.DesignTokenSourceSchema.parse({ type: 'file', path: 'file:///tmp/tokens.json' }));
+});
+
 test('file contracts require stable identity and bounded upload metadata', () => {
   const createdAt = '2026-08-25T08:00:00.000Z';
   const file = contracts.FileRecordSchema.parse({
