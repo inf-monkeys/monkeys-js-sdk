@@ -57,6 +57,37 @@ const completionHeader = {
   occurredAt,
 };
 
+test('file contracts require stable identity and bounded upload metadata', () => {
+  const createdAt = '2026-08-25T08:00:00.000Z';
+  const file = contracts.FileRecordSchema.parse({
+    contract: 'FileRecord',
+    fileId: 'file-1',
+    teamId: 'team-1',
+    purpose: 'agent-attachments',
+    originalName: 'brief.pdf',
+    mimeType: 'application/pdf',
+    byteSize: 1024,
+    status: 'pending',
+    storage: {
+      bucketId: 'private-assets',
+      objectKey: 'monkeys/agent-attachments/teams/team-1/2026/08/file-1/original.pdf',
+      canonicalUri: 'file://file-1',
+    },
+    variants: [],
+    createdAt,
+    updatedAt: createdAt,
+  });
+  assert.equal(file.storage.objectKey.startsWith('monkeys/agent-attachments/teams/team-1/'), true);
+  assert.throws(() =>
+    contracts.FileRecordSchema.parse({
+      ...file,
+      storage: { ...file.storage, canonicalUri: 'file://another-file' },
+    }),
+  );
+  assert.throws(() => contracts.FileReferenceSchema.parse({}));
+  assert.throws(() => contracts.FileUploadCreateRequestSchema.parse({ purpose: '../escape', filename: 'x', mimeType: 'text/plain' }));
+});
+
 const pageCapabilityManifest = {
   contract: 'CapabilityManifest',
   id: 'studio.workflow-workspace',
