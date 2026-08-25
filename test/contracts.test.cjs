@@ -61,6 +61,8 @@ test('file contracts require stable identity and bounded upload metadata', () =>
   const createdAt = '2026-08-25T08:00:00.000Z';
   const file = contracts.FileRecordSchema.parse({
     contract: 'FileRecord',
+    contractVersion: 1,
+    version: 1,
     fileId: 'file-1',
     teamId: 'team-1',
     purpose: 'agent-attachments',
@@ -86,6 +88,15 @@ test('file contracts require stable identity and bounded upload metadata', () =>
   );
   assert.throws(() => contracts.FileReferenceSchema.parse({}));
   assert.throws(() => contracts.FileUploadCreateRequestSchema.parse({ purpose: '../escape', filename: 'x', mimeType: 'text/plain' }));
+  assert.throws(() => contracts.FileUploadCreateRequestSchema.parse({ purpose: 'caller-defined', filename: 'x', mimeType: 'text/plain' }));
+  assert.throws(() =>
+    contracts.FileUploadCreateRequestSchema.parse({
+      purpose: 'agent-attachments',
+      filename: 'x',
+      mimeType: 'text/plain',
+      usage: { ownerType: 'caller-defined', ownerId: 'owner-1' },
+    }),
+  );
   assert.equal(
     contracts.FileUploadInstructionSchema.parse({
       url: '/api/files/uploads/file-1/content',
@@ -102,6 +113,34 @@ test('file contracts require stable identity and bounded upload metadata', () =>
       headers: {},
       expiresAt: createdAt,
     }),
+  );
+  const command = contracts.ManagedFileCommandSchema.parse({
+    contract: 'ManagedFileCommand',
+    contractVersion: 1,
+    commandId: 'command-1',
+    commandType: 'create-file',
+    fileId: file.fileId,
+    teamId: file.teamId,
+    actorId: 'user-1',
+    payload: { purpose: file.purpose },
+    issuedAt: createdAt,
+  });
+  assert.equal(command.commandType, 'create-file');
+  assert.equal(
+    contracts.ManagedFileEventSchema.parse({
+      contract: 'ManagedFileEvent',
+      contractVersion: 1,
+      eventId: 'event-1',
+      eventType: 'file-created',
+      fileId: file.fileId,
+      teamId: file.teamId,
+      aggregateVersion: 1,
+      commandId: command.commandId,
+      actorId: 'user-1',
+      payload: { purpose: file.purpose },
+      occurredAt: createdAt,
+    }).aggregateVersion,
+    1,
   );
 });
 

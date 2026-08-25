@@ -1,19 +1,81 @@
 import { z } from 'zod';
-import { ContractIdentifierSchema, IsoDateTimeSchema, Sha256Schema } from './common';
+import { ContractIdentifierSchema, IsoDateTimeSchema, JsonObjectSchema, Sha256Schema } from './common';
 
-export const FilePurposeSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(64)
-  .regex(/^[a-z0-9][a-z0-9-]*$/);
+export const FILE_PURPOSES = [
+  'uploads',
+  'agent-attachments',
+  'agent-artifacts',
+  'agent-edited-images',
+  'agent-workbench',
+  'asset-screenshots',
+  'data-exports',
+  'data-feature-media',
+  'design-assets',
+  'design-board-thumbnails',
+  'design-images',
+  'dev-agent-reference-images',
+  'dev-agent-review-artifacts',
+  'external-delivery-techpacks',
+  'llm-generated-images',
+  'media-generated',
+  'media-uploads',
+  'model-training-files',
+  'models',
+  'models-checkpoints',
+  'models-clip',
+  'models-controlnet',
+  'models-diffusion-models',
+  'models-loras-test',
+  'models-vae',
+  'output-images',
+  'plugin-data-imports',
+  'plugin-runtime',
+  'plugin-runtime-outputs',
+  'step-thumbnails',
+  'techpack-design-intent',
+  'user-files-base',
+  'user-files-design-board-background',
+  'user-files-design-project-cover',
+  'user-files-designs',
+  'user-files-icons',
+  'user-files-import-comfyui-image',
+  'user-files-import-comfyui-json',
+  'user-files-import-comfyui-json-url',
+  'user-files-instruction-input',
+  'user-files-linesheet',
+  'user-files-media',
+  'user-files-other',
+  'user-files-prompt-assistant',
+  'user-files-table-data',
+  'user-files-techpack-attachments',
+  'user-files-text-data-file',
+  'user-files-workflow-input',
+  'workflow-image-mask',
+  'workflow-image-overlay',
+  'workflow-import',
+] as const;
+
+export const FilePurposeSchema = z.enum(FILE_PURPOSES);
 
 export const FileStatusSchema = z.enum(['pending', 'ready', 'failed', 'deleted']);
 export const FileVariantStatusSchema = z.enum(['queued', 'processing', 'ready', 'failed']);
 
+export const FILE_USAGE_OWNER_TYPES = [
+  'data-asset',
+  'data-export',
+  'design-board',
+  'external-delivery',
+  'kernel-runtime',
+  'llm-generated-media',
+  'model-training-media',
+  'plugin-run',
+] as const;
+
+export const FileUsageOwnerTypeSchema = z.enum(FILE_USAGE_OWNER_TYPES);
+
 export const FileUsageSchema = z
   .object({
-    ownerType: ContractIdentifierSchema,
+    ownerType: FileUsageOwnerTypeSchema,
     ownerId: ContractIdentifierSchema,
     field: ContractIdentifierSchema.optional(),
   })
@@ -50,6 +112,8 @@ export const FileVariantSchema = z
 export const FileRecordSchema = z
   .object({
     contract: z.literal('FileRecord'),
+    contractVersion: z.literal(1),
+    version: z.number().int().positive(),
     fileId: ContractIdentifierSchema,
     teamId: ContractIdentifierSchema,
     purpose: FilePurposeSchema,
@@ -146,7 +210,56 @@ export const FileResolveBatchResponseSchema = z
   })
   .strict();
 
+export const ManagedFileCommandTypeSchema = z.enum([
+  'create-file',
+  'record-upload',
+  'verify-upload',
+  'delete-file',
+]);
+
+export const ManagedFileCommandSchema = z
+  .object({
+    contract: z.literal('ManagedFileCommand'),
+    contractVersion: z.literal(1),
+    commandId: ContractIdentifierSchema,
+    commandType: ManagedFileCommandTypeSchema,
+    fileId: ContractIdentifierSchema,
+    teamId: ContractIdentifierSchema,
+    expectedVersion: z.number().int().nonnegative().optional(),
+    actorId: ContractIdentifierSchema.optional(),
+    payload: JsonObjectSchema.default({}),
+    issuedAt: IsoDateTimeSchema,
+  })
+  .strict();
+
+export const ManagedFileEventTypeSchema = z.enum([
+  'file-created',
+  'file-usage-attached',
+  'storage-operation-queued',
+  'storage-operation-completed',
+  'storage-operation-failed',
+  'file-ready',
+  'file-deleted',
+]);
+
+export const ManagedFileEventSchema = z
+  .object({
+    contract: z.literal('ManagedFileEvent'),
+    contractVersion: z.literal(1),
+    eventId: ContractIdentifierSchema,
+    eventType: ManagedFileEventTypeSchema,
+    fileId: ContractIdentifierSchema,
+    teamId: ContractIdentifierSchema,
+    aggregateVersion: z.number().int().positive(),
+    commandId: ContractIdentifierSchema,
+    actorId: ContractIdentifierSchema.optional(),
+    payload: JsonObjectSchema.default({}),
+    occurredAt: IsoDateTimeSchema,
+  })
+  .strict();
+
 export type FilePurpose = z.infer<typeof FilePurposeSchema>;
+export type FileUsageOwnerType = z.infer<typeof FileUsageOwnerTypeSchema>;
 export type FileStatus = z.infer<typeof FileStatusSchema>;
 export type FileVariantStatus = z.infer<typeof FileVariantStatusSchema>;
 export type FileUsage = z.infer<typeof FileUsageSchema>;
@@ -160,3 +273,7 @@ export type FileUploadCompleteRequest = z.infer<typeof FileUploadCompleteRequest
 export type ResolvedFile = z.infer<typeof ResolvedFileSchema>;
 export type FileResolveBatchRequest = z.infer<typeof FileResolveBatchRequestSchema>;
 export type FileResolveBatchResponse = z.infer<typeof FileResolveBatchResponseSchema>;
+export type ManagedFileCommandType = z.infer<typeof ManagedFileCommandTypeSchema>;
+export type ManagedFileCommand = z.infer<typeof ManagedFileCommandSchema>;
+export type ManagedFileEventType = z.infer<typeof ManagedFileEventTypeSchema>;
+export type ManagedFileEvent = z.infer<typeof ManagedFileEventSchema>;
