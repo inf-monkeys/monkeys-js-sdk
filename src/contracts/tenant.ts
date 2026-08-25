@@ -13,7 +13,8 @@ const DesignTokenFileSourceSchema = z
   .object({
     type: z.literal('file'),
     path: z.string().trim().min(1).superRefine((source, context) => {
-      if (/^[a-z][a-z\d+.-]*:/i.test(source)) {
+      const isWindowsDrivePath = /^[a-z]:[\\/]/i.test(source);
+      if (!isWindowsDrivePath && /^[a-z][a-z\d+.-]*:/i.test(source)) {
         context.addIssue({
           code: 'custom',
           message: 'Design token file sources must use local file paths.',
