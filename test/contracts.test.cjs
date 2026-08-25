@@ -165,6 +165,22 @@ test('file contracts require stable identity and bounded upload metadata', () =>
     }).aggregateVersion,
     1,
   );
+  assert.equal(
+    contracts.ManagedFileEventSchema.parse({
+      contract: 'ManagedFileEvent',
+      contractVersion: 1,
+      eventId: 'event-usage-detached',
+      eventType: 'file-usage-detached',
+      fileId: file.fileId,
+      teamId: file.teamId,
+      aggregateVersion: 2,
+      commandId: 'command-detach-usage',
+      actorId: 'user-1',
+      payload: { ownerType: 'data-asset', ownerId: 'asset-1', field: 'media' },
+      occurredAt: createdAt,
+    }).eventType,
+    'file-usage-detached',
+  );
 });
 
 const pageCapabilityManifest = {
