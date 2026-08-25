@@ -6,6 +6,7 @@ export * from './common';
 export * from './context';
 export * from './continuity';
 export * from './data';
+export * from './file';
 export * from './menu';
 export * from './page';
 export * from './render';
