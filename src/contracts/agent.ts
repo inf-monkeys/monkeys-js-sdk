@@ -1061,6 +1061,19 @@ export const AgentWorkbenchComposerQueueItemSchema = z
   })
   .strict();
 
+export const AgentWorkbenchComposerInputActionIconSchema = z.enum([
+  'file-text',
+  'image',
+]);
+
+export const AgentWorkbenchComposerInputActionSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    label: z.string().min(1),
+    icon: AgentWorkbenchComposerInputActionIconSchema.optional(),
+  })
+  .strict();
+
 export const AgentWorkbenchComposerModelOptionSchema = z
   .object({
     id: ContractIdentifierSchema,
@@ -1145,6 +1158,8 @@ export const AgentWorkbenchComposerViewModelSchema = z
     placeholder: z.string().optional(),
     attachments: z.array(AgentWorkbenchComposerAttachmentSchema).default([]),
     queuedDrafts: z.array(AgentWorkbenchComposerQueueItemSchema).default([]),
+    inputActions: z.array(AgentWorkbenchComposerInputActionSchema).default([]),
+    selectedInputActionId: ContractIdentifierSchema.optional(),
     model: z
       .object({
         selectedId: ContractIdentifierSchema.optional(),
@@ -1222,6 +1237,7 @@ export type AgentWorkbenchComposerAttachment = z.infer<typeof AgentWorkbenchComp
 export type AgentWorkbenchComposerQueueItem = z.infer<typeof AgentWorkbenchComposerQueueItemSchema>;
 export type AgentWorkbenchComposerModelOption = z.infer<typeof AgentWorkbenchComposerModelOptionSchema>;
 export type AgentWorkbenchComposerCapabilities = z.infer<typeof AgentWorkbenchComposerCapabilitiesSchema>;
+export type AgentWorkbenchComposerInputAction = z.infer<typeof AgentWorkbenchComposerInputActionSchema>;
 export type AgentWorkbenchComposerViewModel = z.infer<typeof AgentWorkbenchComposerViewModelSchema>;
 export type AgentWorkbenchQuickStartIcon = z.infer<typeof AgentWorkbenchQuickStartIconSchema>;
 export type AgentWorkbenchQuickStartTemplateAction = z.infer<typeof AgentWorkbenchQuickStartTemplateActionSchema>;

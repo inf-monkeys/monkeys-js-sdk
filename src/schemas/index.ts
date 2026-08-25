@@ -52,6 +52,7 @@ export {
   AgentSessionViewModelSchema,
   AgentWorkbenchAgentItemSchema,
   AgentWorkbenchComposerAttachmentSchema,
+  AgentWorkbenchComposerInputActionSchema,
   AgentWorkbenchComposerCapabilitiesSchema,
   AgentWorkbenchComposerModelOptionSchema,
   AgentWorkbenchComposerQueueItemSchema,
