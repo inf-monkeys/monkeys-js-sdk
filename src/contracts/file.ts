@@ -212,6 +212,7 @@ export const FileResolveBatchResponseSchema = z
 
 export const ManagedFileCommandTypeSchema = z.enum([
   'create-file',
+  'attach-usage',
   'record-upload',
   'verify-upload',
   'delete-file',
