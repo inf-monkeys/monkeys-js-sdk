@@ -140,6 +140,16 @@ test('file contracts require stable identity and bounded upload metadata', () =>
   });
   assert.equal(command.commandType, 'create-file');
   assert.equal(
+    contracts.ManagedFileCommandSchema.parse({
+      ...command,
+      commandId: 'command-attach-usage',
+      commandType: 'attach-usage',
+      expectedVersion: 1,
+      payload: { ownerType: 'data-asset', ownerId: 'asset-1', field: 'media' },
+    }).commandType,
+    'attach-usage',
+  );
+  assert.equal(
     contracts.ManagedFileEventSchema.parse({
       contract: 'ManagedFileEvent',
       contractVersion: 1,
