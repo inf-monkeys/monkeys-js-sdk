@@ -94,7 +94,10 @@ export const FileUploadCreateRequestSchema = z
 
 export const FileUploadInstructionSchema = z
   .object({
-    url: z.string().url(),
+    url: z.union([
+      z.string().url(),
+      z.string().trim().regex(/^\/(?!\/)/, 'Expected an absolute same-origin path'),
+    ]),
     method: z.string().trim().min(1),
     headers: z.record(z.string(), z.string()),
     expiresAt: IsoDateTimeSchema,
