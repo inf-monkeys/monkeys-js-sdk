@@ -117,6 +117,7 @@ test('validates the controlled Agent workbench composer view model', () => {
       attachmentCount: 0,
       status: 'queued',
     }],
+    inputActions: [],
     model: {
       selectedId: 'gpt-5.5',
       options: [{
