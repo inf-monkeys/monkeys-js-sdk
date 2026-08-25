@@ -236,6 +236,7 @@ export const ManagedFileCommandSchema = z
 export const ManagedFileEventTypeSchema = z.enum([
   'file-created',
   'file-usage-attached',
+  'file-usage-detached',
   'storage-operation-queued',
   'storage-operation-completed',
   'storage-operation-failed',
