@@ -1447,6 +1447,36 @@ test('tenant application config validates shared list footer defaults', () => {
   assert.equal(parseListFooter({ paginationMode: 'infinite' }).success, false);
 });
 
+test('tenant application config owns the Agent sidebar configuration contract', () => {
+  const parsed = schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    theme: {
+      ...applicationConfig.theme,
+      agent: {
+        sidebar: {
+          navigationMode: 'session',
+          defaultOpen: true,
+          widthPercent: 18,
+          visibleSections: ['header', 'search', 'new-session', 'sessions', 'footer'],
+          quickStartEnabled: true,
+        },
+      },
+    },
+  });
+
+  assert.equal(parsed.success, true);
+  assert.equal(
+    schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      theme: {
+        ...applicationConfig.theme,
+        agent: { sidebar: { widthPercent: 60 } },
+      },
+    }).success,
+    false,
+  );
+});
+
 test('tenant application config exposes Kernel runtime and rejects the retired Compute projection', () => {
   assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
     ...applicationConfig,

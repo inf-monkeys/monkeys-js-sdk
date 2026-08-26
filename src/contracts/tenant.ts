@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AgentWorkbenchSidebarConfigSchema } from './agent';
 import {
   ContractIdentifierSchema,
   JsonObjectSchema,
@@ -126,6 +127,19 @@ const AssetVariantsSchema = z
   .object({
     light: z.string().optional(),
     dark: z.string().optional(),
+  })
+  .strict();
+
+export const TenantAgentThemeConfigSchema = z
+  .object({
+    logo: AssetVariantsSchema.optional(),
+    brandDisplayMode: z.enum(['auto', 'logo-only', 'logo-name', 'name-only']).optional(),
+    density: z.enum(['compact', 'default', 'comfortable']).optional(),
+    sidebar: AgentWorkbenchSidebarConfigSchema.optional(),
+    /** @deprecated Use sidebar.navigationMode. */
+    navigationMode: z.enum(['default', 'session', 'trend']).optional(),
+    /** @deprecated Use sidebar.quickStartEnabled. */
+    quickStartEnabled: z.boolean().optional(),
   })
   .strict();
 
@@ -721,16 +735,7 @@ export const TenantApplicationConfigSchema = z
           })
           .strict()
           .optional(),
-        agent: z
-          .object({
-            logo: AssetVariantsSchema.optional(),
-            brandDisplayMode: z.enum(['auto', 'logo-only', 'logo-name', 'name-only']).optional(),
-            density: z.enum(['compact', 'default', 'comfortable']).optional(),
-            navigationMode: z.enum(['default', 'session', 'trend']).optional(),
-            quickStartEnabled: z.boolean().optional(),
-          })
-          .strict()
-          .optional(),
+        agent: TenantAgentThemeConfigSchema.optional(),
       })
       .strict(),
     landingPage: TenantLandingPageConfigSchema.optional(),
@@ -883,6 +888,7 @@ export const TenantRuntimeConfigSchema = z
 export type TenantProductConfig = z.infer<typeof TenantProductConfigSchema>;
 export type TenantRuntimeConfig = z.infer<typeof TenantRuntimeConfigSchema>;
 export type TenantApplicationConfig = z.infer<typeof TenantApplicationConfigSchema>;
+export type TenantAgentThemeConfig = z.infer<typeof TenantAgentThemeConfigSchema>;
 export type TenantListFooterConfig = z.infer<typeof TenantListFooterConfigSchema>;
 export type CurrentUserMenuDisplayText = z.infer<typeof CurrentUserMenuDisplayTextSchema>;
 export type CurrentUserMenuNavigationItem = z.infer<typeof CurrentUserMenuNavigationItemSchema>;

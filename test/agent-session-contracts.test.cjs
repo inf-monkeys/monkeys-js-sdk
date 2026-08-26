@@ -191,6 +191,74 @@ test('validates the Agent workbench quick start view model', () => {
   );
 });
 
+test('validates and resolves the Agent workbench sidebar configuration', () => {
+  const sidebar = {
+    navigationMode: 'trend',
+    defaultOpen: false,
+    widthPercent: 22,
+    visibleSections: ['header', 'search', 'new-session', 'sessions', 'groups', 'footer'],
+    groups: [{
+      id: 'scene',
+      label: 'By scene',
+      items: [{
+        id: 'outdoor',
+        title: 'Outdoor',
+        subtitle: 'Technical protection',
+        imageUrl: 'https://example.test/outdoor.webp',
+        prompt: 'Analyse the outdoor apparel trend.',
+        mediaVariant: 'cover-with-label',
+      }],
+    }],
+    defaultGroupId: 'scene',
+    quickStartEnabled: true,
+    quickStartCategories: [{
+      id: 'design',
+      label: 'Design',
+      sections: [{
+        id: 'quick-start',
+        label: 'Quick start',
+        templates: [{
+          id: 'collection-plan',
+          title: 'Collection plan',
+          prompt: 'Create a seasonal collection plan.',
+          action: 'prompt',
+          accept: '*/*',
+          multiple: false,
+        }],
+      }],
+    }],
+    trendEntryEnabled: true,
+  };
+
+  assert.deepEqual(contracts.AgentWorkbenchSidebarConfigSchema.parse(sidebar), sidebar);
+  assert.deepEqual(contracts.resolveAgentWorkbenchSidebarConfig(undefined, {
+    navigationMode: 'session',
+    quickStartEnabled: true,
+  }), {
+    navigationMode: 'session',
+    defaultOpen: true,
+    widthPercent: 18,
+    visibleSections: [...contracts.DEFAULT_AGENT_WORKBENCH_SIDEBAR_SECTIONS],
+    groups: [],
+    quickStartEnabled: true,
+    trendEntryEnabled: false,
+  });
+  assert.equal(
+    contracts.AgentWorkbenchSidebarConfigSchema.safeParse({
+      ...sidebar,
+      defaultGroupId: 'missing',
+    }).success,
+    false,
+  );
+  assert.equal(
+    contracts.AgentWorkbenchSidebarConfigSchema.safeParse({
+      ...sidebar,
+      visibleSections: ['search', 'search'],
+    }).success,
+    false,
+  );
+});
+
 test('validates the controlled Agent workbench navigation view model', () => {
   const navigation = {
     contract: 'AgentWorkbenchNavigationViewModel',

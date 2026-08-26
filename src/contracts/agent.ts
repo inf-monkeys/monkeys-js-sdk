@@ -1140,6 +1140,103 @@ export const AgentWorkbenchQuickStartCategorySchema = z
   })
   .strict();
 
+export const AgentWorkbenchSidebarNavigationModeSchema = z.enum(['default', 'session', 'trend']);
+
+export const AgentWorkbenchSidebarSectionSchema = z.enum([
+  'header',
+  'search',
+  'new-session',
+  'sessions',
+  'agents',
+  'groups',
+  'footer',
+]);
+
+export const AgentWorkbenchSidebarGroupItemSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    title: z.string().trim().min(1).max(120),
+    subtitle: z.string().trim().min(1).max(240).optional(),
+    imageUrl: z.string().trim().min(1).max(2048).optional(),
+    prompt: z.string().trim().min(1).max(10_000),
+    mediaVariant: z.enum(['cover', 'cover-with-label', 'logo']).optional(),
+    mediaTreatment: z.enum(['preserve', 'monochrome-light', 'invert']).optional(),
+  })
+  .strict();
+
+export const AgentWorkbenchSidebarGroupSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    label: z.string().trim().min(1).max(120),
+    items: z.array(AgentWorkbenchSidebarGroupItemSchema).min(1).max(50),
+    itemAspectRatio: z.number().positive().max(10).optional(),
+  })
+  .strict();
+
+export const AgentWorkbenchSidebarConfigSchema = z
+  .object({
+    navigationMode: AgentWorkbenchSidebarNavigationModeSchema.optional(),
+    defaultOpen: z.boolean().optional(),
+    /** Initial sidebar width as a percentage of the workbench split pane. */
+    widthPercent: z.number().int().min(10).max(40).optional(),
+    visibleSections: z.array(AgentWorkbenchSidebarSectionSchema).min(1).max(7).optional(),
+    groups: z.array(AgentWorkbenchSidebarGroupSchema).max(20).optional(),
+    defaultGroupId: ContractIdentifierSchema.optional(),
+    quickStartEnabled: z.boolean().optional(),
+    quickStartCategories: z.array(AgentWorkbenchQuickStartCategorySchema).max(20).optional(),
+    trendEntryEnabled: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.visibleSections && new Set(value.visibleSections).size !== value.visibleSections.length) {
+      context.addIssue({
+        code: 'custom',
+        path: ['visibleSections'],
+        message: 'Sidebar sections must be unique.',
+      });
+    }
+    if (value.defaultGroupId && !value.groups?.some((group) => group.id === value.defaultGroupId)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['defaultGroupId'],
+        message: 'The default sidebar group must exist in groups.',
+      });
+    }
+  });
+
+export const DEFAULT_AGENT_WORKBENCH_SIDEBAR_SECTIONS = Object.freeze([
+  'header',
+  'search',
+  'new-session',
+  'sessions',
+  'agents',
+  'groups',
+  'footer',
+] as const);
+
+export interface AgentWorkbenchSidebarLegacyConfig {
+  navigationMode?: AgentWorkbenchSidebarNavigationMode;
+  quickStartEnabled?: boolean;
+}
+
+export function resolveAgentWorkbenchSidebarConfig(
+  config?: AgentWorkbenchSidebarConfig,
+  legacy: AgentWorkbenchSidebarLegacyConfig = {},
+): ResolvedAgentWorkbenchSidebarConfig {
+  const parsed = AgentWorkbenchSidebarConfigSchema.parse(config ?? {});
+  const navigationMode = parsed.navigationMode ?? legacy.navigationMode ?? 'default';
+  return {
+    ...parsed,
+    navigationMode,
+    defaultOpen: parsed.defaultOpen ?? true,
+    widthPercent: parsed.widthPercent ?? 18,
+    visibleSections: parsed.visibleSections ?? [...DEFAULT_AGENT_WORKBENCH_SIDEBAR_SECTIONS],
+    groups: parsed.groups ?? [],
+    quickStartEnabled: parsed.quickStartEnabled ?? legacy.quickStartEnabled ?? false,
+    trendEntryEnabled: parsed.trendEntryEnabled ?? navigationMode === 'trend',
+  };
+}
+
 export const AgentWorkbenchQuickStartViewModelSchema = z
   .object({
     contract: z.literal('AgentWorkbenchQuickStartViewModel'),
@@ -1245,6 +1342,20 @@ export type AgentWorkbenchQuickStartTemplate = z.infer<typeof AgentWorkbenchQuic
 export type AgentWorkbenchQuickStartSection = z.infer<typeof AgentWorkbenchQuickStartSectionSchema>;
 export type AgentWorkbenchQuickStartCategory = z.infer<typeof AgentWorkbenchQuickStartCategorySchema>;
 export type AgentWorkbenchQuickStartViewModel = z.infer<typeof AgentWorkbenchQuickStartViewModelSchema>;
+export type AgentWorkbenchSidebarNavigationMode = z.infer<typeof AgentWorkbenchSidebarNavigationModeSchema>;
+export type AgentWorkbenchSidebarSection = z.infer<typeof AgentWorkbenchSidebarSectionSchema>;
+export type AgentWorkbenchSidebarGroupItem = z.infer<typeof AgentWorkbenchSidebarGroupItemSchema>;
+export type AgentWorkbenchSidebarGroup = z.infer<typeof AgentWorkbenchSidebarGroupSchema>;
+export type AgentWorkbenchSidebarConfig = z.infer<typeof AgentWorkbenchSidebarConfigSchema>;
+export type ResolvedAgentWorkbenchSidebarConfig = AgentWorkbenchSidebarConfig & {
+  navigationMode: AgentWorkbenchSidebarNavigationMode;
+  defaultOpen: boolean;
+  widthPercent: number;
+  visibleSections: AgentWorkbenchSidebarSection[];
+  groups: AgentWorkbenchSidebarGroup[];
+  quickStartEnabled: boolean;
+  trendEntryEnabled: boolean;
+};
 
 // Kept as a source-compatible type alias while consumers move to the product-level name.
 export const AgentExecutionModeSchema = AgentModeSchema;
