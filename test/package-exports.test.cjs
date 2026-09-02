@@ -19,6 +19,17 @@ test('generated tenant JSON Schemas expose optional Home entry availability on s
   }
 });
 
+test('generated tenant JSON Schemas expose the optional email registration switch', () => {
+  for (const schemaName of ['tenant-product-config', 'tenant-runtime-config']) {
+    const schema = require(`${PACKAGE_NAME}/json-schema/${schemaName}.schema.json`);
+    const password = schema.properties.applicationConfig.properties.auth.properties.password;
+
+    assert.deepEqual(password.properties.registrationEnabled, { type: 'boolean' });
+    assert.equal(password.required?.includes('registrationEnabled') ?? false, false);
+    assert.equal(password.additionalProperties, false);
+  }
+});
+
 test('generated menu JSON Schemas expose optional disabled state only on groups and items', () => {
   const ajv = new Ajv2020({ strict: false });
   const definitionSchema = require(`${PACKAGE_NAME}/json-schema/menu-definition.schema.json`);

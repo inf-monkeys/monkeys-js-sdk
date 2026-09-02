@@ -747,7 +747,10 @@ export const TenantApplicationConfigSchema = z
           .strict()
           .optional(),
         password: z
-          .object({ disableAutoRegister: z.boolean().optional() })
+          .object({
+            registrationEnabled: z.boolean().optional(),
+            disableAutoRegister: z.boolean().optional(),
+          })
           .strict()
           .optional(),
         hideAuthToast: z.boolean().optional(),

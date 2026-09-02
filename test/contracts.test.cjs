@@ -1387,6 +1387,34 @@ test('rejects undeclared nested fields instead of silently normalizing them', ()
   }).success, false);
 });
 
+test('tenant application config exposes the canonical email registration switch', () => {
+  for (const registrationEnabled of [true, false]) {
+    const parsed = schemas.TenantApplicationConfigSchema.parse({
+      ...applicationConfig,
+      auth: {
+        enabled: ['password'],
+        password: {
+          registrationEnabled,
+          disableAutoRegister: !registrationEnabled,
+        },
+      },
+    });
+
+    assert.deepEqual(parsed.auth.password, {
+      registrationEnabled,
+      disableAutoRegister: !registrationEnabled,
+    });
+  }
+
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    auth: {
+      enabled: ['password'],
+      password: { registrationEnabled: 'false' },
+    },
+  }).success, false);
+});
+
 test('tenant application config accepts Ontology data bindings and rejects retired Bucket aliases', () => {
   const canonical = {
     ...applicationConfig,

@@ -124,7 +124,7 @@
     "auth": {
       "enabled": ["password", "oidc"],
       "oidc": { "buttonText": "SSO", "autoSignin": false },
-      "password": { "disableAutoRegister": false },
+      "password": { "registrationEnabled": true, "disableAutoRegister": false },
       "hideAuthToast": false,
       "autoReload": true,
       "defaultOtherTeam": false
