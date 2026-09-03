@@ -280,13 +280,17 @@ export const RouteClaimSchema = RouteClaimBaseSchema.safeExtend({
 export const DeclarativeRouteClaimSchema = RouteClaimSchema;
 const LegacyDeclarativeRouteClaimSchema = LegacyRouteClaimSchema;
 
-export const CompiledRouteMatcherSchema = z
+const LegacyCompiledRouteMatcherSchema = z
   .object({
     caseSensitive: z.boolean(),
     trailingSlash: z.enum(['preserve', 'remove', 'require']),
     parameters: z.array(RouteSpaceParameterSchema),
   })
   .strict();
+
+export const CompiledRouteMatcherSchema = LegacyCompiledRouteMatcherSchema.safeExtend({
+  surface: ProductSurfaceSchema,
+}).strict();
 
 export const CompiledRouteClaimSchema = RouteClaimSchema.safeExtend({
   normalizedPath: RoutePathTemplateSchema,
@@ -295,7 +299,7 @@ export const CompiledRouteClaimSchema = RouteClaimSchema.safeExtend({
 
 const LegacyCompiledRouteClaimSchema = LegacyRouteClaimSchema.safeExtend({
   normalizedPath: RoutePathTemplateSchema,
-  matcher: CompiledRouteMatcherSchema,
+  matcher: LegacyCompiledRouteMatcherSchema,
 }).strict();
 
 const validateDeclaredRouteSurfaces = (

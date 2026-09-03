@@ -55,6 +55,8 @@ test('one multi-surface Page compiles only claims for the requested surface', ()
 
   assert.deepEqual(studio.map((claim) => claim.surface), ['studio', 'studio']);
   assert.deepEqual(kernel.map((claim) => claim.surface), ['kernel']);
+  assert.equal(studio[0].matcher.surface, 'studio');
+  assert.equal(kernel[0].matcher.surface, 'kernel');
   assert.equal(studio[0].matcher.caseSensitive, fixture.routeSpace.caseSensitive);
   assert.equal(kernel[0].matcher.trailingSlash, kernelRouteSpace.trailingSlash);
 });
@@ -90,6 +92,7 @@ test('Navigation route registrations reject a claim from another surface', () =>
       pathTemplate: '/data-assets',
       normalizedPath: '/data-assets',
       matcher: {
+        surface: 'kernel',
         caseSensitive: kernelRouteSpace.caseSensitive,
         trailingSlash: kernelRouteSpace.trailingSlash,
         parameters: kernelRouteSpace.parameters,
@@ -109,7 +112,10 @@ test('Navigation route registrations reject a claim from another surface', () =>
       routeSpaceRevisionRef: fixture.routeSpaceRevisionRef,
       pathTemplate: '/studio/:workbenchId',
       normalizedPath: '/studio/:workbenchId',
-      matcher: fixture.routeMatcher,
+      matcher: {
+        surface: 'studio',
+        ...fixture.routeMatcher,
+      },
     },
   };
 
@@ -230,7 +236,7 @@ test('legacy claims gain one surface from their exact RouteSpace and runtime bun
   });
 
   assert.equal(compiled.surface, 'studio');
-  assert.deepEqual(compiled.matcher, fixture.routeMatcher);
+  assert.deepEqual(compiled.matcher, { surface: 'studio', ...fixture.routeMatcher });
 
   const legacyRuntimeBundle = {
     ...runtime.compilePageRuntimeBundle({
@@ -263,7 +269,7 @@ test('legacy claims gain one surface from their exact RouteSpace and runtime bun
       routeSpaceRevisionRef: compiled.routeSpaceRevisionRef,
       pathTemplate: compiled.pathTemplate,
       normalizedPath: compiled.normalizedPath,
-      matcher: compiled.matcher,
+      matcher: fixture.routeMatcher,
     }],
   };
   assert.equal(contracts.PageRuntimeBundleSchema.safeParse(legacyRuntimeBundle).success, false);

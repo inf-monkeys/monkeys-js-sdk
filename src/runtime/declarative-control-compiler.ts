@@ -487,6 +487,7 @@ export const compileRouteClaims = (input: CompileRouteClaimsInput): readonly Com
       ...claim,
       normalizedPath,
       matcher: {
+        surface: claim.surface,
         caseSensitive: routeSpace.caseSensitive,
         trailingSlash: routeSpace.trailingSlash,
         parameters: routeSpace.parameters,

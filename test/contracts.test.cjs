@@ -469,7 +469,10 @@ const declarativeNavigationBundle = runtime.compileNavigationRuntimeBundle({
       routeSpaceRevisionRef: declarativeControl.routeSpaceRevisionRef,
       pathTemplate: '/gallery',
       normalizedPath: '/gallery',
-      matcher: declarativeControl.routeMatcher,
+      matcher: {
+        surface: 'studio',
+        ...declarativeControl.routeMatcher,
+      },
     },
   }, {
     kind: 'route',
@@ -484,7 +487,10 @@ const declarativeNavigationBundle = runtime.compileNavigationRuntimeBundle({
       routeSpaceRevisionRef: declarativeControl.routeSpaceRevisionRef,
       pathTemplate: '/studio/:workbenchId',
       normalizedPath: '/studio/:workbenchId',
-      matcher: declarativeControl.routeMatcher,
+      matcher: {
+        surface: 'studio',
+        ...declarativeControl.routeMatcher,
+      },
     },
   }],
   compilerRevisionRef: declarativeControl.compilerRevisionRef,
