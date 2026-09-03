@@ -1427,6 +1427,7 @@ test('tenant application config accepts Ontology data bindings and rejects retir
       workflowResultOntologyId: 'workflow-results',
       homeAdvertisement: { ontologyId: 'home' },
       homeTrendAssistant: { ontologyId: 'trends' },
+      staticTrendReport: { ontologyId: 'static-trend-reports', viewId: 'published-reports', teamId: '0' },
       sharing: {
         silentViewLinks: {
           placement: { mode: 'sourceOntology', ontologyId: 'assets' },
@@ -1435,6 +1436,14 @@ test('tenant application config accepts Ontology data bindings and rejects retir
     },
   };
   assert.equal(schemas.TenantApplicationConfigSchema.safeParse(canonical).success, true);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    dataManagement: { staticTrendReport: { ontologyId: '' } },
+  }).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    dataManagement: { staticTrendReport: { ontologyId: 'reports', unsupported: true } },
+  }).success, false);
 
   const retiredBindings = [
     { favoriteBucketId: 'favorite' },

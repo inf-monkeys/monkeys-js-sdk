@@ -783,6 +783,11 @@ export const TenantApplicationConfigSchema = z
           tep: z.object({ baseUrl: z.string().optional(), timeoutMs: z.number().int().positive().optional() }).strict().optional(),
           runtime: z.object({ appId: ContractIdentifierSchema, tepBaseUrlConfigured: z.boolean(), tepAuthorizationConfigured: z.boolean(), tepCookieConfigured: z.boolean() }).strict().optional(),
         }).strict().optional(),
+        staticTrendReport: z.object({
+          ontologyId: ContractIdentifierSchema,
+          viewId: ContractIdentifierSchema.optional(),
+          teamId: ContractIdentifierSchema.optional(),
+        }).strict().optional(),
         trendRadar: TenantTrendRadarSourcesSchema.optional(),
         sharing: z.object({
           silentViewLinks: z.object({ enabled: z.boolean().optional(), placement: z.object({ mode: z.enum(['sourceOntology', 'ontology']).optional(), ontologyId: ContractIdentifierSchema.optional(), parentId: ContractIdentifierSchema.optional(), navId: ContractIdentifierSchema.optional() }).strict().optional() }).strict().optional(),

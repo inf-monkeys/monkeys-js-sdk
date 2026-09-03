@@ -231,6 +231,15 @@ test('validates and resolves the Agent workbench sidebar configuration', () => {
   };
 
   assert.deepEqual(contracts.AgentWorkbenchSidebarConfigSchema.parse(sidebar), sidebar);
+  const staticReportSidebar = {
+    ...sidebar,
+    navigationMode: 'trend',
+    groups: sidebar.groups.map((group) => ({
+      ...group,
+      items: group.items.map(({ prompt: _prompt, ...item }) => item),
+    })),
+  };
+  assert.deepEqual(contracts.AgentWorkbenchSidebarConfigSchema.parse(staticReportSidebar), staticReportSidebar);
   assert.deepEqual(contracts.resolveAgentWorkbenchSidebarConfig(undefined, {
     navigationMode: 'session',
     quickStartEnabled: true,

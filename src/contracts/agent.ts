@@ -1158,7 +1158,8 @@ export const AgentWorkbenchSidebarGroupItemSchema = z
     title: z.string().trim().min(1).max(120),
     subtitle: z.string().trim().min(1).max(240).optional(),
     imageUrl: z.string().trim().min(1).max(2048).optional(),
-    prompt: z.string().trim().min(1).max(10_000),
+    /** Optional legacy prompt. Trend workbenches may use items as static report selectors. */
+    prompt: z.string().trim().min(1).max(10_000).optional(),
     mediaVariant: z.enum(['cover', 'cover-with-label', 'logo']).optional(),
     mediaTreatment: z.enum(['preserve', 'monochrome-light', 'invert']).optional(),
   })
