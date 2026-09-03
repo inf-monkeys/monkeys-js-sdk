@@ -102,6 +102,7 @@ export const CapabilitySourceTypeSchema = z.enum([
   'openapi',
   'workflow',
   'comfyui',
+  'design-view-provider',
 ]);
 
 export const CapabilityRegistrySourceSchema = z

@@ -9,6 +9,35 @@ import {
 import { OntologyDefinitionSchema, ProjectionSpecSchema } from './data';
 import { MenuDefinitionSchema } from './menu';
 import { PageDefinitionSchema } from './page';
+import { RevisionRefSchema } from './declarative-control';
+
+const ExactRefKindSchema = (kind: string) =>
+  RevisionRefSchema.superRefine((value, context) => {
+    if (value.kind !== kind) context.addIssue({ code: 'custom', path: ['kind'], message: `Reference must use kind ${kind}.` });
+  });
+
+export const SchemaDefinitionSchema = z
+  .object({
+    contract: z.literal('Schema'),
+    schemaVersion: z.literal(1),
+    schemaId: ContractIdentifierSchema,
+    ownerRepo: ContractIdentifierSchema,
+    dialect: z.literal('https://json-schema.org/draft/2020-12/schema'),
+    document: JsonObjectSchema,
+  })
+  .strict();
+
+export const OntologyViewDefinitionSchema = z
+  .object({
+    contract: z.literal('View'),
+    schemaVersion: z.literal(1),
+    viewId: ContractIdentifierSchema,
+    ownerRepo: ContractIdentifierSchema,
+    ontologyDefinitionRevisionRef: ExactRefKindSchema('ontology-definition'),
+    renderModelSchemaRevisionRef: ExactRefKindSchema('schema'),
+    requiredPermissionCodes: z.array(ContractIdentifierSchema).default([]),
+  })
+  .strict();
 
 export const ConceptRelationshipSchema = z
   .object({
@@ -123,6 +152,8 @@ export const ChangeImpactGraphSchema = z
 
 export type ConceptRelationship = z.infer<typeof ConceptRelationshipSchema>;
 export type ConceptDefinition = z.infer<typeof ConceptDefinitionSchema>;
+export type SchemaDefinition = z.infer<typeof SchemaDefinitionSchema>;
+export type OntologyViewDefinition = z.infer<typeof OntologyViewDefinitionSchema>;
 export type DomainCommandDefinition = z.infer<typeof DomainCommandDefinitionSchema>;
 export type DomainCommand = z.infer<typeof DomainCommandSchema>;
 export type ProductDeclaration = z.infer<typeof ProductDeclarationSchema>;

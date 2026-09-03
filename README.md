@@ -29,6 +29,12 @@ import { resolveThemeTokens } from '@inf-monkeys-tech/monkeys/runtime';
 
 当前 canonical 合同覆盖 RequestScope、ExecutionLink、Completion、Artifact/Output、Workflow、Capability、Page/Runtime Descriptor、Tenant Config、Theme Tokens、Ontology、Projection、Lineage、Domain Event 与 Trend/Radar 数据对象。运行时 Schema 严格拒绝未声明字段、错误引用和不满足不变量的数据；SDK 不提供旧合同迁移器、兼容别名或并行版本入口。
 
+## 声明式控制合同
+
+`Page`、`PageRelease`、`Workbench`、`WorkbenchRelease`、`Navigation` 与 `NavigationRelease` 是六个独立的 control Ontology 合同。它们复用显式的 tenant scope、不可变 revision/hash、受限 AccessPolicy、RouteSpace/RouteClaim、PublicationPlan 和发布证据；不保存业务 Records、用户组成员、任意 URL 或可执行代码。
+
+`compilePageRuntimeBundle`、`compileWorkbenchRuntimeBundle` 与 `compileNavigationRuntimeBundle` 只接受精确依赖和调用方批准的规模上限，输出可重建、与用户身份无关的确定性 Bundle。现有 `PageDefinition`、`MenuDefinition` 及其编译器保持不变，消费者可以按独立部署节奏升级 SDK。
+
 ## 发布门禁
 
 ```bash

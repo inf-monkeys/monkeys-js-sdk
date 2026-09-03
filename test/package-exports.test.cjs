@@ -104,11 +104,26 @@ test('generated menu JSON Schemas expose optional disabled state only on groups 
   }), true);
 });
 
+test('generated declarative control JSON Schemas preserve strict public record boundaries', () => {
+  const ajv = new Ajv2020({ strict: false });
+  const pageSchema = require(`${PACKAGE_NAME}/json-schema/page.schema.json`);
+  const publicationPlanSchema = require(`${PACKAGE_NAME}/json-schema/publication-plan.schema.json`);
+  const { page } = require('./declarative-control-fixtures.cjs');
+  const validatePage = ajv.compile(pageSchema);
+
+  assert.equal(validatePage(page), true, JSON.stringify(validatePage.errors));
+  assert.equal(validatePage({ ...page, businessRecords: [] }), false);
+  assert.equal(publicationPlanSchema.additionalProperties, false);
+});
+
 test('runtime subpath preserves CommonJS resolution', () => {
   const runtime = require(`${PACKAGE_NAME}/runtime`);
 
   assert.equal(typeof runtime.resolveThemeTokens, 'function');
   assert.equal(typeof runtime.compileMenuRuntimeBundle, 'function');
+  assert.equal(typeof runtime.compilePageRuntimeBundle, 'function');
+  assert.equal(typeof runtime.compileWorkbenchRuntimeBundle, 'function');
+  assert.equal(typeof runtime.compileNavigationRuntimeBundle, 'function');
 });
 
 test('runtime subpath exposes native ESM named exports', async () => {
@@ -117,6 +132,9 @@ test('runtime subpath exposes native ESM named exports', async () => {
   assert.equal(typeof runtime.resolveThemeTokens, 'function');
   assert.equal(typeof runtime.mergeThemeTokenDocuments, 'function');
   assert.equal(typeof runtime.compileMenuRuntimeBundle, 'function');
+  assert.equal(typeof runtime.compilePageRuntimeBundle, 'function');
+  assert.equal(typeof runtime.compileWorkbenchRuntimeBundle, 'function');
+  assert.equal(typeof runtime.compileNavigationRuntimeBundle, 'function');
 });
 
 test('all public module subpaths resolve through ESM import conditions', async () => {
@@ -131,6 +149,11 @@ test('all public module subpaths resolve through ESM import conditions', async (
   assert.equal(typeof schemas.ThemeTokensSchema?.parse, 'function');
   assert.equal(typeof contracts.MenuDefinitionSchema?.parse, 'function');
   assert.equal(typeof schemas.MenuRuntimeBundleSchema?.parse, 'function');
+  assert.equal(typeof contracts.PageSchema?.parse, 'function');
+  assert.equal(typeof contracts.DeclarativeRouteClaimSchema?.parse, 'function');
+  assert.equal(typeof schemas.LegacyRouteClaimSchema?.parse, 'function');
+  assert.equal(typeof schemas.CompiledRouteMatcherSchema?.parse, 'function');
+  assert.equal(typeof schemas.NavigationReleaseSchema?.parse, 'function');
 });
 
 test('browser ESM runtime does not expose the CommonJS Ajv boundary', () => {

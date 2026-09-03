@@ -6,6 +6,8 @@ export * from './common';
 export * from './context';
 export * from './continuity';
 export * from './data';
+export * from './declarative-control';
+export * from './declarative-control-http';
 export * from './file';
 export * from './menu';
 export * from './page';

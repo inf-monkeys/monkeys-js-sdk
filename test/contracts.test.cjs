@@ -8,6 +8,7 @@ const test = require('node:test');
 const contracts = require('../lib/contracts');
 const schemas = require('../lib/schemas');
 const runtime = require('../lib/runtime');
+const declarativeControl = require('./declarative-control-fixtures.cjs');
 
 const occurredAt = '2026-07-14T08:00:00.000Z';
 const menuDefinition = JSON.parse(
@@ -324,7 +325,114 @@ const renderNode = {
   renderModel: {},
 };
 
+const declarativeLimits = {
+  maxNavigationNodes: 1024,
+  maxNavigationDepth: 16,
+  maxRenderNodes: 1024,
+  maxRenderDepth: 32,
+  maxWorkbenchGroups: 128,
+  maxWorkbenchInstances: 1024,
+};
+const declarativeRouteSpaces = [{
+  revisionRef: declarativeControl.routeSpaceRevisionRef,
+  routeSpace: declarativeControl.routeSpace,
+}];
+const declarativePageBundle = runtime.compilePageRuntimeBundle({
+  page: declarativeControl.page,
+  pageRevisionRef: declarativeControl.pageRevisionRef,
+  release: declarativeControl.pageRelease,
+  releaseRevisionRef: declarativeControl.pageReleaseRevisionRef,
+  routeSpaces: declarativeRouteSpaces,
+  compilerRevisionRef: declarativeControl.compilerRevisionRef,
+  generation: 1,
+  limits: declarativeLimits,
+  capabilityRegistry: [{
+    capabilityRevisionRef: declarativeControl.capabilityRevisionRef,
+    providerRevisionRef: declarativeControl.providerRevisionRef,
+    editorEligible: true,
+    inputPorts: [{
+      name: 'items',
+      schemaRevisionRef: declarativeControl.page.ontologyBindings[0].renderModelSchemaRevisionRef,
+    }],
+    outputPorts: [{
+      name: 'favorite',
+      schemaRevisionRef: declarativeControl.page.actionBindings[0].sourceIntentSchemaRevisionRef,
+    }],
+    allowedSideEffects: ['network'],
+  }],
+});
+const declarativeWorkbenchBundle = runtime.compileWorkbenchRuntimeBundle({
+  workbench: declarativeControl.workbench,
+  workbenchRevisionRef: declarativeControl.workbenchRevisionRef,
+  release: declarativeControl.workbenchRelease,
+  releaseRevisionRef: declarativeControl.workbenchReleaseRevisionRef,
+  routeSpaces: declarativeRouteSpaces,
+  targetRegistry: [{
+    stableTargetRef: declarativeControl.stable('workflow', declarativeControl.workflowRevisionRef.id, {
+      ownerRepo: declarativeControl.workflowRevisionRef.ownerRepo,
+    }),
+    targetRevisionRef: declarativeControl.workflowRevisionRef,
+    accessPolicy: declarativeControl.access({ permissionAllOf: ['workflow.run'] }),
+  }],
+  compilerRevisionRef: declarativeControl.compilerRevisionRef,
+  generation: 1,
+  limits: declarativeLimits,
+});
+const declarativeNavigationBundle = runtime.compileNavigationRuntimeBundle({
+  navigation: declarativeControl.navigation,
+  navigationRevisionRef: declarativeControl.navigationRevisionRef,
+  release: declarativeControl.navigationRelease,
+  releaseRevisionRef: declarativeControl.navigationReleaseRevisionRef,
+  targetRegistry: [{
+    kind: 'route',
+    stableTargetRef: declarativeControl.stable('page', declarativeControl.page.pageId),
+    targetRevisionRef: declarativeControl.pageRevisionRef,
+    releaseRevisionRef: declarativeControl.pageReleaseRevisionRef,
+    surface: 'studio',
+    accessPolicy: declarativeControl.page.pageAccessPolicy,
+    routeClaim: {
+      kind: 'canonical',
+      surface: 'studio',
+      routeSpaceRevisionRef: declarativeControl.routeSpaceRevisionRef,
+      pathTemplate: '/gallery',
+      normalizedPath: '/gallery',
+      matcher: declarativeControl.routeMatcher,
+    },
+  }, {
+    kind: 'route',
+    stableTargetRef: declarativeControl.stable('workbench', declarativeControl.workbench.workbenchId),
+    targetRevisionRef: declarativeControl.workbenchRevisionRef,
+    releaseRevisionRef: declarativeControl.workbenchReleaseRevisionRef,
+    surface: 'studio',
+    accessPolicy: declarativeControl.workbench.workbenchAccessPolicy,
+    routeClaim: {
+      kind: 'canonical',
+      surface: 'studio',
+      routeSpaceRevisionRef: declarativeControl.routeSpaceRevisionRef,
+      pathTemplate: '/studio/:workbenchId',
+      normalizedPath: '/studio/:workbenchId',
+      matcher: declarativeControl.routeMatcher,
+    },
+  }],
+  compilerRevisionRef: declarativeControl.compilerRevisionRef,
+  generation: 1,
+  limits: declarativeLimits,
+});
+
 const fixtures = {
+  'declarative-control-ontology-definition': contracts.DECLARATIVE_CONTROL_ONTOLOGY_DEFINITIONS[0],
+  navigation: declarativeControl.navigation,
+  'navigation-release': declarativeControl.navigationRelease,
+  'navigation-runtime-bundle': declarativeNavigationBundle,
+  page: declarativeControl.page,
+  'page-release': declarativeControl.pageRelease,
+  'page-runtime-bundle': declarativePageBundle,
+  'publication-plan': declarativeControl.publicationPlan,
+  'route-space': declarativeControl.routeSpace,
+  'stable-ref-alias-map': declarativeControl.stableRefAliasMap,
+  workbench: declarativeControl.workbench,
+  'workbench-release': declarativeControl.workbenchRelease,
+  'workbench-runtime-bundle': declarativeWorkbenchBundle,
   'agent-runtime-event': {
     contract: 'AgentRuntimeEvent',
     runtimeEventId: 'runtime-event-1',
@@ -1347,7 +1455,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 73);
+  assert.equal(names.length, 86);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
