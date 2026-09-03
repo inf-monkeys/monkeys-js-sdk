@@ -753,6 +753,12 @@ export const TenantApplicationConfigSchema = z
           })
           .strict()
           .optional(),
+        registrationApproval: z
+          .object({
+            enabled: z.boolean().optional(),
+          })
+          .strict()
+          .optional(),
         hideAuthToast: z.boolean().optional(),
         autoReload: z.boolean().optional(),
         defaultOtherTeam: z.boolean().optional(),
