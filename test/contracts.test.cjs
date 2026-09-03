@@ -11,9 +11,7 @@ const runtime = require('../lib/runtime');
 const declarativeControl = require('./declarative-control-fixtures.cjs');
 
 const occurredAt = '2026-07-14T08:00:00.000Z';
-const menuDefinition = JSON.parse(
-  readFileSync(resolve(__dirname, 'fixtures/menu-definition.v1.json'), 'utf8'),
-);
+const menuDefinition = JSON.parse(readFileSync(resolve(__dirname, 'fixtures/menu-definition.v1.json'), 'utf8'));
 const ref = (kind, id, version, ownerRepo) => ({
   kind,
   id,
@@ -60,15 +58,31 @@ const completionHeader = {
 
 test('design token file sources accept Windows drive paths but reject URIs', () => {
   assert.deepEqual(
-    contracts.DesignTokenSourceSchema.parse({ type: 'file', path: 'C:\\design-tokens\\tenant.json' }),
+    contracts.DesignTokenSourceSchema.parse({
+      type: 'file',
+      path: 'C:\\design-tokens\\tenant.json',
+    }),
     { type: 'file', path: 'C:\\design-tokens\\tenant.json' },
   );
   assert.deepEqual(
-    contracts.DesignTokenSourceSchema.parse({ type: 'file', path: 'D:/design-tokens/tenant.json' }),
+    contracts.DesignTokenSourceSchema.parse({
+      type: 'file',
+      path: 'D:/design-tokens/tenant.json',
+    }),
     { type: 'file', path: 'D:/design-tokens/tenant.json' },
   );
-  assert.throws(() => contracts.DesignTokenSourceSchema.parse({ type: 'file', path: 'https://example.com/tokens.json' }));
-  assert.throws(() => contracts.DesignTokenSourceSchema.parse({ type: 'file', path: 'file:///tmp/tokens.json' }));
+  assert.throws(() =>
+    contracts.DesignTokenSourceSchema.parse({
+      type: 'file',
+      path: 'https://example.com/tokens.json',
+    }),
+  );
+  assert.throws(() =>
+    contracts.DesignTokenSourceSchema.parse({
+      type: 'file',
+      path: 'file:///tmp/tokens.json',
+    }),
+  );
 });
 
 test('file contracts require stable identity and bounded upload metadata', () => {
@@ -101,8 +115,20 @@ test('file contracts require stable identity and bounded upload metadata', () =>
     }),
   );
   assert.throws(() => contracts.FileReferenceSchema.parse({}));
-  assert.throws(() => contracts.FileUploadCreateRequestSchema.parse({ purpose: '../escape', filename: 'x', mimeType: 'text/plain' }));
-  assert.throws(() => contracts.FileUploadCreateRequestSchema.parse({ purpose: 'caller-defined', filename: 'x', mimeType: 'text/plain' }));
+  assert.throws(() =>
+    contracts.FileUploadCreateRequestSchema.parse({
+      purpose: '../escape',
+      filename: 'x',
+      mimeType: 'text/plain',
+    }),
+  );
+  assert.throws(() =>
+    contracts.FileUploadCreateRequestSchema.parse({
+      purpose: 'caller-defined',
+      filename: 'x',
+      mimeType: 'text/plain',
+    }),
+  );
   assert.throws(() =>
     contracts.FileUploadCreateRequestSchema.parse({
       purpose: 'agent-attachments',
@@ -202,18 +228,51 @@ const pageCapabilityManifest = {
   kind: 'view',
   displayName: 'Workflow workspace',
   ports: {
-    inputs: [{ name: 'renderModel', schemaRef: 'studio.workflow-workspace.render-model', required: true, multiple: false }],
-    outputs: [{ name: 'intent', schemaRef: 'studio.workflow-workspace.intent', required: false, multiple: true }],
+    inputs: [
+      {
+        name: 'renderModel',
+        schemaRef: 'studio.workflow-workspace.render-model',
+        required: true,
+        multiple: false,
+      },
+    ],
+    outputs: [
+      {
+        name: 'intent',
+        schemaRef: 'studio.workflow-workspace.intent',
+        required: false,
+        multiple: true,
+      },
+    ],
   },
   runtime: {
-    providerBindings: [{ providerRef: ref('view-provider', 'workflow-provider', '1.0.0', 'monkeys-studio'), productContexts: ['studio'], priority: 100 }],
+    providerBindings: [
+      {
+        providerRef: ref('view-provider', 'workflow-provider', '1.0.0', 'monkeys-studio'),
+        productContexts: ['studio'],
+        priority: 100,
+      },
+    ],
     loading: 'lazy',
     stateOwner: 'provider',
     sideEffects: ['network', 'storage'],
   },
-  placement: { surfaces: ['workspace'], slots: [], variants: [], tokenRefs: [] },
-  accessibility: { keyboardModel: 'workspace', focusModel: 'provider-managed', labelContract: 'page-title' },
-  observability: { eventNamespace: 'studio.workflow', metrics: [], evidenceRefs: [] },
+  placement: {
+    surfaces: ['workspace'],
+    slots: [],
+    variants: [],
+    tokenRefs: [],
+  },
+  accessibility: {
+    keyboardModel: 'workspace',
+    focusModel: 'provider-managed',
+    labelContract: 'page-title',
+  },
+  observability: {
+    eventNamespace: 'studio.workflow',
+    metrics: [],
+    evidenceRefs: [],
+  },
 };
 
 const pageProviderDescriptor = {
@@ -232,7 +291,11 @@ const pageProviderDescriptor = {
   frameOwner: 'provider',
   sideEffects: ['network', 'storage'],
   sideEffectAdapterRef: ref('side-effect-adapter', 'studio.workflow-workspace.effects', '1.0.0', 'monkeys-studio'),
-  lifecycle: { preserveMount: true, preserveScroll: true, focusModel: 'provider-managed' },
+  lifecycle: {
+    preserveMount: true,
+    preserveScroll: true,
+    focusModel: 'provider-managed',
+  },
   performance: { lazy: true, virtualized: false, budgetMs: 200 },
 };
 
@@ -252,7 +315,10 @@ const pageDefinition = {
   workflowRef: ref('workflow', 'workflow-1'),
   binding: {},
   access: { actions: ['read', 'execute'] },
-  rendererConfig: { schemaRef: 'schema://renderer/workflow-workspace', value: {} },
+  rendererConfig: {
+    schemaRef: 'schema://renderer/workflow-workspace',
+    value: {},
+  },
   navigation: { label: 'Workflows', hidden: false, pinned: true },
   visibility: {
     authenticated: true,
@@ -274,7 +340,10 @@ const applicationConfig = {
     },
   },
   auth: { enabled: [] },
-  endpoints: { clientUrl: 'https://studio.infmonkeys.test', serverUrl: 'https://api.infmonkeys.test' },
+  endpoints: {
+    clientUrl: 'https://studio.infmonkeys.test',
+    serverUrl: 'https://api.infmonkeys.test',
+  },
   module: '*',
   behavior: {
     clearWorkflowFormStorageAfterUpdate: true,
@@ -311,7 +380,11 @@ const renderNode = {
   providerRef: pageCapabilityManifest.runtime.providerBindings[0].providerRef,
   surface: { frameOwner: 'host', density: 'default' },
   scroll: { owner: 'surface', axis: 'y', virtualizationBoundary: false },
-  activation: { activationId: 'workflow-page', mode: 'navigate', targetPath: '/workflows/workflow-page' },
+  activation: {
+    activationId: 'workflow-page',
+    mode: 'navigate',
+    targetPath: '/workflows/workflow-page',
+  },
   lifecycle: {
     mountPolicy: 'when-active',
     queryPolicy: 'when-active',
@@ -566,16 +639,18 @@ const fixtures = {
       },
     },
     status: 'running',
-    events: [{
-      contract: 'AgentSessionEvent',
-      eventId: 'agent-session-event-1',
-      sessionId: 'agent-session-1',
-      sequence: 0,
-      idempotencyKey: 'agent-session-1:0',
-      occurredAt,
-      eventType: 'status',
-      payload: { status: 'running' },
-    }],
+    events: [
+      {
+        contract: 'AgentSessionEvent',
+        eventId: 'agent-session-event-1',
+        sessionId: 'agent-session-1',
+        sequence: 0,
+        idempotencyKey: 'agent-session-1:0',
+        occurredAt,
+        eventType: 'status',
+        payload: { status: 'running' },
+      },
+    ],
     lastSequence: 0,
     resumable: true,
   },
@@ -587,25 +662,29 @@ const fixtures = {
     selectedSessionItem: 'agent-session-1',
     agents: {
       status: 'ready',
-      items: [{
-        id: 'agent-1',
-        name: 'Research Agent',
-        description: 'Finds and summarizes sources',
-        builtIn: false,
-        pinned: true,
-        pinPending: false,
-      }],
+      items: [
+        {
+          id: 'agent-1',
+          name: 'Research Agent',
+          description: 'Finds and summarizes sources',
+          builtIn: false,
+          pinned: true,
+          pinPending: false,
+        },
+      ],
     },
     sessions: {
       status: 'ready',
-      items: [{
-        id: 'agent-session-1',
-        title: 'Launch research',
-        updatedAt: occurredAt,
-        status: 'running',
-        pinned: false,
-        contextUsage: { usedTokens: 1024, maxTokens: 8192 },
-      }],
+      items: [
+        {
+          id: 'agent-session-1',
+          title: 'Launch research',
+          updatedAt: occurredAt,
+          status: 'running',
+          pinned: false,
+          contextUsage: { usedTokens: 1024, maxTokens: 8192 },
+        },
+      ],
     },
     capabilities: {
       createAgent: true,
@@ -624,28 +703,34 @@ const fixtures = {
     status: 'streaming',
     mode: 'work',
     placeholder: 'Ask anything',
-    attachments: [{
-      id: 'attachment-1',
-      name: 'screenshot.png',
-      mediaType: 'image/png',
-      previewUrl: 'https://example.test/screenshot.png',
-      status: 'ready',
-    }],
-    queuedDrafts: [{
-      id: 'draft-1',
-      text: 'Run the focused tests',
-      attachmentCount: 0,
-      status: 'queued',
-    }],
+    attachments: [
+      {
+        id: 'attachment-1',
+        name: 'screenshot.png',
+        mediaType: 'image/png',
+        previewUrl: 'https://example.test/screenshot.png',
+        status: 'ready',
+      },
+    ],
+    queuedDrafts: [
+      {
+        id: 'draft-1',
+        text: 'Run the focused tests',
+        attachmentCount: 0,
+        status: 'queued',
+      },
+    ],
     model: {
       selectedId: 'gpt-5.5',
-      options: [{
-        id: 'gpt-5.5',
-        label: 'GPT 5.5',
-        provider: 'OpenAI',
-        mode: 'work',
-        disabled: false,
-      }],
+      options: [
+        {
+          id: 'gpt-5.5',
+          label: 'GPT 5.5',
+          provider: 'OpenAI',
+          mode: 'work',
+          disabled: false,
+        },
+      ],
     },
     reasoning: {
       value: 'high',
@@ -667,26 +752,32 @@ const fixtures = {
   'agent-workbench-quick-start-view-model': {
     contract: 'AgentWorkbenchQuickStartViewModel',
     mode: 'work',
-    categories: [{
-      id: 'development',
-      label: 'Development',
-      icon: 'code',
-      sections: [{
-        id: 'quick-start',
-        label: 'Quick start',
-        templates: [{
-          id: 'investigate-bug',
-          title: 'Investigate a bug',
-          description: 'Trace the root cause and propose a fix.',
-          prompt: 'Investigate this bug and identify the root cause.',
-          action: 'prompt',
-          icon: 'search',
-          accept: '*/*',
-          multiple: false,
-          modes: ['work'],
-        }],
-      }],
-    }],
+    categories: [
+      {
+        id: 'development',
+        label: 'Development',
+        icon: 'code',
+        sections: [
+          {
+            id: 'quick-start',
+            label: 'Quick start',
+            templates: [
+              {
+                id: 'investigate-bug',
+                title: 'Investigate a bug',
+                description: 'Trace the root cause and propose a fix.',
+                prompt: 'Investigate this bug and identify the root cause.',
+                action: 'prompt',
+                icon: 'search',
+                accept: '*/*',
+                multiple: false,
+                modes: ['work'],
+              },
+            ],
+          },
+        ],
+      },
+    ],
     disabled: false,
   },
   'application-handoff': {
@@ -714,9 +805,17 @@ const fixtures = {
     createdAt: occurredAt,
   },
   'application-run': {
-    contract: 'ApplicationRun', runId: 'run-1', definitionRef: ref('workflow-definition', 'workflow-1', 1),
-    runtimeLedgerRef: ref('workflow-run', 'execution-1'), requestId: 'request-1', actorRef: ref('user', 'user-1'),
-    status: 'RUNNING', inputRefs: [], outputRefs: [], startedAt: occurredAt, metadata: {},
+    contract: 'ApplicationRun',
+    runId: 'run-1',
+    definitionRef: ref('workflow-definition', 'workflow-1', 1),
+    runtimeLedgerRef: ref('workflow-run', 'execution-1'),
+    requestId: 'request-1',
+    actorRef: ref('user', 'user-1'),
+    status: 'RUNNING',
+    inputRefs: [],
+    outputRefs: [],
+    startedAt: occurredAt,
+    metadata: {},
   },
   'artifact-manifest': {
     contract: 'ArtifactManifest',
@@ -733,9 +832,16 @@ const fixtures = {
     createdAt: occurredAt,
   },
   'body-relation-record': {
-    contract: 'BodyRelationRecord', relationId: 'relation-1', relationKind: 'workflow.to-workflow',
-    subjectRef: ref('workflow-definition', 'workflow-1', 1), objectRef: ref('workflow-definition', 'workflow-2', 1),
-    ownerRepo: 'monkeys-server', authorityScope: 'team', properties: {}, createdAt: occurredAt, updatedAt: occurredAt,
+    contract: 'BodyRelationRecord',
+    relationId: 'relation-1',
+    relationKind: 'workflow.to-workflow',
+    subjectRef: ref('workflow-definition', 'workflow-1', 1),
+    objectRef: ref('workflow-definition', 'workflow-2', 1),
+    ownerRepo: 'monkeys-server',
+    authorityScope: 'team',
+    properties: {},
+    createdAt: occurredAt,
+    updatedAt: occurredAt,
   },
   'brand-body': {
     contract: 'BrandBody',
@@ -752,7 +858,13 @@ const fixtures = {
     contract: 'BrandGeneticsProfile',
     brandRef: ref('brand', 'brand-1'),
     categories: ['outdoor'],
-    signature: { currentSales: 82, forecastSales: 91, searchHeat: 88, socialHeat: 79, confidence: 0.93 },
+    signature: {
+      currentSales: 82,
+      forecastSales: 91,
+      searchHeat: 88,
+      socialHeat: 79,
+      confidence: 0.93,
+    },
     relatedRefs: [ref('product', 'product-1')],
     evidenceRefs: [ref('evidence', 'evidence-1')],
     computedAt: occurredAt,
@@ -766,48 +878,97 @@ const fixtures = {
     displayName: 'Generate image',
     ports: { inputs: [], outputs: [] },
     runtime: {
-      providerBindings: [{ providerRef: ref('tool', 'image.generate'), productContexts: [], priority: 0 }],
+      providerBindings: [
+        {
+          providerRef: ref('tool', 'image.generate'),
+          productContexts: [],
+          priority: 0,
+        },
+      ],
       loading: 'lazy',
       stateOwner: 'provider',
       sideEffects: ['network'],
     },
-    placement: { surfaces: ['workflow'], slots: [], variants: [], tokenRefs: [] },
+    placement: {
+      surfaces: ['workflow'],
+      slots: [],
+      variants: [],
+      tokenRefs: [],
+    },
     accessibility: {
       keyboardModel: 'form',
       focusModel: 'managed',
       labelContract: 'visible-label',
     },
-    observability: { eventNamespace: 'capability.image', metrics: [], evidenceRefs: [] },
+    observability: {
+      eventNamespace: 'capability.image',
+      metrics: [],
+      evidenceRefs: [],
+    },
   },
   'capability-registry': {
     contract: 'CapabilityRegistry',
-    entries: [{
-      manifest: {
-        contract: 'CapabilityManifest',
-        id: 'image.generate',
-        capabilityVersion: '1.0.0',
-        ownerRepo: 'monkey-tools-agentkits',
-        kind: 'tool',
-        displayName: 'Generate image',
-        ports: { inputs: [], outputs: [] },
-        runtime: { providerBindings: [{ providerRef: ref('tool', 'image.generate'), productContexts: [], priority: 0 }], loading: 'lazy', stateOwner: 'provider', sideEffects: ['network'] },
-        placement: { surfaces: ['workflow'], slots: [], variants: [], tokenRefs: [] },
-        accessibility: { keyboardModel: 'form', focusModel: 'managed', labelContract: 'visible-label' },
-        observability: { eventNamespace: 'capability.image', metrics: [], evidenceRefs: [] },
+    entries: [
+      {
+        manifest: {
+          contract: 'CapabilityManifest',
+          id: 'image.generate',
+          capabilityVersion: '1.0.0',
+          ownerRepo: 'monkey-tools-agentkits',
+          kind: 'tool',
+          displayName: 'Generate image',
+          ports: { inputs: [], outputs: [] },
+          runtime: {
+            providerBindings: [
+              {
+                providerRef: ref('tool', 'image.generate'),
+                productContexts: [],
+                priority: 0,
+              },
+            ],
+            loading: 'lazy',
+            stateOwner: 'provider',
+            sideEffects: ['network'],
+          },
+          placement: {
+            surfaces: ['workflow'],
+            slots: [],
+            variants: [],
+            tokenRefs: [],
+          },
+          accessibility: {
+            keyboardModel: 'form',
+            focusModel: 'managed',
+            labelContract: 'visible-label',
+          },
+          observability: {
+            eventNamespace: 'capability.image',
+            metrics: [],
+            evidenceRefs: [],
+          },
+        },
+        sources: [
+          {
+            sourceType: 'tool-manifest',
+            sourceId: 'agentkits',
+            ownerRepo: 'monkey-tools-agentkits',
+          },
+        ],
       },
-      sources: [{ sourceType: 'tool-manifest', sourceId: 'agentkits', ownerRepo: 'monkey-tools-agentkits' }],
-    }],
+    ],
   },
   'change-impact-graph': {
     contract: 'ChangeImpactGraph',
     declarationId: 'studio-product',
     nodes: [ref('ontology', 'product.asset')],
     edges: [],
-    impacts: [{
-      changedRef: ref('ontology', 'product.asset'),
-      affectedRefs: [],
-      reasons: ['direct-change'],
-    }],
+    impacts: [
+      {
+        changedRef: ref('ontology', 'product.asset'),
+        affectedRefs: [],
+        reasons: ['direct-change'],
+      },
+    ],
     generatedAt: occurredAt,
   },
   'concept-definition': {
@@ -821,12 +982,20 @@ const fixtures = {
     commandNames: ['projection.rebuild'],
     relationships: [],
   },
-  'completion-event': { header: completionHeader, payload: { outputId: 'output-1' } },
+  'completion-event': {
+    header: completionHeader,
+    payload: { outputId: 'output-1' },
+  },
   'completion-header': completionHeader,
   'conductor-workflow-definition': conductorWorkflowDefinition,
   'data-continuity-envelope': {
-    contract: 'DataContinuityEnvelope', tenantId: 'tenant-1', teamId: 'team-1', runRef: ref('application-run', 'run-1'),
-    requestId: 'request-1', actorRef: ref('user', 'user-1'), schemaVersion: 1,
+    contract: 'DataContinuityEnvelope',
+    tenantId: 'tenant-1',
+    teamId: 'team-1',
+    runRef: ref('application-run', 'run-1'),
+    requestId: 'request-1',
+    actorRef: ref('user', 'user-1'),
+    schemaVersion: 1,
   },
   'domain-event': {
     contract: 'DomainEvent',
@@ -865,8 +1034,13 @@ const fixtures = {
   },
   'execution-link': executionLink,
   'expiring-access-grant': {
-    contract: 'ExpiringAccessGrant', grantId: 'grant-1', subjectRef: ref('user', 'user-1'), resourceRef: ref('application-run', 'run-1'),
-    permissions: ['read', 'execute'], issuedAt: occurredAt, expiresAt: '2026-07-15T08:00:00.000Z',
+    contract: 'ExpiringAccessGrant',
+    grantId: 'grant-1',
+    subjectRef: ref('user', 'user-1'),
+    resourceRef: ref('application-run', 'run-1'),
+    permissions: ['read', 'execute'],
+    issuedAt: occurredAt,
+    expiresAt: '2026-07-15T08:00:00.000Z',
   },
   'hotword-body': {
     contract: 'HotwordBody',
@@ -874,13 +1048,15 @@ const fixtures = {
     label: 'Outdoor',
     normalizedLabel: 'outdoor',
     categories: ['lifestyle'],
-    sourceRefs: [{
-      sourceId: 'source-1',
-      provider: 'internal',
-      channel: 'internal',
-      collectedAt: occurredAt,
-      evidenceRefs: [],
-    }],
+    sourceRefs: [
+      {
+        sourceId: 'source-1',
+        provider: 'internal',
+        channel: 'internal',
+        collectedAt: occurredAt,
+        evidenceRefs: [],
+      },
+    ],
     relationRefs: [],
     createdAt: occurredAt,
     updatedAt: occurredAt,
@@ -904,7 +1080,11 @@ const fixtures = {
     dataSpaceId: 'assets',
     ownerRepo: 'monkeys-data-server',
     bodySchemaRef: 'schema://product.asset',
-    authority: { service: 'monkeys-data-server', storage: 'postgres', scope: 'tenant' },
+    authority: {
+      service: 'monkeys-data-server',
+      storage: 'postgres',
+      scope: 'tenant',
+    },
     relationKinds: [],
     metricKinds: [],
   },
@@ -926,7 +1106,12 @@ const fixtures = {
     },
     presentation: 'fullscreen',
     zIndexLane: 'fullscreen',
-    url: { parameter: 'focusWidgetId', value: 'widget-1', openMode: 'push', closeMode: 'back' },
+    url: {
+      parameter: 'focusWidgetId',
+      value: 'widget-1',
+      openMode: 'push',
+      closeMode: 'back',
+    },
     focus: { initial: 'first-interactive', trap: true },
     close: { escape: true, backdrop: true },
   },
@@ -973,35 +1158,39 @@ const fixtures = {
     applicationId: 'studio',
     sourceVersion: 'config-1',
     contentHash: 'a'.repeat(64),
-    menus: [{
-      applicationId: 'studio',
-      surface: 'headerbar',
-      menuId: 'default',
-      nodes: [
-        menuDefinition.nodes[0],
-        {
-          nodeId: menuDefinition.nodes[1].nodeId,
-          kind: menuDefinition.nodes[1].kind,
-          parentNodeId: menuDefinition.nodes[1].parentNodeId,
-          order: menuDefinition.nodes[1].order,
-          label: menuDefinition.nodes[1].label,
-          behavior: menuDefinition.nodes[1].behavior,
-          access: {
-            authenticated: true,
-            permissionAllOf: [],
-            permissionAnyOf: [],
-            featureFlags: [],
-            requiredPermission: 'data_asset:read',
+    menus: [
+      {
+        applicationId: 'studio',
+        surface: 'headerbar',
+        menuId: 'default',
+        nodes: [
+          menuDefinition.nodes[0],
+          {
+            nodeId: menuDefinition.nodes[1].nodeId,
+            kind: menuDefinition.nodes[1].kind,
+            parentNodeId: menuDefinition.nodes[1].parentNodeId,
+            order: menuDefinition.nodes[1].order,
+            label: menuDefinition.nodes[1].label,
+            behavior: menuDefinition.nodes[1].behavior,
+            access: {
+              authenticated: true,
+              permissionAllOf: [],
+              permissionAnyOf: [],
+              featureFlags: [],
+              requiredPermission: 'data_asset:read',
+            },
           },
-        },
-      ],
-      contributions: [],
-    }],
-    navigationTargets: [{
-      page: { applicationId: 'studio', pageId: 'data-browser' },
-      activationId: 'mine',
-      input: { exposure: 'client', value: { scope: 'mine' } },
-    }],
+        ],
+        contributions: [],
+      },
+    ],
+    navigationTargets: [
+      {
+        page: { applicationId: 'studio', pageId: 'data-browser' },
+        activationId: 'mine',
+        input: { exposure: 'client', value: { scope: 'mine' } },
+      },
+    ],
     sourceMap: {},
   },
   'page-definition': pageDefinition,
@@ -1023,14 +1212,41 @@ const fixtures = {
     contract: 'PageRuntimeProjection',
     product: 'studio',
     routes: [{ pageId: 'workflow-page', routeId: 'workflow', path: '/workflows' }],
-    navigation: [{ pageId: 'workflow-page', routeId: 'workflow', path: '/workflows', label: 'Workflows', pinned: true }],
-    guards: [{ pageId: 'workflow-page', authenticated: true, permissionAllOf: [], permissionAnyOf: [], featureFlags: [], actions: ['read', 'execute'] }],
-    renderers: [{
-      pageId: 'workflow-page', surface: 'workspace', rendererKey: 'workflow-workspace',
-      capabilityRef: ref('capability', pageCapabilityManifest.id, pageCapabilityManifest.capabilityVersion, pageCapabilityManifest.ownerRepo), capabilityRefs: [],
-      providerRef: ref('view-provider', 'workflow-provider', '1.0.0', 'monkeys-studio'),
-      binding: {}, rendererConfig: { schemaRef: 'schema://renderer/workflow-workspace', value: {} }, workflowRef: ref('workflow', 'workflow-1'),
-    }],
+    navigation: [
+      {
+        pageId: 'workflow-page',
+        routeId: 'workflow',
+        path: '/workflows',
+        label: 'Workflows',
+        pinned: true,
+      },
+    ],
+    guards: [
+      {
+        pageId: 'workflow-page',
+        authenticated: true,
+        permissionAllOf: [],
+        permissionAnyOf: [],
+        featureFlags: [],
+        actions: ['read', 'execute'],
+      },
+    ],
+    renderers: [
+      {
+        pageId: 'workflow-page',
+        surface: 'workspace',
+        rendererKey: 'workflow-workspace',
+        capabilityRef: ref('capability', pageCapabilityManifest.id, pageCapabilityManifest.capabilityVersion, pageCapabilityManifest.ownerRepo),
+        capabilityRefs: [],
+        providerRef: ref('view-provider', 'workflow-provider', '1.0.0', 'monkeys-studio'),
+        binding: {},
+        rendererConfig: {
+          schemaRef: 'schema://renderer/workflow-workspace',
+          value: {},
+        },
+        workflowRef: ref('workflow', 'workflow-1'),
+      },
+    ],
   },
   'projection-spec': {
     contract: 'ProjectionSpec',
@@ -1102,54 +1318,77 @@ const fixtures = {
       expectedVersion: 1,
       updatedAt: occurredAt,
     },
-    outputs: [{
-      contract: 'OutputRecord',
-      outputId: 'output-1',
-      runRef: ref('workflow-run', 'workflow-run-1'),
-      outputPort: 'images',
-      artifactRefs: [ref('artifact', 'artifact-1')],
-      createdAt: occurredAt,
-    }],
-    assets: [{
-      artifactRef: ref('artifact', 'artifact-1'),
-      kind: 'image',
-      mimeType: 'image/png',
-      url: 'https://example.com/generated.png',
-      metadata: {},
-      createdAt: occurredAt,
-    }],
-    lineage: [{
-      contract: 'LineageRecord',
-      lineageId: 'lineage-1',
-      subjectRef: ref('radar-analysis-run', 'run-1'),
-      sourceRecords: [],
-      bodyRefs: [ref('hotword', 'hotword-1')],
-      runRefs: [ref('workflow-run', 'workflow-run-1')],
-      outputRefs: [ref('workflow-output', 'output-1')],
-      artifactRefs: [ref('artifact', 'artifact-1')],
-      actorRefs: [ref('human', 'user-1')],
-      evidenceRefs: [],
-      recordedAt: occurredAt,
-    }],
+    outputs: [
+      {
+        contract: 'OutputRecord',
+        outputId: 'output-1',
+        runRef: ref('workflow-run', 'workflow-run-1'),
+        outputPort: 'images',
+        artifactRefs: [ref('artifact', 'artifact-1')],
+        createdAt: occurredAt,
+      },
+    ],
+    assets: [
+      {
+        artifactRef: ref('artifact', 'artifact-1'),
+        kind: 'image',
+        mimeType: 'image/png',
+        url: 'https://example.com/generated.png',
+        metadata: {},
+        createdAt: occurredAt,
+      },
+    ],
+    lineage: [
+      {
+        contract: 'LineageRecord',
+        lineageId: 'lineage-1',
+        subjectRef: ref('radar-analysis-run', 'run-1'),
+        sourceRecords: [],
+        bodyRefs: [ref('hotword', 'hotword-1')],
+        runRefs: [ref('workflow-run', 'workflow-run-1')],
+        outputRefs: [ref('workflow-output', 'output-1')],
+        artifactRefs: [ref('artifact', 'artifact-1')],
+        actorRefs: [ref('human', 'user-1')],
+        evidenceRefs: [],
+        recordedAt: occurredAt,
+      },
+    ],
   },
   'radar-opportunity-matrix': {
     contract: 'RadarOpportunityMatrix',
     xMetric: 'searchHeat',
     yMetric: 'forecastSales',
-    points: [{
-      subjectRef: ref('hotword', 'hotword-1'),
-      label: 'Outdoor',
-      x: 88,
-      y: 91,
-      score: 89,
-      evidenceRefs: [ref('evidence', 'evidence-1')],
-    }],
+    points: [
+      {
+        subjectRef: ref('hotword', 'hotword-1'),
+        label: 'Outdoor',
+        x: 88,
+        y: 91,
+        score: 89,
+        evidenceRefs: [ref('evidence', 'evidence-1')],
+      },
+    ],
     computedAt: occurredAt,
   },
   'radar-panorama': {
     contract: 'RadarPanorama',
-    nodes: [{ ref: ref('brand', 'brand-1'), label: 'Brand One', categories: ['outdoor'], score: 88, freshnessAt: occurredAt }],
-    edges: [{ sourceRef: ref('brand', 'brand-1'), targetRef: ref('product', 'product-1'), relation: 'owns-product', evidenceRefs: [] }],
+    nodes: [
+      {
+        ref: ref('brand', 'brand-1'),
+        label: 'Brand One',
+        categories: ['outdoor'],
+        score: 88,
+        freshnessAt: occurredAt,
+      },
+    ],
+    edges: [
+      {
+        sourceRef: ref('brand', 'brand-1'),
+        targetRef: ref('product', 'product-1'),
+        relation: 'owns-product',
+        evidenceRefs: [],
+      },
+    ],
     generatedAt: occurredAt,
   },
   'radar-query-body': {
@@ -1164,7 +1403,13 @@ const fixtures = {
     contract: 'RadarScoreModelBody',
     modelId: 'radar-model-1',
     version: 1,
-    weights: { currentSales: 0.2, forecastSales: 0.25, searchHeat: 0.2, socialHeat: 0.15, confidence: 0.2 },
+    weights: {
+      currentSales: 0.2,
+      forecastSales: 0.25,
+      searchHeat: 0.2,
+      socialHeat: 0.15,
+      confidence: 0.2,
+    },
     thresholds: { selected: 75 },
     explanationRules: { forecastSales: 'Forecast contribution' },
     createdAt: occurredAt,
@@ -1175,7 +1420,13 @@ const fixtures = {
     subjectRef: ref('hotword', 'hotword-1'),
     modelRef: ref('model', 'trend-radar'),
     totalScore: 88,
-    dimensions: { currentSales: 82, forecastSales: 91, searchHeat: 88, socialHeat: 79, confidence: 0.93 },
+    dimensions: {
+      currentSales: 82,
+      forecastSales: 91,
+      searchHeat: 88,
+      socialHeat: 79,
+      confidence: 0.93,
+    },
     evidenceRefs: [ref('evidence', 'evidence-1')],
     freshnessAt: occurredAt,
   },
@@ -1269,9 +1520,24 @@ const fixtures = {
     appId: 'concept',
     environment: 'production',
     designTokens: {
-      color: { primary: { $type: 'color', $value: { colorSpace: 'srgb', components: [0.30196, 0.56078, 0.61569], hex: '#4D8F9D' } } },
+      color: {
+        primary: {
+          $type: 'color',
+          $value: {
+            colorSpace: 'srgb',
+            components: [0.30196, 0.56078, 0.61569],
+            hex: '#4D8F9D',
+          },
+        },
+      },
     },
-    moduleRefs: [], pageRefs: [], featureFlags: {}, authBinding: {}, dataBinding: {}, sourceMap: {}, warnings: [],
+    moduleRefs: [],
+    pageRefs: [],
+    featureFlags: {},
+    authBinding: {},
+    dataBinding: {},
+    sourceMap: {},
+    warnings: [],
     applicationConfig,
   },
   'theme-tokens': {
@@ -1336,11 +1602,7 @@ const fixtures = {
     workflowId: 'workflow-1',
     teamId: 'team-1',
     creatorRef: ref('user', 'user-1'),
-    currentDefinitionRef: ref(
-      'workflow-definition',
-      'workflow-1:release:1',
-      1,
-    ),
+    currentDefinitionRef: ref('workflow-definition', 'workflow-1:release:1', 1),
     lifecycle: 'ACTIVE',
     asset: {
       preset: false,
@@ -1368,28 +1630,32 @@ const fixtures = {
       completedAt: occurredAt,
       metadata: {},
     },
-    outputs: [{
-      contract: 'OutputRecord',
-      outputId: 'output-1',
-      runRef: ref('application-run', 'run-1'),
-      outputPort: 'result',
-      artifactRefs: [ref('artifact', 'artifact-1')],
-      createdAt: occurredAt,
-    }],
-    artifacts: [{
-      contract: 'ArtifactManifest',
-      artifactId: 'artifact-1',
-      kind: 'image',
-      mimeType: 'image/png',
-      sha256: 'a'.repeat(64),
-      storage: { provider: 's3', key: 'outputs/artifact-1.png' },
-      runRef: ref('application-run', 'run-1'),
-      outputRef: ref('workflow-output', 'output-1'),
-      producer: { service: 'monkeys-conductor-worker', version: '1.0.0' },
-      access: { visibility: 'team', teamId: 'team-1' },
-      metadata: {},
-      createdAt: occurredAt,
-    }],
+    outputs: [
+      {
+        contract: 'OutputRecord',
+        outputId: 'output-1',
+        runRef: ref('application-run', 'run-1'),
+        outputPort: 'result',
+        artifactRefs: [ref('artifact', 'artifact-1')],
+        createdAt: occurredAt,
+      },
+    ],
+    artifacts: [
+      {
+        contract: 'ArtifactManifest',
+        artifactId: 'artifact-1',
+        kind: 'image',
+        mimeType: 'image/png',
+        sha256: 'a'.repeat(64),
+        storage: { provider: 's3', key: 'outputs/artifact-1.png' },
+        runRef: ref('application-run', 'run-1'),
+        outputRef: ref('workflow-output', 'output-1'),
+        producer: { service: 'monkeys-conductor-worker', version: '1.0.0' },
+        access: { visibility: 'team', teamId: 'team-1' },
+        metadata: {},
+        createdAt: occurredAt,
+      },
+    ],
     lineage: {
       contract: 'LineageRecord',
       lineageId: 'lineage-run-1',
@@ -1417,19 +1683,29 @@ const fixtures = {
   },
   'workflow-definition': {
     contract: 'WorkflowDefinition',
-    metadata: { id: 'workflow-1', version: 1, name: { 'en-US': 'Workflow' }, role: 'workflow', teamId: 'team-1', creatorRef: ref('user', 'user-1'), tags: [] },
+    metadata: {
+      id: 'workflow-1',
+      version: 1,
+      name: { 'en-US': 'Workflow' },
+      role: 'workflow',
+      teamId: 'team-1',
+      creatorRef: ref('user', 'user-1'),
+      tags: [],
+    },
     revision: { kind: 'release', recordVersion: 1 },
     presentation: {},
     ports: { inputs: [], outputs: [] },
     parameters: { variables: [], outputs: [] },
     graph: {
-      nodes: [{
-        id: 'node-1',
-        referenceName: 'node-1',
-        capabilityRef: 'image.generate',
-        inputBindings: {},
-        configuration: { executor: 'conductor', task: conductorTask },
-      }],
+      nodes: [
+        {
+          id: 'node-1',
+          referenceName: 'node-1',
+          capabilityRef: 'image.generate',
+          inputBindings: {},
+          configuration: { executor: 'conductor', task: conductorTask },
+        },
+      ],
       edges: [],
     },
     execution: { retries: 0, idempotency: 'required', conductor: {} },
@@ -1457,9 +1733,7 @@ test('publishes one canonical schema and JSON Schema document for every contract
   assert.deepEqual(names, Object.keys(fixtures).sort());
   assert.equal(names.length, 86);
 
-  const index = JSON.parse(
-    readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'),
-  );
+  const index = JSON.parse(readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'));
   assert.deepEqual(Object.keys(index), ['schemas']);
   assert.deepEqual(Object.keys(index.schemas).sort(), names);
   for (const [name, fileName] of Object.entries(index.schemas)) {
@@ -1476,23 +1750,35 @@ test('accepts a complete canonical fixture for every contract', () => {
 
 test('rejects undeclared top-level fields for every contract', () => {
   for (const [name, schema] of Object.entries(schemas.canonicalContractSchemas)) {
-    const result = schema.safeParse({ ...fixtures[name], undeclaredField: true });
+    const result = schema.safeParse({
+      ...fixtures[name],
+      undeclaredField: true,
+    });
     assert.equal(result.success, false, name);
   }
 });
 
 test('rejects undeclared nested fields instead of silently normalizing them', () => {
-  assert.equal(schemas.RequestScopeSchema.safeParse({
-    ...requestScope,
-    actor: { ...requestScope.actor, undeclaredField: true },
-  }).success, false);
-  assert.equal(schemas.ThemeTokensSchema.safeParse({
-    ...fixtures['theme-tokens'],
-    color: {
-      ...fixtures['theme-tokens'].color,
-      primary: { ...fixtures['theme-tokens'].color.primary, undeclaredField: true },
-    },
-  }).success, false);
+  assert.equal(
+    schemas.RequestScopeSchema.safeParse({
+      ...requestScope,
+      actor: { ...requestScope.actor, undeclaredField: true },
+    }).success,
+    false,
+  );
+  assert.equal(
+    schemas.ThemeTokensSchema.safeParse({
+      ...fixtures['theme-tokens'],
+      color: {
+        ...fixtures['theme-tokens'].color,
+        primary: {
+          ...fixtures['theme-tokens'].color.primary,
+          undeclaredField: true,
+        },
+      },
+    }).success,
+    false,
+  );
 });
 
 test('tenant application config exposes the canonical email registration switch', () => {
@@ -1514,13 +1800,16 @@ test('tenant application config exposes the canonical email registration switch'
     });
   }
 
-  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
-    ...applicationConfig,
-    auth: {
-      enabled: ['password'],
-      password: { registrationEnabled: 'false' },
-    },
-  }).success, false);
+  assert.equal(
+    schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      auth: {
+        enabled: ['password'],
+        password: { registrationEnabled: 'false' },
+      },
+    }).success,
+    false,
+  );
 });
 
 test('tenant application config exposes a strict optional registration approval policy', () => {
@@ -1567,8 +1856,17 @@ test('tenant application config accepts Ontology data bindings and rejects retir
       dataBrowserDefaultOntologyId: 'assets',
       workflowResultOntologyId: 'workflow-results',
       homeAdvertisement: { ontologyId: 'home' },
+      homeShortcutBackground: {
+        ontologyId: 'shortcut-backgrounds',
+        viewType: 'container',
+        teamId: '0',
+      },
       homeTrendAssistant: { ontologyId: 'trends' },
-      staticTrendReport: { ontologyId: 'static-trend-reports', viewId: 'published-reports', teamId: '0' },
+      staticTrendReport: {
+        ontologyId: 'static-trend-reports',
+        viewId: 'published-reports',
+        teamId: '0',
+      },
       sharing: {
         silentViewLinks: {
           placement: { mode: 'sourceOntology', ontologyId: 'assets' },
@@ -1577,14 +1875,22 @@ test('tenant application config accepts Ontology data bindings and rejects retir
     },
   };
   assert.equal(schemas.TenantApplicationConfigSchema.safeParse(canonical).success, true);
-  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
-    ...applicationConfig,
-    dataManagement: { staticTrendReport: { ontologyId: '' } },
-  }).success, false);
-  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
-    ...applicationConfig,
-    dataManagement: { staticTrendReport: { ontologyId: 'reports', unsupported: true } },
-  }).success, false);
+  assert.equal(
+    schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      dataManagement: { staticTrendReport: { ontologyId: '' } },
+    }).success,
+    false,
+  );
+  assert.equal(
+    schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      dataManagement: {
+        staticTrendReport: { ontologyId: 'reports', unsupported: true },
+      },
+    }).success,
+    false,
+  );
 
   const retiredBindings = [
     { favoriteBucketId: 'favorite' },
@@ -1595,33 +1901,51 @@ test('tenant application config accepts Ontology data bindings and rejects retir
     { workflowResultBucketId: 'workflow-results' },
     { homeAdvertisement: { bucketId: 'home' } },
     { homeTrendAssistant: { bucketId: 'trends' } },
-    { sharing: { silentViewLinks: { placement: { mode: 'sourceBucket', bucketId: 'assets' } } } },
+    {
+      sharing: {
+        silentViewLinks: {
+          placement: { mode: 'sourceBucket', bucketId: 'assets' },
+        },
+      },
+    },
   ];
   for (const dataManagement of retiredBindings) {
-    assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
-      ...applicationConfig,
-      dataManagement,
-    }).success, false);
+    assert.equal(
+      schemas.TenantApplicationConfigSchema.safeParse({
+        ...applicationConfig,
+        dataManagement,
+      }).success,
+      false,
+    );
   }
 });
 
 test('tenant application config validates shared list footer defaults', () => {
-  const parseListFooter = (listFooter) => schemas.TenantApplicationConfigSchema.safeParse({
-    ...applicationConfig,
-    theme: { ...applicationConfig.theme, listFooter },
-  });
+  const parseListFooter = (listFooter) =>
+    schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      theme: { ...applicationConfig.theme, listFooter },
+    });
 
-  assert.equal(parseListFooter({
-    showTotal: true,
-    showPageSize: true,
-    pageSizeOptions: [10, 20, 50, 100],
-    paginationMode: 'auto',
-    alignment: 'space-between',
-    density: 'default',
-  }).success, true);
+  assert.equal(
+    parseListFooter({
+      showTotal: true,
+      showPageSize: true,
+      pageSizeOptions: [10, 20, 50, 100],
+      paginationMode: 'auto',
+      alignment: 'space-between',
+      density: 'default',
+    }).success,
+    true,
+  );
   assert.equal(parseListFooter({ pageSizeOptions: [10, 10] }).success, false);
   assert.equal(parseListFooter({ pageSizeOptions: [0, 20] }).success, false);
-  assert.equal(parseListFooter({ pageSizeOptions: Array.from({ length: 11 }, (_, index) => index + 1) }).success, false);
+  assert.equal(
+    parseListFooter({
+      pageSizeOptions: Array.from({ length: 11 }, (_, index) => index + 1),
+    }).success,
+    false,
+  );
   assert.equal(parseListFooter({ paginationMode: 'infinite' }).success, false);
 });
 
@@ -1656,25 +1980,32 @@ test('tenant application config owns the Agent sidebar configuration contract', 
 });
 
 test('tenant application config exposes Kernel runtime and rejects the retired Compute projection', () => {
-  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
-    ...applicationConfig,
-    kernelRuntime: {
-      integrations: {
-        gitlab: { baseUrl: 'https://gitlab.example.test' },
+  assert.equal(
+    schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      kernelRuntime: {
+        integrations: {
+          gitlab: { baseUrl: 'https://gitlab.example.test' },
+        },
       },
-    },
-  }).success, true);
-  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
-    ...applicationConfig,
-    compute: { integrations: {} },
-  }).success, false);
+    }).success,
+    true,
+  );
+  assert.equal(
+    schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      compute: { integrations: {} },
+    }).success,
+    false,
+  );
 });
 
 test('tenant application config accepts strict Trend Radar Ontology/View source roles', () => {
-  const parseTrendRadar = (trendRadar) => schemas.TenantApplicationConfigSchema.safeParse({
-    ...applicationConfig,
-    dataManagement: { trendRadar },
-  });
+  const parseTrendRadar = (trendRadar) =>
+    schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      dataManagement: { trendRadar },
+    });
   const products = { ontologyId: 'trend-products', viewId: 'view-products' };
   const hotwords = { ontologyId: 'trend-hotwords', viewId: 'view-hotwords' };
   const brands = { ontologyId: 'trend-brands', viewId: 'view-brands' };
@@ -1751,7 +2082,11 @@ test('Trend Radar collection V1 contracts are strict, truthful, and additively b
     collectionProjectionWriteback: {
       status: 'FAILED',
       updatedAt: occurredAt,
-      error: { code: 'projection-write-failed', message: 'Retry projection', retryable: true },
+      error: {
+        code: 'projection-write-failed',
+        message: 'Retry projection',
+        retryable: true,
+      },
     },
   };
   assert.equal(schemas.RadarAnalysisRunSchema.safeParse(validRun).success, true);
@@ -1761,14 +2096,45 @@ test('Trend Radar collection V1 contracts are strict, truthful, and additively b
     { ...item, schemaVersion: 2 },
     { ...item, ownerId: 'user-1' },
     { ...item, selectionRef: ref('selection', 'selection-1') },
-    { ...item, recipe: { ...item.recipe, category: [], design: [], audience: [] } },
-    { ...item, recipe: { ...item.recipe, category: [{ subjectRef: ref('asset', 'category-1'), label: 'Outdoor' }] } },
-    { ...item, recipe: { ...item.recipe, category: [{ subjectRef: ref('hotword', 'category-1'), label: ' ' }] } },
+    {
+      ...item,
+      recipe: { ...item.recipe, category: [], design: [], audience: [] },
+    },
+    {
+      ...item,
+      recipe: {
+        ...item.recipe,
+        category: [{ subjectRef: ref('asset', 'category-1'), label: 'Outdoor' }],
+      },
+    },
+    {
+      ...item,
+      recipe: {
+        ...item.recipe,
+        category: [{ subjectRef: ref('hotword', 'category-1'), label: ' ' }],
+      },
+    },
     { ...item, createdAt: 'not-a-timestamp' },
-    { ...item, decisionProjection: { axes: [{ key: 'searchHeat', value: Number.POSITIVE_INFINITY }] } },
-    { ...item, decisionProjection: { axes: [{ key: 'searchHeat', value: 1 }, { key: 'searchHeat', value: 2 }] } },
+    {
+      ...item,
+      decisionProjection: {
+        axes: [{ key: 'searchHeat', value: Number.POSITIVE_INFINITY }],
+      },
+    },
+    {
+      ...item,
+      decisionProjection: {
+        axes: [
+          { key: 'searchHeat', value: 1 },
+          { key: 'searchHeat', value: 2 },
+        ],
+      },
+    },
     { ...item, decisionProjection: {} },
-    { ...item, artifactProjection: { artifactRef: ref('asset', 'artifact-1') } },
+    {
+      ...item,
+      artifactProjection: { artifactRef: ref('asset', 'artifact-1') },
+    },
   ];
   for (const invalidItem of invalidItems) {
     assert.equal(schemas.TrendRadarCollectionItemSchema.safeParse(invalidItem).success, false);
@@ -1776,14 +2142,27 @@ test('Trend Radar collection V1 contracts are strict, truthful, and additively b
 
   const invalidRuns = [
     { ...validRun, collectionAssetRef: ref('data-asset', 'asset-1') },
-    { ...validRun, collectionAssetRef: { ...ref('asset', 'asset-1'), teamId: 'team-1' } },
-    { ...validRun, collectionProjectionWriteback: { status: 'FAILED', updatedAt: occurredAt } },
+    {
+      ...validRun,
+      collectionAssetRef: { ...ref('asset', 'asset-1'), teamId: 'team-1' },
+    },
+    {
+      ...validRun,
+      collectionProjectionWriteback: {
+        status: 'FAILED',
+        updatedAt: occurredAt,
+      },
+    },
     {
       ...validRun,
       collectionProjectionWriteback: {
         status: 'APPLIED',
         updatedAt: occurredAt,
-        error: { code: 'unexpected', message: 'Must not be present', retryable: false },
+        error: {
+          code: 'unexpected',
+          message: 'Must not be present',
+          retryable: false,
+        },
       },
     },
   ];
@@ -1798,22 +2177,19 @@ test('tenant application config bounds canonical gallery Ontology bindings', () 
     dataManagement: { galleryOntologyIds },
   });
 
-  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
-    withGalleryOntologyIds(Array.from({ length: 20 }, (_, index) => `gallery-${index}`)),
-  ).success, true);
-  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
-    withGalleryOntologyIds(Array.from({ length: 21 }, (_, index) => `gallery-${index}`)),
-  ).success, false);
-  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(
-    withGalleryOntologyIds(['']),
-  ).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(withGalleryOntologyIds(Array.from({ length: 20 }, (_, index) => `gallery-${index}`))).success, true);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(withGalleryOntologyIds(Array.from({ length: 21 }, (_, index) => `gallery-${index}`))).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse(withGalleryOntologyIds([''])).success, false);
 });
 
 test('WorkflowDefinition rejects duplicate nodes and dangling edges', () => {
   const fixture = fixtures['workflow-definition'];
   const duplicate = {
     ...fixture,
-    graph: { ...fixture.graph, nodes: [fixture.graph.nodes[0], fixture.graph.nodes[0]] },
+    graph: {
+      ...fixture.graph,
+      nodes: [fixture.graph.nodes[0], fixture.graph.nodes[0]],
+    },
   };
   const dangling = {
     ...fixture,
@@ -1850,7 +2226,9 @@ test('WorkflowDefinition preserves webhook identity and custom event configurati
 
   const parsed = schemas.WorkflowDefinitionSchema.parse(workflow);
   assert.equal(parsed.triggers[0].webhook.path, 'stable-webhook-path');
-  assert.deepEqual(parsed.triggers[1].event.configuration, { sourceId: 'source-1' });
+  assert.deepEqual(parsed.triggers[1].event.configuration, {
+    sourceId: 'source-1',
+  });
 });
 
 test('WorkflowDefinition preserves canonical ComfyUI workflow port bindings', () => {
@@ -1933,10 +2311,13 @@ test('workflow runtime contracts preserve one authoritative completion graph', (
   };
 
   assert.equal(schemas.WorkflowCompletionCommitSchema.safeParse(commit).success, true);
-  assert.equal(schemas.WorkflowCompletionCommitSchema.safeParse({
-    ...commit,
-    outputs: [{ ...output, runRef: ref('application-run', 'other-run') }],
-  }).success, false);
+  assert.equal(
+    schemas.WorkflowCompletionCommitSchema.safeParse({
+      ...commit,
+      outputs: [{ ...output, runRef: ref('application-run', 'other-run') }],
+    }).success,
+    false,
+  );
 });
 
 test('workflow publication pins one immutable Conductor definition', () => {
@@ -1953,10 +2334,13 @@ test('workflow publication pins one immutable Conductor definition', () => {
   };
 
   assert.equal(schemas.WorkflowPublicationSchema.safeParse(publication).success, true);
-  assert.equal(schemas.WorkflowPublicationSchema.safeParse({
-    ...publication,
-    runtimeDefinitionRef: ref('workflow-definition', 'workflow-1', 2),
-  }).success, false);
+  assert.equal(
+    schemas.WorkflowPublicationSchema.safeParse({
+      ...publication,
+      runtimeDefinitionRef: ref('workflow-definition', 'workflow-1', 2),
+    }).success,
+    false,
+  );
 });
 
 test('application runs only claim a Conductor ledger after execution starts', () => {
@@ -1992,11 +2376,7 @@ test('workflow catalog entry owns lifecycle without duplicating the definition b
     workflowId: 'workflow-1',
     teamId: 'team-1',
     creatorRef: ref('user', 'user-1'),
-    currentDefinitionRef: ref(
-      'workflow-definition',
-      'workflow-1:release:2',
-      3,
-    ),
+    currentDefinitionRef: ref('workflow-definition', 'workflow-1:release:2', 3),
     lifecycle: 'ACTIVE',
     asset: {
       preset: false,
@@ -2008,10 +2388,7 @@ test('workflow catalog entry owns lifecycle without duplicating the definition b
     updatedAt: '2026-07-31T00:01:00.000Z',
   };
 
-  assert.equal(
-    schemas.WorkflowCatalogEntrySchema.safeParse(entry).success,
-    true,
-  );
+  assert.equal(schemas.WorkflowCatalogEntrySchema.safeParse(entry).success, true);
   assert.equal(
     schemas.WorkflowCatalogEntrySchema.safeParse({
       ...entry,
@@ -2030,14 +2407,18 @@ test('workflow catalog entry owns lifecycle without duplicating the definition b
 
 test('exports only canonical contract and schema names', () => {
   const versionSuffix = /V[12](?:Schema)?$/;
-  assert.deepEqual(Object.keys(contracts).filter((name) => versionSuffix.test(name)), []);
-  assert.deepEqual(Object.keys(schemas).filter((name) => versionSuffix.test(name)), []);
+  assert.deepEqual(
+    Object.keys(contracts).filter((name) => versionSuffix.test(name)),
+    [],
+  );
+  assert.deepEqual(
+    Object.keys(schemas).filter((name) => versionSuffix.test(name)),
+    [],
+  );
 });
 
 test('accepts the versioned UAT current-user menu profile at the tenant runtime boundary', () => {
-  const profile = JSON.parse(
-    readFileSync(resolve(__dirname, './fixtures/current-user-menu-profile.v1.json'), 'utf8'),
-  );
+  const profile = JSON.parse(readFileSync(resolve(__dirname, './fixtures/current-user-menu-profile.v1.json'), 'utf8'));
   const runtimeConfig = {
     ...fixtures['tenant-runtime-config'],
     applicationConfig: {
@@ -2057,10 +2438,7 @@ test('accepts the versioned UAT current-user menu profile at the tenant runtime 
 
 test('preserves legacy current-user profiles and rejects malformed versioned profiles', () => {
   assert.equal(schemas.CurrentUserMenuProfileSchema.parse('*'), '*');
-  assert.deepEqual(
-    schemas.CurrentUserMenuProfileSchema.parse(['dark-mode', 'language', 'settings', 'logout']),
-    ['dark-mode', 'language', 'settings', 'logout'],
-  );
+  assert.deepEqual(schemas.CurrentUserMenuProfileSchema.parse(['dark-mode', 'language', 'settings', 'logout']), ['dark-mode', 'language', 'settings', 'logout']);
 
   const invalidProfiles = [
     ['duplicate legacy item', ['settings', 'settings']],
@@ -2079,8 +2457,14 @@ test('preserves legacy current-user profiles and rejects malformed versioned pro
       {
         version: 1,
         sections: [
-          { id: 'appearance', items: [{ id: 'shared', kind: 'control', ref: 'language' }] },
-          { id: 'account', items: [{ id: 'shared', kind: 'action', ref: 'logout' }] },
+          {
+            id: 'appearance',
+            items: [{ id: 'shared', kind: 'control', ref: 'language' }],
+          },
+          {
+            id: 'account',
+            items: [{ id: 'shared', kind: 'action', ref: 'logout' }],
+          },
         ],
       },
     ],
@@ -2089,40 +2473,46 @@ test('preserves legacy current-user profiles and rejects malformed versioned pro
       {
         version: 1,
         sections: [
-          { id: 'account', items: [{ id: 'external', kind: 'navigation', ref: 'https://example.com' }] },
+          {
+            id: 'account',
+            items: [
+              {
+                id: 'external',
+                kind: 'navigation',
+                ref: 'https://example.com',
+              },
+            ],
+          },
         ],
       },
     ],
-    [
-      'unknown field',
-      { version: 1, sections: [], fallback: '*' },
-    ],
+    ['unknown field', { version: 1, sections: [], fallback: '*' }],
   ];
 
   for (const [name, profile] of invalidProfiles) {
-    assert.equal(
-      schemas.CurrentUserMenuProfileSchema.safeParse(profile).success,
-      false,
-      name,
-    );
+    assert.equal(schemas.CurrentUserMenuProfileSchema.safeParse(profile).success, false, name);
   }
 });
 
 test('rejects unpinned render capability and provider references', () => {
-  assert.equal(schemas.RenderNodeSchema.safeParse({
-    ...renderNode,
-    capabilityRef: ref('capability', pageCapabilityManifest.id),
-  }).success, false);
-  assert.equal(schemas.RenderNodeSchema.safeParse({
-    ...renderNode,
-    providerRef: ref('view-provider', pageProviderDescriptor.providerId),
-  }).success, false);
+  assert.equal(
+    schemas.RenderNodeSchema.safeParse({
+      ...renderNode,
+      capabilityRef: ref('capability', pageCapabilityManifest.id),
+    }).success,
+    false,
+  );
+  assert.equal(
+    schemas.RenderNodeSchema.safeParse({
+      ...renderNode,
+      providerRef: ref('view-provider', pageProviderDescriptor.providerId),
+    }).success,
+    false,
+  );
 });
 
 test('does not publish migration or compatibility entrypoints', () => {
-  const packageJson = JSON.parse(
-    readFileSync(resolve(__dirname, '../package.json'), 'utf8'),
-  );
+  const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf8'));
   assert.equal(packageJson.exports['./migrations'], undefined);
   assert.equal(packageJson.bin, undefined);
   assert.equal(existsSync(resolve(__dirname, '../lib/migrations')), false);
@@ -2130,26 +2520,39 @@ test('does not publish migration or compatibility entrypoints', () => {
 
 test('compiles a strict product runtime catalog and matches dynamic routes', () => {
   const declaration = (pages) => ({
-    contract: 'ProductDeclaration', declarationId: 'studio.product', ownerRepo: 'monkeys-studio',
-    concepts: [], ontologies: [], projections: [], commands: [], pages, capabilities: [pageCapabilityManifest],
+    contract: 'ProductDeclaration',
+    declarationId: 'studio.product',
+    ownerRepo: 'monkeys-studio',
+    concepts: [],
+    ontologies: [],
+    projections: [],
+    commands: [],
+    pages,
+    capabilities: [pageCapabilityManifest],
   });
   const catalog = runtime.compileProductRuntimeCatalog({
     product: 'studio',
-    declaration: declaration([{
-      ...pageDefinition,
-      routePath: '/$teamId/workflows/:workflowId',
-      capabilityRefs: [],
-    }]),
+    declaration: declaration([
+      {
+        ...pageDefinition,
+        routePath: '/$teamId/workflows/:workflowId',
+        capabilityRefs: [],
+      },
+    ]),
     providers: [pageProviderDescriptor],
   });
 
   assert.equal(catalog.pagesById.get('workflow-page').routeId, 'workflow');
   assert.equal(catalog.matchPage('/team-1/workflows/workflow-1').pageId, 'workflow-page');
-  assert.throws(() => runtime.compileProductRuntimeCatalog({
-    product: 'studio',
-    declaration: declaration([pageDefinition, pageDefinition]),
-    providers: [pageProviderDescriptor],
-  }), /Duplicate page id/);
+  assert.throws(
+    () =>
+      runtime.compileProductRuntimeCatalog({
+        product: 'studio',
+        declaration: declaration([pageDefinition, pageDefinition]),
+        providers: [pageProviderDescriptor],
+      }),
+    /Duplicate page id/,
+  );
 });
 
 test('compiles a recursive render tree and rejects disconnected or asymmetric topology', () => {
@@ -2169,10 +2572,30 @@ test('compiles a recursive render tree and rejects disconnected or asymmetric to
     nodes: [root, child],
   };
   const compiled = runtime.compileRenderTree(tree);
-  assert.deepEqual(compiled.traversal.map(({ nodeId }) => nodeId), ['workspace-root', 'workspace-view']);
-  assert.deepEqual(compiled.ancestorsOf(child.nodeId).map(({ nodeId }) => nodeId), ['workspace-root']);
-  assert.throws(() => runtime.compileRenderTree({ ...tree, nodes: [root, { ...child, parentNodeId: 'missing' }] }), /missing parent|does not point back/);
-  assert.throws(() => runtime.compileRenderTree({ ...tree, nodes: [{ ...root, children: [] }, child] }), /not declared by parent/);
+  assert.deepEqual(
+    compiled.traversal.map(({ nodeId }) => nodeId),
+    ['workspace-root', 'workspace-view'],
+  );
+  assert.deepEqual(
+    compiled.ancestorsOf(child.nodeId).map(({ nodeId }) => nodeId),
+    ['workspace-root'],
+  );
+  assert.throws(
+    () =>
+      runtime.compileRenderTree({
+        ...tree,
+        nodes: [root, { ...child, parentNodeId: 'missing' }],
+      }),
+    /missing parent|does not point back/,
+  );
+  assert.throws(
+    () =>
+      runtime.compileRenderTree({
+        ...tree,
+        nodes: [{ ...root, children: [] }, child],
+      }),
+    /not declared by parent/,
+  );
 });
 
 test('round-trips a validated application handoff through a URL', () => {
@@ -2198,26 +2621,31 @@ test('compiles declarations, validates commands, and computes transitive change 
     projections: [projection],
     commands: [command],
     capabilities: [fixtures['capability-manifest'], pageCapabilityManifest],
-    pages: [{
-      ...pageDefinition,
-      binding: { ontologyId: ontology.ontologyId, projectionRef: projection.projectionId },
-      capabilityRefs: [],
-    }],
+    pages: [
+      {
+        ...pageDefinition,
+        binding: {
+          ontologyId: ontology.ontologyId,
+          projectionRef: projection.projectionId,
+        },
+        capabilityRefs: [],
+      },
+    ],
     menus: [menuDefinition],
   };
   const compiled = runtime.compileProductDeclaration(declaration);
   assert.equal(compiled.pagesById.get('workflow-page').binding.projectionRef, 'asset-gallery');
   assert.equal(compiled.menusByKey.get('studio/headerbar/default').menuId, 'default');
-  assert.throws(() => runtime.compileProductDeclaration({
-    ...declaration,
-    projections: [{ ...projection, ontologyIds: ['missing'] }],
-  }), /unknown ontology/);
+  assert.throws(
+    () =>
+      runtime.compileProductDeclaration({
+        ...declaration,
+        projections: [{ ...projection, ontologyIds: ['missing'] }],
+      }),
+    /unknown ontology/,
+  );
 
-  assert.equal(runtime.validateDomainCommand(
-    fixtures['domain-command'],
-    [command],
-    ['data_management:write'],
-  ).commandName, 'projection.rebuild');
+  assert.equal(runtime.validateDomainCommand(fixtures['domain-command'], [command], ['data_management:write']).commandName, 'projection.rebuild');
   assert.throws(() => runtime.validateDomainCommand(fixtures['domain-command'], [command], []), /requires permissions/);
 
   const impact = runtime.buildChangeImpactGraph(
@@ -2242,8 +2670,12 @@ test('tool capability compiler rejects non-tool manifests and providers', () => 
 
 test('tool capability factory produces the canonical manifest from provider metadata', () => {
   const manifest = runtime.createToolCapabilityManifest({
-    id: 'monkeys_tools_calculator', capabilityVersion: '1.0.0', ownerRepo: 'monkey-tools-agentkits',
-    displayName: 'Calculator', inputs: [{ name: 'expression', required: true }], outputs: [{ name: 'result' }],
+    id: 'monkeys_tools_calculator',
+    capabilityVersion: '1.0.0',
+    ownerRepo: 'monkey-tools-agentkits',
+    displayName: 'Calculator',
+    inputs: [{ name: 'expression', required: true }],
+    outputs: [{ name: 'result' }],
   });
   assert.equal(manifest.kind, 'tool');
   assert.equal(manifest.runtime.providerBindings[0].providerRef.id, 'monkeys_tools_calculator');
@@ -2252,19 +2684,33 @@ test('tool capability factory produces the canonical manifest from provider meta
 
 test('OpenAPI capability publisher annotates every declared tool operation', () => {
   const document = {
-    paths: { '/calculate': { post: {
-      'x-monkey-tool-name': 'calculate', 'x-monkey-tool-display-name': 'Calculate',
-      'x-monkey-tool-input': [{
-        name: 'expression', required: true, type: 'string',
-        description: { 'zh-CN': '表达式', 'en-US': 'Expression' },
-      }],
-      'x-monkey-tool-output': [{
-        name: 'result', displayName: { 'zh-CN': '结果', 'en-US': 'Result' },
-      }],
-    } } },
+    paths: {
+      '/calculate': {
+        post: {
+          'x-monkey-tool-name': 'calculate',
+          'x-monkey-tool-display-name': 'Calculate',
+          'x-monkey-tool-input': [
+            {
+              name: 'expression',
+              required: true,
+              type: 'string',
+              description: { 'zh-CN': '表达式', 'en-US': 'Expression' },
+            },
+          ],
+          'x-monkey-tool-output': [
+            {
+              name: 'result',
+              displayName: { 'zh-CN': '结果', 'en-US': 'Result' },
+            },
+          ],
+        },
+      },
+    },
   };
   runtime.publishOpenApiToolCapabilityManifests(document, {
-    namespace: 'monkeys_tools', ownerRepo: 'monkey-tools-agentkits', capabilityVersion: '1.0.0',
+    namespace: 'monkeys_tools',
+    ownerRepo: 'monkey-tools-agentkits',
+    capabilityVersion: '1.0.0',
   });
   const capability = document.paths['/calculate'].post['x-monkeys-capability-manifest'];
   assert.equal(capability.id, 'monkeys_tools_calculate');
@@ -2273,45 +2719,90 @@ test('OpenAPI capability publisher annotates every declared tool operation', () 
   assert.equal(capability.ports.outputs[0].description, 'Result');
   assert.equal(typeof capability.ports.outputs[0].description, 'string');
 
-  assert.throws(() => runtime.publishOpenApiToolCapabilityManifests({
-    paths: { '/invalid': { post: {
-      'x-monkey-tool-name': 'invalid',
-      'x-monkey-tool-input': [{ name: 'value', required: 'yes' }],
-    } } },
-  }, {
-    namespace: 'monkeys_tools', ownerRepo: 'monkey-tools-agentkits', capabilityVersion: '1.0.0',
-  }), /required must be a boolean/);
+  assert.throws(
+    () =>
+      runtime.publishOpenApiToolCapabilityManifests(
+        {
+          paths: {
+            '/invalid': {
+              post: {
+                'x-monkey-tool-name': 'invalid',
+                'x-monkey-tool-input': [{ name: 'value', required: 'yes' }],
+              },
+            },
+          },
+        },
+        {
+          namespace: 'monkeys_tools',
+          ownerRepo: 'monkey-tools-agentkits',
+          capabilityVersion: '1.0.0',
+        },
+      ),
+    /required must be a boolean/,
+  );
 });
 
 test('OpenAPI capability publisher collapses conditional presentation duplicates without weakening contracts', () => {
   const document = {
-    paths: { '/execute': { post: {
-      'x-monkey-tool-name': 'sandbox',
-      'x-monkey-tool-input': [
-        { name: 'language', type: 'options' },
-        { name: 'sourceCode', required: true, type: 'string', description: 'Node.js source code' },
-        { name: 'sourceCode', required: true, type: 'string', description: 'Python source code' },
-      ],
-    } } },
+    paths: {
+      '/execute': {
+        post: {
+          'x-monkey-tool-name': 'sandbox',
+          'x-monkey-tool-input': [
+            { name: 'language', type: 'options' },
+            {
+              name: 'sourceCode',
+              required: true,
+              type: 'string',
+              description: 'Node.js source code',
+            },
+            {
+              name: 'sourceCode',
+              required: true,
+              type: 'string',
+              description: 'Python source code',
+            },
+          ],
+        },
+      },
+    },
   };
 
   runtime.publishOpenApiToolCapabilityManifests(document, {
-    namespace: 'sandbox', ownerRepo: 'monkey-tools-sandbox', capabilityVersion: '1.0.0',
+    namespace: 'sandbox',
+    ownerRepo: 'monkey-tools-sandbox',
+    capabilityVersion: '1.0.0',
   });
 
   const capability = document.paths['/execute'].post['x-monkeys-capability-manifest'];
-  assert.deepEqual(capability.ports.inputs.map((port) => port.name), ['language', 'sourceCode']);
+  assert.deepEqual(
+    capability.ports.inputs.map((port) => port.name),
+    ['language', 'sourceCode'],
+  );
   assert.equal(capability.ports.inputs[1].description, 'Node.js source code');
 
-  assert.throws(() => runtime.publishOpenApiToolCapabilityManifests({
-    paths: { '/invalid': { post: {
-      'x-monkey-tool-name': 'invalid',
-      'x-monkey-tool-input': [
-        { name: 'value', required: true, type: 'string' },
-        { name: 'value', required: false, type: 'string' },
-      ],
-    } } },
-  }, {
-    namespace: 'sandbox', ownerRepo: 'monkey-tools-sandbox', capabilityVersion: '1.0.0',
-  }), /conflicting duplicate declarations/);
+  assert.throws(
+    () =>
+      runtime.publishOpenApiToolCapabilityManifests(
+        {
+          paths: {
+            '/invalid': {
+              post: {
+                'x-monkey-tool-name': 'invalid',
+                'x-monkey-tool-input': [
+                  { name: 'value', required: true, type: 'string' },
+                  { name: 'value', required: false, type: 'string' },
+                ],
+              },
+            },
+          },
+        },
+        {
+          namespace: 'sandbox',
+          ownerRepo: 'monkey-tools-sandbox',
+          capabilityVersion: '1.0.0',
+        },
+      ),
+    /conflicting duplicate declarations/,
+  );
 });
