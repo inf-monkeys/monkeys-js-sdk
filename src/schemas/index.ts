@@ -180,6 +180,8 @@ export {
   TenantProductConfigSchema,
   TenantRuntimeConfigSchema,
   TenantTrendRadarCollectionTargetSchema,
+  TenantTrendRadarDerivedMetricsSchema,
+  TenantTrendRadarEvaluationSchema,
   TenantTrendRadarSourceSchema,
   TenantTrendRadarSourcesSchema,
   TenantWorkbenchConfigSchema,

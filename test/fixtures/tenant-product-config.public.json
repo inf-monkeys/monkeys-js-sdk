@@ -168,6 +168,14 @@
         "brands": {
           "ontologyId": "trend-brands",
           "viewId": "view-brands"
+        },
+        "derivedMetrics": {
+          "productCountFieldKey": "relatedProductCount",
+          "salesValueCountFieldKey": "relatedProductSalesValueCount",
+          "salesSumFieldKey": "relatedProductSalesSum"
+        },
+        "evaluation": {
+          "workflowId": "trend-radar-evaluation"
         }
       },
       "sharing": {

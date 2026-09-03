@@ -1571,12 +1571,29 @@ test('tenant application config accepts strict Trend Radar Ontology/View source 
   const hotwords = { ontologyId: 'trend-hotwords', viewId: 'view-hotwords' };
   const brands = { ontologyId: 'trend-brands', viewId: 'view-brands' };
   const collection = { ontologyId: 'trend-radar-collection' };
+  const derivedMetrics = {
+    productCountFieldKey: 'relatedProductCount',
+    salesValueCountFieldKey: 'relatedProductSalesValueCount',
+    salesSumFieldKey: 'relatedProductSalesSum',
+  };
+  const evaluation = { workflowId: 'trend-radar-evaluation' };
 
-  assert.equal(parseTrendRadar({ products, hotwords, brands, collection }).success, true);
+  assert.equal(parseTrendRadar({ products, hotwords, brands, collection, derivedMetrics, evaluation }).success, true);
   assert.equal(parseTrendRadar({ products }).success, true);
   assert.equal(parseTrendRadar({ hotwords }).success, true);
   assert.equal(parseTrendRadar({ brands }).success, true);
   assert.equal(parseTrendRadar({ collection }).success, true);
+  assert.deepEqual(
+    parseTrendRadar({
+      derivedMetrics: {
+        productCountFieldKey: ' relatedProductCount ',
+        salesValueCountFieldKey: ' relatedProductSalesValueCount ',
+        salesSumFieldKey: ' relatedProductSalesSum ',
+      },
+    }).data.dataManagement.trendRadar.derivedMetrics,
+    derivedMetrics,
+  );
+  assert.equal(parseTrendRadar({ evaluation }).success, true);
   assert.equal(parseTrendRadar({}).success, true);
 
   const invalidRegistries = [
@@ -1592,6 +1609,23 @@ test('tenant application config accepts strict Trend Radar Ontology/View source 
     { collection: { ...collection, teamId: 'team-1' } },
     { collection: { ...collection, userId: 'user-1' } },
     { collection: { ...collection, payload: { score: 88 } } },
+    { derivedMetrics: { productCountFieldKey: 'count' } },
+    {
+      derivedMetrics: {
+        productCountFieldKey: 'same',
+        salesValueCountFieldKey: 'same',
+        salesSumFieldKey: 'sum',
+      },
+    },
+    {
+      derivedMetrics: {
+        ...derivedMetrics,
+        productCountFieldKey: 'x'.repeat(257),
+      },
+    },
+    { derivedMetrics: { ...derivedMetrics, unknown: 'field' } },
+    { evaluation: { workflowId: '' } },
+    { evaluation: { ...evaluation, version: 1 } },
     { opportunities: hotwords },
   ];
   for (const trendRadar of invalidRegistries) {

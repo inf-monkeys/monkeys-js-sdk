@@ -113,13 +113,36 @@ export const TenantTrendRadarCollectionTargetSchema = z
   })
   .strict();
 
-/** Page-group source and collection registry; roles are optional to support staged deployment. */
+/** Browser-safe binding to the Workflow used for governed Trend Radar evaluation. */
+export const TenantTrendRadarEvaluationSchema = z
+  .object({
+    workflowId: ContractIdentifierSchema,
+  })
+  .strict();
+
+/** Browser-safe bindings from Trend Radar metric roles to existing derived Feature Columns. */
+export const TenantTrendRadarDerivedMetricsSchema = z
+  .object({
+    productCountFieldKey: ContractIdentifierSchema,
+    salesValueCountFieldKey: ContractIdentifierSchema,
+    salesSumFieldKey: ContractIdentifierSchema,
+  })
+  .strict()
+  .refine(
+    ({ productCountFieldKey, salesValueCountFieldKey, salesSumFieldKey }) =>
+      new Set([productCountFieldKey, salesValueCountFieldKey, salesSumFieldKey]).size === 3,
+    { message: 'Trend Radar derived metric Field Keys must be distinct.' },
+  );
+
+/** Page-group source, collection, derived metric and evaluation registry; roles are optional to support staged deployment. */
 export const TenantTrendRadarSourcesSchema = z
   .object({
     products: TenantTrendRadarSourceSchema.optional(),
     hotwords: TenantTrendRadarSourceSchema.optional(),
     brands: TenantTrendRadarSourceSchema.optional(),
     collection: TenantTrendRadarCollectionTargetSchema.optional(),
+    derivedMetrics: TenantTrendRadarDerivedMetricsSchema.optional(),
+    evaluation: TenantTrendRadarEvaluationSchema.optional(),
   })
   .strict();
 
@@ -923,6 +946,8 @@ export type TenantAuthBinding = z.infer<typeof TenantAuthBindingSchema>;
 export type TenantDataBinding = z.infer<typeof TenantDataBindingSchema>;
 export type TenantTrendRadarSource = z.infer<typeof TenantTrendRadarSourceSchema>;
 export type TenantTrendRadarCollectionTarget = z.infer<typeof TenantTrendRadarCollectionTargetSchema>;
+export type TenantTrendRadarDerivedMetrics = z.infer<typeof TenantTrendRadarDerivedMetricsSchema>;
+export type TenantTrendRadarEvaluation = z.infer<typeof TenantTrendRadarEvaluationSchema>;
 export type TenantTrendRadarSources = z.infer<typeof TenantTrendRadarSourcesSchema>;
 export type ThemeHeadbar = z.infer<typeof ThemeHeadbarSchema>;
 export type TenantHeadbarModuleItem = z.infer<typeof TenantHeadbarModuleItemSchema>;
