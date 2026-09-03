@@ -30,6 +30,19 @@ test('generated tenant JSON Schemas expose the optional email registration switc
   }
 });
 
+test('generated tenant JSON Schemas expose the strict optional registration approval policy', () => {
+  for (const schemaName of ['tenant-product-config', 'tenant-runtime-config']) {
+    const schema = require(`${PACKAGE_NAME}/json-schema/${schemaName}.schema.json`);
+    const auth = schema.properties.applicationConfig.properties.auth;
+    const registrationApproval = auth.properties.registrationApproval;
+
+    assert.deepEqual(registrationApproval.properties.enabled, { type: 'boolean' });
+    assert.equal(auth.required?.includes('registrationApproval') ?? false, false);
+    assert.equal(registrationApproval.required?.includes('enabled') ?? false, false);
+    assert.equal(registrationApproval.additionalProperties, false);
+  }
+});
+
 test('generated menu JSON Schemas expose optional disabled state only on groups and items', () => {
   const ajv = new Ajv2020({ strict: false });
   const definitionSchema = require(`${PACKAGE_NAME}/json-schema/menu-definition.schema.json`);

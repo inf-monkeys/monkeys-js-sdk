@@ -1415,6 +1415,39 @@ test('tenant application config exposes the canonical email registration switch'
   }).success, false);
 });
 
+test('tenant application config exposes a strict optional registration approval policy', () => {
+  for (const enabled of [true, false]) {
+    const parsed = schemas.TenantApplicationConfigSchema.parse({
+      ...applicationConfig,
+      auth: {
+        enabled: ['password'],
+        registrationApproval: { enabled },
+      },
+    });
+
+    assert.deepEqual(parsed.auth.registrationApproval, { enabled });
+  }
+
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    auth: { enabled: ['password'] },
+  }).success, true);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    auth: {
+      enabled: ['password'],
+      registrationApproval: { enabled: 'true' },
+    },
+  }).success, false);
+  assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    auth: {
+      enabled: ['password'],
+      registrationApproval: { enabled: true, unexpected: true },
+    },
+  }).success, false);
+});
+
 test('tenant application config accepts Ontology data bindings and rejects retired Bucket aliases', () => {
   const canonical = {
     ...applicationConfig,
