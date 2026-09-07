@@ -183,6 +183,61 @@ const compile = (overrides = {}) => runtime.compileMenuRuntimeBundle({
   ...overrides,
 });
 
+test('isolates an arbitrary missing page without mutating source or exposing executable inputs', () => {
+  const definition = structuredClone(studioHeaderbar);
+  definition.nodes[1].behavior.page.pageId = 'random.retired.page';
+  const original = structuredClone(definition);
+  const compiled = compile({
+    definitions: [definition],
+    missingPagePolicy: {
+      completeApplicationIds: ['studio'],
+      unavailableAccess: { authenticated: true, permissionAllOf: ['menu:assets'], permissionAnyOf: [], featureFlags: [] },
+    },
+  });
+  const missing = compiled.document.menus[0].nodes.find((node) => node.nodeId === 'my-assets');
+  assert.equal(missing.disabled, true);
+  assert.equal(missing.behavior.input, undefined);
+  assert.equal(compiled.document.navigationTargets.length, 1);
+  assert.equal(compiled.document.navigationTargets[0].activationId, 'all');
+  assert.equal(compiled.serverInputByTargetKey.size, 1);
+  assert.deepEqual(compiled.diagnostics.map(({ nodeId, code }) => ({ nodeId, code })), [{ nodeId: 'my-assets', code: 'missing-page' }]);
+  assert.equal(compiled.document.diagnostics, undefined);
+  assert.equal(compiled.evaluateItemAccess(missing, { sessionResolved: true, authenticated: true, permissionCodes: [], featureFlags: {} }).allowed, false);
+  assert.deepEqual(definition, original);
+  assert.equal(schemas.MenuRuntimeBundleSchema.safeParse(compiled.document).success, true);
+});
+
+test('missing-page isolation requires a complete registry and retains strict action and duplicate checks', () => {
+  const missingPagePolicy = {
+    completeApplicationIds: ['kernel'],
+    unavailableAccess: { authenticated: true, permissionAllOf: ['menu:assets'], permissionAnyOf: [], featureFlags: [] },
+  };
+  const definition = structuredClone(studioHeaderbar);
+  definition.nodes[1].behavior.page.pageId = 'random.retired.page';
+  assert.throws(() => compile({ definitions: [definition], missingPagePolicy }), { code: 'unknown-page' });
+  missingPagePolicy.completeApplicationIds = ['studio'];
+  definition.nodes[3].behavior.actionRef = 'unknown-action';
+  assert.throws(() => compile({ definitions: [definition], missingPagePolicy }), { code: 'unknown-action' });
+  assert.throws(() => compile({ pages: [page(), page()], missingPagePolicy }), { code: 'duplicate-registration' });
+});
+
+test('successful target restoration removes only derived disabled state and revalidates inputs', () => {
+  const definition = structuredClone(studioHeaderbar);
+  const missingPagePolicy = {
+    completeApplicationIds: ['studio'],
+    unavailableAccess: { authenticated: true, permissionAllOf: ['menu:assets'], permissionAnyOf: [], featureFlags: [] },
+  };
+  definition.nodes[2].disabled = true;
+  const unavailable = compile({ definitions: [definition], pages: [], missingPagePolicy });
+  assert.equal(unavailable.document.menus[0].nodes.find((node) => node.nodeId === 'my-assets').disabled, true);
+  const restored = compile({ definitions: [definition], missingPagePolicy });
+  assert.equal(restored.document.menus[0].nodes.find((node) => node.nodeId === 'my-assets').disabled, undefined);
+  assert.equal(restored.document.menus[0].nodes.find((node) => node.nodeId === 'all-assets').disabled, true);
+  assert.notEqual(unavailable.document.contentHash, restored.document.contentHash);
+  definition.nodes[1].behavior.input.value.scope = 'invalid';
+  assert.throws(() => compile({ definitions: [definition], missingPagePolicy }), { code: 'invalid-input' });
+});
+
 test('compiles only the requested application and strips server-bound values', () => {
   const compiled = compile();
   assert.deepEqual(compiled.document.menus.map((menu) => menu.surface), ['current-user', 'headerbar']);
