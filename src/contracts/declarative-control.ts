@@ -962,6 +962,14 @@ export const ResolvedNavigationTargetSchema = z
   })
   .strict();
 
+/** A reviewed missing Page reference is retained without inventing an executable revision. */
+export const UnavailableNavigationTargetSchema = z.object({
+  nodeId: ContractIdentifierSchema,
+  stableTargetRef: StableRefSchema.refine((reference) => reference.kind === 'page', 'Only missing Pages can be isolated.'),
+  reason: z.literal('page-missing'),
+  accessPolicy: AccessPolicySchema.nullable(),
+}).strict();
+
 export const NavigationReleaseSchema = z
   .object({
     contract: z.literal('NavigationRelease'),
@@ -973,6 +981,7 @@ export const NavigationReleaseSchema = z
       placement: ContractIdentifierSchema,
     }).strict(),
     resolvedTargets: z.array(ResolvedNavigationTargetSchema),
+    unavailableTargets: z.array(UnavailableNavigationTargetSchema).optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -981,6 +990,9 @@ export const NavigationReleaseSchema = z
     if (value.navigationRevisionRef.kind !== 'navigation') context.addIssue({ code: 'custom', path: ['navigationRevisionRef', 'kind'], message: 'Expected a navigation revision.' });
     if (value.target.environmentRef.kind !== 'environment') context.addIssue({ code: 'custom', path: ['target', 'environmentRef', 'kind'], message: 'Navigation release target requires an environment reference.' });
     if (uniqueArray(value.resolvedTargets, (target) => target.nodeId)) context.addIssue({ code: 'custom', path: ['resolvedTargets'], message: 'Resolved Navigation node IDs must be unique.' });
+    if (uniqueArray([...value.resolvedTargets, ...(value.unavailableTargets ?? [])], (target) => target.nodeId)) {
+      context.addIssue({ code: 'custom', path: ['unavailableTargets'], message: 'Navigation target resolutions must have unique node IDs.' });
+    }
   });
 
 const RuntimeDiagnosticSchema = z.object({
@@ -1079,6 +1091,7 @@ export const CompiledNavigationResolvedTargetSchema = z.discriminatedUnion('kind
   CompiledNavigationTargetSchema,
   CompiledNavigationRegisteredMenuActionTargetSchema,
   CompiledNavigationDomainCommandTargetSchema,
+  UnavailableNavigationTargetSchema.omit({ reason: true }).extend({ kind: z.literal('unavailable') }).strict(),
 ]);
 
 export const CompiledNavigationGroupNodeSchema = NavigationGroupNodeSchema.extend({
@@ -1088,7 +1101,14 @@ export const CompiledNavigationGroupNodeSchema = NavigationGroupNodeSchema.exten
 export const CompiledNavigationTargetNodeSchema = NavigationTargetNodeSchema.extend({
   ancestorAccessPolicies: z.array(AccessPolicySchema),
   resolvedTarget: CompiledNavigationResolvedTargetSchema,
-}).strict();
+}).strict().superRefine((node, context) => {
+  if (node.resolvedTarget.nodeId !== node.nodeId || stableRefIdentity(node.resolvedTarget.stableTargetRef) !== stableRefIdentity(node.targetRef)) {
+    context.addIssue({ code: 'custom', path: ['resolvedTarget'], message: 'Resolved target identity must match the source node.' });
+  }
+  if (node.resolvedTarget.kind === 'unavailable' && (node.disabled !== true || Object.keys(node.parameterMapping).length > 0)) {
+    context.addIssue({ code: 'custom', path: ['resolvedTarget'], message: 'Unavailable targets must be disabled and contain no executable input.' });
+  }
+});
 
 export const CompiledNavigationSeparatorNodeSchema = NavigationSeparatorNodeSchema.extend({
   ancestorAccessPolicies: z.array(AccessPolicySchema),

@@ -920,7 +920,14 @@ export const compileNavigationRuntimeBundle = (input: CompileNavigationRuntimeBu
   assertUniqueRegistryKeys(targetRegistry.map((registration) => stableRefKey(registration.stableTargetRef)), 'targetRegistry');
   const targetsByStableRef = new Map(targetRegistry.map((registration) => [stableRefKey(registration.stableTargetRef), registration]));
   const releasedByNodeId = new Map(release.resolvedTargets.map((target) => [target.nodeId, target]));
+  const unavailableByNodeId = new Map((release.unavailableTargets ?? []).map((target) => [target.nodeId, target]));
   const nodesById = new Map(navigation.nodes.map((node) => [node.nodeId, node]));
+  for (const target of release.unavailableTargets ?? []) {
+    const node = nodesById.get(target.nodeId);
+    if (node?.kind !== 'target' || !sameStableRef(node.targetRef, target.stableTargetRef)) {
+      throw new DeclarativeControlCompilationError('NAV_TARGET_UNRELEASED', 'release.unavailableTargets', 'An unavailable target must identify its source Page node exactly.');
+    }
+  }
   const nodes = orderedNavigationNodes(navigation).map((node, index) => {
     const ancestors: AccessPolicy[] = [];
     let parentId = node.parentNodeId;
@@ -935,6 +942,25 @@ export const compileNavigationRuntimeBundle = (input: CompileNavigationRuntimeBu
     }
     const registration = targetsByStableRef.get(stableRefKey(node.targetRef));
     const released = releasedByNodeId.get(node.nodeId);
+    const unavailable = unavailableByNodeId.get(node.nodeId);
+    if (!registration && unavailable && node.targetRef.kind === 'page' && sameStableRef(unavailable.stableTargetRef, node.targetRef)) {
+      assertTenantCompatible(node.targetRef, scope, `nodes[${index}].targetRef`);
+      if (unavailable.accessPolicy && !accessPolicyChainImplies([...ancestors, node.audience], unavailable.accessPolicy)) {
+        throw new DeclarativeControlCompilationError('AUDIENCE_WIDER_THAN_TARGET', `nodes[${index}].audience`, 'Effective Navigation audience is wider than the last verified target audience.');
+      }
+      return {
+        ...node,
+        disabled: true,
+        parameterMapping: {},
+        ancestorAccessPolicies: ancestors,
+        resolvedTarget: {
+          kind: 'unavailable' as const,
+          nodeId: node.nodeId,
+          stableTargetRef: node.targetRef,
+          accessPolicy: unavailable.accessPolicy,
+        },
+      };
+    }
     if (!registration || !released
       || !sameStableRef(registration.stableTargetRef, stableFromRevision(registration.targetRevisionRef))
       || !sameStableRef(registration.stableTargetRef, released.stableTargetRef)
