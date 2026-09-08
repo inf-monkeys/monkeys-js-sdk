@@ -136,6 +136,7 @@ export {
   ReleaseOperationSchema,
   ReleaseValidationSchema,
   ResolvedNavigationTargetSchema,
+  UnavailableNavigationTargetSchema,
   ResolvedWorkbenchAppInstanceSchema,
   RevisionRefSchema,
   LegacyRouteClaimSchema,
