@@ -16,6 +16,13 @@ export interface CompileTenantRuntimeConfigInput {
   menuBundle?: MenuRuntimeBundle;
 }
 
+/** Missing rollout capability is intentionally legacy-only for old Servers. */
+export const isDeclarativeRuntimeEnabled = (
+  config: Pick<TenantRuntimeConfig, 'declarativeRuntime'>,
+  surface: 'studio' | 'kernel',
+): boolean => config.declarativeRuntime?.state === 'enabled'
+  && config.declarativeRuntime.enabledSurfaces.includes(surface);
+
 /**
  * Builds the only browser-facing tenant configuration projection.
  * The source list is deliberately not copied, and resolving again guarantees
@@ -42,5 +49,6 @@ export const compileTenantRuntimeConfig = (
     warnings: productConfig.warnings,
     menuBundle: input.menuBundle,
     applicationConfig: productConfig.applicationConfig,
+    declarativeRuntime: productConfig.declarativeRuntime,
   }));
 };

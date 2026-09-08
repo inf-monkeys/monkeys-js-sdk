@@ -1,6 +1,7 @@
 export * from './access';
 export * from './artifact';
 export * from './agent';
+export * from './aggregate-commit';
 export * from './capability';
 export * from './common';
 export * from './context';
@@ -9,6 +10,7 @@ export * from './data';
 export * from './declarative-control';
 export * from './declarative-control-http';
 export * from './file';
+export * from './legacy-route';
 export * from './menu';
 export * from './page';
 export * from './render';

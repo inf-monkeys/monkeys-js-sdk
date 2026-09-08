@@ -1,4 +1,16 @@
 export {
+  AggregateAssetDeleteSchema,
+  AggregateAssetRelationObjectSchema,
+  AggregateAssetRelationReplaceSchema,
+  AggregateAssetSchema,
+  AggregateAssetUpsertSchema,
+  AggregateCommitRequestSchema,
+  AggregateContainerMembershipWriteSchema,
+  AggregateFeatureRelationReplaceSchema,
+  AggregateFeatureRelationTargetSchema,
+  AggregateFeatureValueWriteSchema,
+} from '../contracts/aggregate-commit';
+export {
   PermissionBundleSchema,
   PermissionDefinitionSchema,
   ProductAccessDeclarationSchema,
@@ -22,6 +34,8 @@ export {
   EntityRefSchema,
   JsonObjectSchema,
   JsonValueSchema,
+  SensitiveResultPathSchema,
+  SensitiveResultPathsSchema,
 } from '../contracts/common';
 export {
   AgentConfigurationCapabilitySchema,
@@ -96,11 +110,26 @@ export {
   ProjectionSpecSchema,
   SourceRecordRefSchema,
 } from '../contracts/data';
+export { LegacyRoutePolicySchema } from '../contracts/legacy-route';
 export {
   AccessPolicySchema,
   ActionBindingSchema,
+  ActionResultClipboardEffectSchema,
+  ActionResultBindingEffectSchema,
   BindingSourceSchema,
   CapabilityInstanceSchema,
+  CursorWindowBindingSchema,
+  DomainQueryDataSourceSchema,
+  DomainQueryDefinitionSchema,
+  GovernedCatalogDomainQueryDataSourceSchema,
+  GovernedCatalogResourceKindSchema,
+  RegisteredServiceDomainQueryDataSourceSchema,
+  InteractionBindingSchema,
+  LegacyBrowserPreferenceImportSchema,
+  PageStateActivationSchema,
+  PageStateConditionSchema,
+  PageStateDefinitionSchema,
+  QueryBindingSchema,
   CompiledNavigationGroupNodeSchema,
   CompiledNavigationDomainCommandTargetSchema,
   CompiledNavigationNodeSchema,
@@ -111,10 +140,15 @@ export {
   CompiledRouteClaimSchema,
   CompiledRouteMatcherSchema,
   DeclarativeControlOntologyDefinitionSchema,
-  DeclarativeRouteClaimSchema,
   DeclarativeLifecycleSchema,
+  DeclarativeRouteOwnerIndexSchema,
+  DeclarativeRuntimeShellDescriptorSchema,
+  DeclarativeWorkbenchCatalogSchema,
+  DeclarativeShellHeaderChromeSchema,
+  DeclarativeShellSurfaceChromeSchema,
   I18nTextSchema,
   ManagementAccessSchema,
+  LegacyRouteTakeoverAuthorizationSchema,
   NavigationGroupNodeSchema,
   NavigationNodeSchema,
   NavigationReleaseSchema,
@@ -125,7 +159,10 @@ export {
   OntologyBindingSchema,
   PageReleaseSchema,
   PageRuntimeBundleSchema,
+  PageMigrationEquivalenceDimensionSchema,
+  PageMigrationEquivalenceSchema,
   PageSchema,
+  PermissionAlternativePolicySchema,
   ProductSurfaceSchema,
   PublicationPlanOperationSchema,
   PublicationPlanSchema,
@@ -138,7 +175,6 @@ export {
   ResolvedNavigationTargetSchema,
   ResolvedWorkbenchAppInstanceSchema,
   RevisionRefSchema,
-  LegacyRouteClaimSchema,
   RouteClaimSchema,
   RoutePathTemplateSchema,
   RouteSpaceParameterSchema,
@@ -153,7 +189,19 @@ export {
   WorkbenchReleaseSchema,
   WorkbenchRuntimeBundleSchema,
   WorkbenchSchema,
+  DeclarativeRouteClaimSchema,
+  LegacyRouteClaimSchema,
 } from '../contracts/declarative-control';
+export {
+  DeclarativeAuthoringChoicePageQuerySchema,
+  DeclarativeAuthoringChoicePageSchema,
+  DeclarativeAuthoringPageInfoSchema,
+  DeclarativeAuthoringResourcePageQuerySchema,
+  DeclarativeAuthoringResourcePageSchema,
+  DesignCapabilityCatalogArtifactSchema,
+  ProductDeclarativeCapabilityRegistrationSchema,
+} from '../contracts/declarative-control-http';
+
 export {
   CompiledMenuActionBehaviorSchema,
   CompiledMenuBehaviorSchema,
@@ -312,6 +360,7 @@ export {
   WorkflowPublicationSchema,
 } from '../contracts/workflow-runtime';
 
+import { AggregateCommitRequestSchema } from '../contracts/aggregate-commit';
 import { ArtifactManifestSchema, OutputRecordSchema } from '../contracts/artifact';
 import {
   AgentSessionCommandResultSchema,
@@ -349,12 +398,19 @@ import {
 } from '../contracts/data';
 import {
   DeclarativeControlOntologyDefinitionSchema,
+  DeclarativeRouteOwnerIndexSchema,
+  DeclarativeWorkbenchCatalogSchema,
+  DomainQueryDefinitionSchema,
+  LegacyRouteTakeoverAuthorizationSchema,
   NavigationReleaseSchema,
   NavigationRuntimeBundleSchema,
   NavigationSchema,
   PageReleaseSchema,
   PageRuntimeBundleSchema,
+  PageMigrationEquivalenceDimensionSchema,
+  PageMigrationEquivalenceSchema,
   PageSchema,
+  PermissionAlternativePolicySchema,
   PublicationPlanSchema,
   RouteSpaceSchema,
   StableRefAliasMapSchema,
@@ -362,6 +418,7 @@ import {
   WorkbenchRuntimeBundleSchema,
   WorkbenchSchema,
 } from '../contracts/declarative-control';
+import { DesignCapabilityCatalogArtifactSchema } from '../contracts/declarative-control-http';
 import {
   MenuDefinitionSchema,
   MenuDefinitionSetSchema,
@@ -414,6 +471,7 @@ import {
 } from '../contracts/workflow-runtime';
 
 export const canonicalContractSchemas = {
+  'aggregate-commit-request': AggregateCommitRequestSchema,
   'agent-session-command': AgentSessionCommandSchema,
   'agent-session-targeted-command': AgentSessionTargetedCommandSchema,
   'agent-session-command-result': AgentSessionCommandResultSchema,
@@ -444,11 +502,16 @@ export const canonicalContractSchemas = {
   'domain-command': DomainCommandSchema,
   'domain-command-definition': DomainCommandDefinitionSchema,
   'data-continuity-envelope': DataContinuityEnvelopeSchema,
+  'domain-query-definition': DomainQueryDefinitionSchema,
   'declarative-control-ontology-definition': DeclarativeControlOntologyDefinitionSchema,
+  'declarative-route-owner-index': DeclarativeRouteOwnerIndexSchema,
+  'declarative-workbench-catalog': DeclarativeWorkbenchCatalogSchema,
+  'design-capability-catalog-artifact': DesignCapabilityCatalogArtifactSchema,
   'execution-link': ExecutionLinkSchema,
   'expiring-access-grant': ExpiringAccessGrantSchema,
   'hotword-body': HotwordBodySchema,
   'lineage-record': LineageRecordSchema,
+  'legacy-route-takeover-authorization': LegacyRouteTakeoverAuthorizationSchema,
   'menu-definition': MenuDefinitionSchema,
   'menu-definition-set': MenuDefinitionSetSchema,
   'menu-runtime-bundle': MenuRuntimeBundleSchema,
@@ -464,6 +527,7 @@ export const canonicalContractSchemas = {
   'page-runtime-bundle': PageRuntimeBundleSchema,
   'page-runtime-descriptor': PageRuntimeDescriptorSchema,
   'page-runtime-projection': PageRuntimeProjectionSchema,
+  'permission-alternative-policy': PermissionAlternativePolicySchema,
   'projection-spec': ProjectionSpecSchema,
   'publication-plan': PublicationPlanSchema,
   'product-declaration': ProductDeclarationSchema,

@@ -124,6 +124,9 @@ test('runtime subpath preserves CommonJS resolution', () => {
   assert.equal(typeof runtime.compilePageRuntimeBundle, 'function');
   assert.equal(typeof runtime.compileWorkbenchRuntimeBundle, 'function');
   assert.equal(typeof runtime.compileNavigationRuntimeBundle, 'function');
+  assert.equal(typeof runtime.compileDesignCapabilityCatalogArtifact, 'function');
+  assert.equal(typeof runtime.compileDeclarativeRouteOwnerIndex, 'function');
+  assert.equal(typeof runtime.permissionAlternativePolicyAllows, 'function');
 });
 
 test('runtime subpath exposes native ESM named exports', async () => {
@@ -135,6 +138,8 @@ test('runtime subpath exposes native ESM named exports', async () => {
   assert.equal(typeof runtime.compilePageRuntimeBundle, 'function');
   assert.equal(typeof runtime.compileWorkbenchRuntimeBundle, 'function');
   assert.equal(typeof runtime.compileNavigationRuntimeBundle, 'function');
+  assert.equal(typeof runtime.compileDesignCapabilityCatalogArtifact, 'function');
+  assert.equal(typeof runtime.parseExactDesignCapabilityCatalogArtifact, 'function');
 });
 
 test('all public module subpaths resolve through ESM import conditions', async () => {
@@ -154,6 +159,26 @@ test('all public module subpaths resolve through ESM import conditions', async (
   assert.equal(typeof schemas.LegacyRouteClaimSchema?.parse, 'function');
   assert.equal(typeof schemas.CompiledRouteMatcherSchema?.parse, 'function');
   assert.equal(typeof schemas.NavigationReleaseSchema?.parse, 'function');
+  assert.equal(typeof contracts.DomainQueryDefinitionSchema?.parse, 'function');
+  assert.equal(typeof contracts.DomainQueryDataSourceSchema?.parse, 'function');
+  assert.equal(typeof contracts.GovernedCatalogDomainQueryDataSourceSchema?.parse, 'function');
+  assert.equal(typeof contracts.RegisteredServiceDomainQueryDataSourceSchema?.parse, 'function');
+  assert.equal(typeof contracts.ProductDeclarativeCapabilityRegistrationSchema?.parse, 'function');
+  assert.equal(typeof contracts.GovernedCatalogResourceKindSchema?.parse, 'function');
+  assert.equal(typeof contracts.PageStateDefinitionSchema?.parse, 'function');
+  assert.equal(typeof contracts.PageStateConditionSchema?.parse, 'function');
+  assert.equal(typeof contracts.InteractionBindingSchema?.parse, 'function');
+  assert.equal(typeof contracts.QueryBindingSchema?.parse, 'function');
+  assert.equal(typeof schemas.DomainQueryDefinitionSchema?.parse, 'function');
+  assert.equal(typeof schemas.DomainQueryDataSourceSchema?.parse, 'function');
+  assert.equal(typeof schemas.GovernedCatalogDomainQueryDataSourceSchema?.parse, 'function');
+  assert.equal(typeof schemas.RegisteredServiceDomainQueryDataSourceSchema?.parse, 'function');
+  assert.equal(typeof schemas.ProductDeclarativeCapabilityRegistrationSchema?.parse, 'function');
+  assert.equal(typeof schemas.GovernedCatalogResourceKindSchema?.parse, 'function');
+  assert.equal(typeof contracts.DeclarativeRuntimeResolveResultSchema?.parse, 'function');
+  assert.equal(typeof contracts.DesignCapabilityCatalogArtifactSchema?.parse, 'function');
+  assert.equal(typeof schemas.DesignCapabilityCatalogArtifactSchema?.parse, 'function');
+  assert.equal(typeof root.parseExactProductDeclarativeCapabilityRegistration, 'function');
 });
 
 test('browser ESM runtime does not expose the CommonJS Ajv boundary', () => {

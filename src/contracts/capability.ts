@@ -46,7 +46,7 @@ export const CapabilityManifestSchema = z
         stateOwner: z.enum(['host', 'provider', 'external']),
         stateSchemaRef: ContractIdentifierSchema.optional(),
         sideEffects: z
-          .array(z.enum(['network', 'storage', 'navigation', 'worker', 'websocket']))
+          .array(z.enum(['network', 'storage', 'navigation', 'clipboard', 'worker', 'websocket']))
           .default([]),
       })
       .strict(),

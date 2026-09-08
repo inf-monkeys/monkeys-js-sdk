@@ -367,7 +367,7 @@ export const ViewProviderDescriptorSchema = z
       .min(1),
     frameOwner: z.enum(['host', 'provider', 'none']),
     sideEffects: z
-      .array(z.enum(['network', 'storage', 'navigation', 'worker', 'websocket'])),
+      .array(z.enum(['network', 'storage', 'navigation', 'clipboard', 'worker', 'websocket'])),
     sideEffectAdapterRef: EntityRefSchema.optional(),
     lifecycle: z
       .object({
