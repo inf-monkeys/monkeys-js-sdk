@@ -1,0 +1,275 @@
+{
+  "description": "Sanitized topology of the BSD UAT three-root navigation; tenant identities, target IDs, permissions and input values excluded.",
+  "nodes": [
+    {
+      "nodeId": "data",
+      "parentNodeId": null,
+      "order": 10,
+      "kind": "group"
+    },
+    {
+      "nodeId": "organization",
+      "parentNodeId": null,
+      "order": 20,
+      "kind": "group"
+    },
+    {
+      "nodeId": "settings",
+      "parentNodeId": null,
+      "order": 30,
+      "kind": "group"
+    },
+    {
+      "nodeId": "data.overview-operations",
+      "parentNodeId": "data",
+      "order": 10,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.overview",
+      "parentNodeId": "data.overview-operations",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "behavioral-governance",
+      "parentNodeId": "data",
+      "order": 20,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.trend-radar",
+      "parentNodeId": "behavioral-governance",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.alerts",
+      "parentNodeId": "behavioral-governance",
+      "order": 20,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.task-statistics",
+      "parentNodeId": "behavioral-governance",
+      "order": 30,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.team-statistics",
+      "parentNodeId": "behavioral-governance",
+      "order": 40,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.user-statistics",
+      "parentNodeId": "behavioral-governance",
+      "order": 50,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.organization-usage",
+      "parentNodeId": "behavioral-governance",
+      "order": 60,
+      "kind": "target"
+    },
+    {
+      "nodeId": "application-governance",
+      "parentNodeId": "data",
+      "order": 30,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.workflows",
+      "parentNodeId": "application-governance",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.tools",
+      "parentNodeId": "application-governance",
+      "order": 20,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.workflow-batch-actions",
+      "parentNodeId": "application-governance",
+      "order": 30,
+      "kind": "target"
+    },
+    {
+      "nodeId": "model-governance",
+      "parentNodeId": "data",
+      "order": 40,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.models",
+      "parentNodeId": "model-governance",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.model-training",
+      "parentNodeId": "model-governance",
+      "order": 20,
+      "kind": "target"
+    },
+    {
+      "nodeId": "data-governance",
+      "parentNodeId": "data",
+      "order": 50,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.data-assets",
+      "parentNodeId": "data-governance",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.data-tags",
+      "parentNodeId": "data-governance",
+      "order": 20,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.data-tag-groups",
+      "parentNodeId": "data-governance",
+      "order": 30,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.plugin-market",
+      "parentNodeId": "data-governance",
+      "order": 40,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.ai-shortcuts",
+      "parentNodeId": "data-governance",
+      "order": 50,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.ai-shortcut-logs",
+      "parentNodeId": "data-governance",
+      "order": 60,
+      "kind": "target"
+    },
+    {
+      "nodeId": "identity-governance",
+      "parentNodeId": "organization",
+      "order": 10,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.teams",
+      "parentNodeId": "identity-governance",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.users",
+      "parentNodeId": "identity-governance",
+      "order": 20,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.permission-groups",
+      "parentNodeId": "identity-governance",
+      "order": 30,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.api-keys",
+      "parentNodeId": "identity-governance",
+      "order": 40,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.profile-completion-config",
+      "parentNodeId": "identity-governance",
+      "order": 50,
+      "kind": "target"
+    },
+    {
+      "nodeId": "agent-governance",
+      "parentNodeId": "settings",
+      "order": 10,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.agent-models",
+      "parentNodeId": "agent-governance",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.agent-runtime-profiles",
+      "parentNodeId": "agent-governance",
+      "order": 20,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.dev-agent-sessions",
+      "parentNodeId": "agent-governance",
+      "order": 30,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.dev-agent-environments",
+      "parentNodeId": "agent-governance",
+      "order": 35,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.dev-agent-work",
+      "parentNodeId": "agent-governance",
+      "order": 40,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.builtin-agents",
+      "parentNodeId": "agent-governance",
+      "order": 50,
+      "kind": "target"
+    },
+    {
+      "nodeId": "billing-governance",
+      "parentNodeId": "organization",
+      "order": 20,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.tool-pricing",
+      "parentNodeId": "billing-governance",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.billing-display-config",
+      "parentNodeId": "billing-governance",
+      "order": 30,
+      "kind": "target"
+    },
+    {
+      "nodeId": "system-governance",
+      "parentNodeId": "settings",
+      "order": 30,
+      "kind": "group"
+    },
+    {
+      "nodeId": "kernel.page.system-configs",
+      "parentNodeId": "system-governance",
+      "order": 10,
+      "kind": "target"
+    },
+    {
+      "nodeId": "kernel.page.system-balances",
+      "parentNodeId": "billing-governance",
+      "order": 40,
+      "kind": "target"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import {
   MENU_ACTIVATION_QUERY_PARAMETER,
   MENU_CONTRACT_VERSION,
   MenuActionRegistrationSchema,
+  MenuAccessRequirementSchema,
   MenuBoundedInputSchema,
   MenuContributionProviderRegistrationSchema,
   MenuDefinitionSchema,
@@ -66,6 +67,23 @@ export interface CompileMenuRuntimeBundleInput {
   permissionCodes: readonly string[];
   inputValidators?: ReadonlyMap<string, MenuInputValidator>;
   sourceMap?: Readonly<Record<string, string>>;
+  /** Enable isolation only after successfully loading complete catalogs for these applications. */
+  missingPagePolicy?: {
+    completeApplicationIds: readonly string[];
+    /** Explicit restricted audience when the removed target's original policy is unavailable. */
+    unavailableAccess: MenuAccessRequirement;
+  };
+}
+
+export interface MenuCompilationDiagnostic {
+  code: 'missing-page';
+  severity: 'warning';
+  applicationId: string;
+  surface: string;
+  menuId: string;
+  nodeId: string;
+  page: MenuPageRef;
+  path: string;
 }
 
 export interface MenuAccessContext {
@@ -95,6 +113,8 @@ export type MenuNavigationResolution =
 
 export interface CompiledMenuRuntimeBundle {
   document: MenuRuntimeBundle;
+  /** Authoring diagnostics; never included in the ordinary menu document. */
+  diagnostics: readonly MenuCompilationDiagnostic[];
   menusByKey: ReadonlyMap<string, CompiledMenuProjection>;
   navigationTargetsByKey: ReadonlyMap<string, MenuNavigationTarget>;
   serverInputByTargetKey: ReadonlyMap<string, JsonObject>;
@@ -375,6 +395,15 @@ export const compileMenuRuntimeBundle = (
     MenuContributionProviderRegistrationSchema.parse(registration));
   const inputValidators = input.inputValidators ?? new Map<string, MenuInputValidator>();
   const knownPermissions = new Set(input.permissionCodes.map((permission) => ContractIdentifierSchema.parse(permission)));
+  const completeApplications = new Set(input.missingPagePolicy?.completeApplicationIds.map((id) => ContractIdentifierSchema.parse(id)) ?? []);
+  const unavailableAccess = input.missingPagePolicy
+    ? MenuAccessRequirementSchema.parse(input.missingPagePolicy.unavailableAccess)
+    : undefined;
+  if (unavailableAccess) {
+    validatePermissionCodes(unavailableAccess.permissionAllOf, knownPermissions, 'missingPagePolicy.unavailableAccess.permissionAllOf');
+    validatePermissionCodes(unavailableAccess.permissionAnyOf, knownPermissions, 'missingPagePolicy.unavailableAccess.permissionAnyOf');
+  }
+  const diagnostics: MenuCompilationDiagnostic[] = [];
   pages.forEach((registration, index) => {
     if (!registration.page.visibility.productContexts.some((context) => context === registration.applicationId)) {
       throw new MenuCompilationError(
@@ -443,6 +472,30 @@ export const compileMenuRuntimeBundle = (
       if (node.behavior.kind === 'navigate') {
         const registration = pagesByKey.get(pageKey(node.behavior.page));
         if (!registration) {
+          if (unavailableAccess && completeApplications.has(node.behavior.page.applicationId)) {
+            const activationId = resolveMenuActivationId(node.behavior.page, node.behavior.activationId);
+            const identity = targetKey(node.behavior.page, activationId);
+            const signature = stableSerialize({ ...node.behavior, activationId });
+            const previous = targetSourceSignatures.get(identity);
+            if (previous !== undefined && previous !== signature) {
+              throw new MenuCompilationError('conflicting-navigation-target', `${nodePath}.behavior`, 'Missing navigation target has conflicting behavior or input.');
+            }
+            targetSourceSignatures.set(identity, signature);
+            if (definition.applicationId === applicationId) {
+              diagnostics.push({
+                code: 'missing-page', severity: 'warning', applicationId: definition.applicationId,
+                surface: definition.surface, menuId: definition.menuId, nodeId: node.nodeId,
+                page: node.behavior.page, path: `${nodePath}.behavior.page`,
+              });
+            }
+            const { requiredPermission, behavior: _behavior, ...presentation } = node;
+            return CompiledMenuItemNodeSchema.parse({
+              ...presentation,
+              disabled: true,
+              behavior: { kind: 'navigate', page: node.behavior.page, activationId },
+              access: { ...unavailableAccess, requiredPermission },
+            });
+          }
           throw new MenuCompilationError(
             'unknown-page',
             `${nodePath}.behavior.page`,
@@ -631,6 +684,7 @@ export const compileMenuRuntimeBundle = (
 
   return Object.freeze({
     document: deepFreeze(document),
+    diagnostics: deepFreeze(diagnostics),
     menusByKey,
     navigationTargetsByKey: documentTargetsByKey,
     serverInputByTargetKey,
