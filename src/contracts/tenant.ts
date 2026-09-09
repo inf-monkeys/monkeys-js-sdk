@@ -942,6 +942,7 @@ export const TenantApplicationConfigSchema = z
               .optional(),
             shareDialog: z
               .object({
+                uiVersion: z.enum(['legacy', 'simplified']).optional(),
                 audience: z
                   .object({
                     enabled: z.boolean().optional(),
@@ -969,6 +970,7 @@ export const TenantApplicationConfigSchema = z
               })
               .strict()
               .optional(),
+            personalNotifications: z.object({ supported: z.boolean() }).strict().optional(),
           })
           .strict()
           .optional(),

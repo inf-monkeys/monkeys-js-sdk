@@ -346,6 +346,29 @@ test('accepts empty tenant overrides or explicit inline, file and URL design-tok
   }).success, false);
 });
 
+test('accepts declared sharing capabilities while rejecting invalid and unknown config', () => {
+  const withSharing = (sharing) => ({
+    ...representativeProductConfig,
+    authBinding: { primary: { kind: 'auth-provider', providerId: 'oidc', policyRef: 'tenant-login' } },
+    dataBinding: { assets: { kind: 'data-provider', providerId: 'monkey-data', domainRef: 'assets' } },
+    applicationConfig: {
+      ...representativeProductConfig.applicationConfig,
+      dataManagement: { sharing },
+    },
+  });
+  for (const uiVersion of ['legacy', 'simplified']) {
+    const sharing = { shareDialog: { uiVersion }, personalNotifications: { supported: true } };
+    assert.deepEqual(schemas.TenantProductConfigSchema.parse(withSharing(sharing)).applicationConfig.dataManagement.sharing, sharing);
+  }
+  assert.equal(schemas.TenantProductConfigSchema.safeParse(withSharing({})).success, true);
+  for (const sharing of [
+    { shareDialog: { uiVersion: 'unknown' } },
+    { personalNotifications: { supported: 'true' } },
+    { personalNotifications: { supported: true, unknown: true } },
+    { unknown: true },
+  ]) assert.equal(schemas.TenantProductConfigSchema.safeParse(withSharing(sharing)).success, false);
+});
+
 test('tenant runtime bindings fail closed for missing and unavailable providers', () => {
   const policy = {
     authProviderIds: ['monkeys-server'],
