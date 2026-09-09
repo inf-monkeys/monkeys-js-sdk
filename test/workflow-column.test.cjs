@@ -49,6 +49,15 @@ test('validates explicit one-hop dependencies and rejects unrecognized binding f
   );
 });
 
+test('opts into indexed-source readiness without changing existing bindings', () => {
+  assert.equal(parseWorkflowColumnBinding(fixture()).policy.requireSearchProjection, undefined);
+  assert.equal(
+    parseWorkflowColumnBinding({ ...fixture(), policy: { requireSearchProjection: true } }).policy.requireSearchProjection,
+    true,
+  );
+  assert.throws(() => parseWorkflowColumnBinding({ ...fixture(), policy: { requireSearchProjection: 'true' } }));
+});
+
 test('distinguishes missing, null, zero and wrongly typed outputs', () => {
   const binding = parseWorkflowColumnBinding(fixture());
   for (const payload of [

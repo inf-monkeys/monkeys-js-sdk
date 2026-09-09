@@ -63,6 +63,8 @@ export const WorkflowColumnBindingSchema = z
         debounceMs: z.number().int().min(0).max(30_000).default(5000),
         maxDelayMs: z.number().int().min(0).max(30_000).default(30_000),
         concurrency: z.number().int().min(1).max(32).default(2),
+        // Indexed queries need visible projections of their declared sources before execution.
+        requireSearchProjection: z.boolean().optional(),
       })
       .strict()
       .default({ debounceMs: 5000, maxDelayMs: 30_000, concurrency: 2 }),
