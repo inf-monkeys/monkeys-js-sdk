@@ -414,7 +414,11 @@ import {
   WorkflowPublicationSchema,
 } from '../contracts/workflow-runtime';
 
+export { WorkflowColumnBindingSchema, WorkflowColumnInputSchema, WorkflowColumnDependencySchema, WorkflowColumnOutputSchema, WorkflowColumnFieldRefSchema } from '../contracts/workflow-column';
+import { WorkflowColumnBindingSchema } from '../contracts/workflow-column';
+
 export const canonicalContractSchemas = {
+  'workflow-column-binding': WorkflowColumnBindingSchema,
   'agent-session-command': AgentSessionCommandSchema,
   'agent-session-targeted-command': AgentSessionTargetedCommandSchema,
   'agent-session-command-result': AgentSessionCommandResultSchema,

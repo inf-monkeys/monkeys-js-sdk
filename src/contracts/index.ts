@@ -17,4 +17,5 @@ export * from './tenant';
 export * from './theme';
 export * from './trend';
 export * from './workflow-definition';
+export * from './workflow-column';
 export * from './workflow-runtime';

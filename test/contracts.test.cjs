@@ -499,6 +499,12 @@ const declarativeNavigationBundle = runtime.compileNavigationRuntimeBundle({
 });
 
 const fixtures = {
+  'workflow-column-binding': {
+    contract: 'WorkflowColumnBinding', version: 1, enabled: true,
+    workflow: { id: 'workflow-1', version: 2, inputSchemaHash: 'a'.repeat(64) },
+    inputs: { value: { kind: 'field', field: { ontologyId: 'source', fieldKey: 'amount' } } },
+    output: { type: 'number', path: ['result'], nullable: false },
+  },
   'declarative-control-ontology-definition': contracts.DECLARATIVE_CONTROL_ONTOLOGY_DEFINITIONS[0],
   navigation: declarativeControl.navigation,
   'navigation-release': declarativeControl.navigationRelease,
@@ -1737,7 +1743,7 @@ const fixtures = {
 test('publishes one canonical schema and JSON Schema document for every contract', () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 86);
+  assert.equal(names.length, 87);
 
   const index = JSON.parse(readFileSync(resolve(__dirname, '../lib/json-schema/index.json'), 'utf8'));
   assert.deepEqual(Object.keys(index), ['schemas']);

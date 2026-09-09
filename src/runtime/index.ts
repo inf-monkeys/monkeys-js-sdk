@@ -13,4 +13,5 @@ export * from './theme-tokens';
 export * from './view-provider-registry';
 export * from './view-render-model';
 export * from './workflow-compiler';
+export * from './workflow-column';
 export * from './access-compiler';
