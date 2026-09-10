@@ -2162,7 +2162,7 @@ const fixtures = {
 test("publishes one canonical schema and JSON Schema document for every contract", () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 93);
+  assert.equal(names.length, 94);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, "../lib/json-schema/index.json"), "utf8"),
