@@ -20,3 +20,11 @@ export * from './theme';
 export * from './trend';
 export * from './workflow-definition';
 export * from './workflow-runtime';
+
+export * from "./component-assembly";
+
+export * from './page-expression';
+
+export * from './record-editor-draft';
+
+export * from './page-stream';

@@ -1111,6 +1111,7 @@ const pageDependencies = (page: Page, compilerRevisionRef: RevisionRef): Release
       revisionRef: instance.capabilityRevisionRef,
     },
     { role: 'provider' as const, revisionRef: instance.providerRevisionRef },
+    ...(instance.eventEffects ?? []).map((effect) => ({ role: 'schema' as const, revisionRef: effect.sourceIntentSchemaRevisionRef })),
     {
       role: 'schema' as const,
       revisionRef: instance.propertySchemaRevisionRef,
@@ -1156,6 +1157,8 @@ const pageDependencies = (page: Page, compilerRevisionRef: RevisionRef): Release
       role: 'schema' as const,
       revisionRef: binding.renderModelSchemaRevisionRef,
     },
+    ...(binding.targetProjection ? [{ role: 'schema' as const, revisionRef: binding.targetProjection.schemaRevisionRef }] : []),
+    ...(binding.streamTargetProjection ? [{ role: 'schema' as const, revisionRef: binding.streamTargetProjection.schemaRevisionRef }] : []),
     ...(binding.cursorWindow
       ? [
           {
@@ -1489,7 +1492,9 @@ export const compilePageRuntimeBundle = (input: CompilePageRuntimeBundleInput): 
       );
     }
     if (binding.cursorWindow) {
-      const pageChangePort = registration?.outputPorts.find(
+      const sourceInstance = page.capabilityInstances.find(candidate => candidate.instanceId === (binding.cursorWindow!.sourceCapabilityInstanceId ?? binding.target.capabilityInstanceId));
+      const sourceRegistration = sourceInstance && registrationsByPair.get(`${revisionRefKey(sourceInstance.capabilityRevisionRef)}:${revisionRefKey(sourceInstance.providerRevisionRef)}`);
+      const pageChangePort = sourceRegistration?.outputPorts.find(
         (candidate) => candidate.name === binding.cursorWindow!.pageChangePort,
       );
       if (
@@ -1514,15 +1519,20 @@ export const compilePageRuntimeBundle = (input: CompilePageRuntimeBundleInput): 
         `${revisionRefKey(instance.capabilityRevisionRef)}:${revisionRefKey(instance.providerRevisionRef)}`,
       );
     const port = registration?.inputPorts.find((candidate) => candidate.name === binding.target.port);
-    if (!port || !sameRevisionRef(port.schemaRevisionRef, binding.renderModelSchemaRevisionRef)) {
+    if (!port || !sameRevisionRef(port.schemaRevisionRef, (binding.targetProjection?.schemaRevisionRef ?? binding.renderModelSchemaRevisionRef))) {
       throw new DeclarativeControlCompilationError(
         'PORT_TYPE_MISMATCH',
         `queryBindings[${index}].target.port`,
         'Domain Query render model does not match the registered capability input port.',
       );
     }
+    if (binding.streamTargetProjection && (!port || !sameRevisionRef(port.schemaRevisionRef, binding.streamTargetProjection.schemaRevisionRef))) {
+      throw new DeclarativeControlCompilationError('PORT_TYPE_MISMATCH', `queryBindings[${index}].streamTargetProjection`, 'Stream render model does not match the registered capability input port.');
+    }
     if (binding.cursorWindow) {
-      const pageChangePort = registration?.outputPorts.find(
+      const sourceInstance = page.capabilityInstances.find(candidate => candidate.instanceId === (binding.cursorWindow!.sourceCapabilityInstanceId ?? binding.target.capabilityInstanceId));
+      const sourceRegistration = sourceInstance && registrationsByPair.get(`${revisionRefKey(sourceInstance.capabilityRevisionRef)}:${revisionRefKey(sourceInstance.providerRevisionRef)}`);
+      const pageChangePort = sourceRegistration?.outputPorts.find(
         (candidate) => candidate.name === binding.cursorWindow!.pageChangePort,
       );
       if (
@@ -1536,6 +1546,16 @@ export const compilePageRuntimeBundle = (input: CompilePageRuntimeBundleInput): 
         );
       }
     }
+  });
+  page.capabilityInstances.forEach((instance, index) => {
+    const registration = registrationsByPair.get(`${revisionRefKey(instance.capabilityRevisionRef)}:${revisionRefKey(instance.providerRevisionRef)}`);
+    instance.eventPayloadBindings?.forEach((binding, bindingIndex) => {
+      if (!registration?.outputPorts.some((port) => port.name === binding.port)) throw new DeclarativeControlCompilationError('PORT_TYPE_MISMATCH', `capabilityInstances[${index}].eventPayloadBindings[${bindingIndex}]`, 'Event payload projection must reference a registered output port.');
+    });
+    instance.eventEffects?.forEach((effect, effectIndex) => {
+      const port = registration?.outputPorts.find((candidate) => candidate.name === effect.sourcePort);
+      if (!port || !sameRevisionRef(port.schemaRevisionRef, effect.sourceIntentSchemaRevisionRef)) throw new DeclarativeControlCompilationError('PORT_TYPE_MISMATCH', `capabilityInstances[${index}].eventEffects[${effectIndex}]`, 'Event effect source must match an exact registered output port schema.');
+    });
   });
   page.interactionBindings.forEach((binding, index) => {
     const instance = page.capabilityInstances.find(

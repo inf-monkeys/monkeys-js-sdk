@@ -568,3 +568,9 @@ export const canonicalContractSchemas = {
 } as const;
 
 export type CanonicalContractSchemaName = keyof typeof canonicalContractSchemas;
+
+export { ComponentAssemblySchema, ComponentEventArgumentSchema, ComponentEventBindingSchema } from "../contracts/component-assembly";
+
+export { PageExpressionSchema, PagePropertyBindingSchema } from '../contracts/page-expression';
+
+export * from '../contracts/record-editor-draft';

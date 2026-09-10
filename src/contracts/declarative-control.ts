@@ -13,7 +13,11 @@ import {
 } from './common';
 import { OntologyDefinitionSchema } from './data';
 import { LegacyRoutePolicySchema } from './legacy-route';
+import { FilePurposeSchema } from './file';
 import { RenderTreeSchema } from './render';
+import { PageExpressionSchema, PageValuePathSchema, PagePropertyBindingSchema, visitPageExpression, collectPageExpressionReads, collectExternalPageExpressionReads } from './page-expression';
+import { analyzePageBindingDependencies } from './page-binding-dependencies';
+export { analyzePageBindingDependencies } from './page-binding-dependencies';
 export const DECLARATIVE_CONTROL_SCHEMA_VERSION = 1;
 const uniqueArray = <T,>(values: readonly T[], identity: (value: T) => string): string | undefined => {
   const seen = new Set<string>();
@@ -939,6 +943,7 @@ const validateReleaseGovernanceScope = (
   );
 };
 export const BindingSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('scope-field'), path: z.string().trim().min(1).max(4096).regex(/^[A-Za-z0-9_.-]+$/).refine((path) => path.split('.').length <= 16 && path.split('.').every((part) => part.length > 0 && !['__proto__', 'prototype', 'constructor'].includes(part)), 'Scope paths require safe own members.') }).strict(),
   z
     .object({
       kind: z.literal('binding-field'),
@@ -990,7 +995,25 @@ export const BindingSourceSchema = z.discriminatedUnion('kind', [
     })
     .strict(),
 ]);
+const ExpressionBindingSourceSchema = z.object({ kind: z.literal('expression'), expression: PageExpressionSchema }).strict().superRefine((value, context) => {
+  if (collectPageExpressionReads(value.expression).some(read => read.root === 'actions')) context.addIssue({ code: 'custom', path: ['expression'], message: 'Action runtime state is presentation-only and cannot influence an input or state transition.' });
+});
+const FileFieldBindingSourceSchema = z.object({ kind: z.literal('file-field'), fileInputId: ContractIdentifierSchema, path: z.enum(['fileName', 'content', 'canonicalUri']) }).strict();
+const ActionFileInputSchema = z.object({
+  inputId: ContractIdentifierSchema,
+  source: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('page-state'), stateId: ContractIdentifierSchema }).strict(),
+    z.object({ kind: z.literal('intent-field'), path: z.string().trim().regex(/^[A-Za-z0-9_.-]+$/) }).strict(),
+  ]),
+  maxBytes: z.number().int().min(1).max(5368709120),
+  upload: z.object({ purpose: FilePurposeSchema }).strict().optional(),
+  accept: z.string().min(1).max(256).optional(),
+}).strict().superRefine((value, context) => {
+  if (!value.upload && value.maxBytes > 1048576) context.addIssue({ code: 'custom', path: ['maxBytes'], message: 'Inline text files are limited to one MiB.' });
+});
+const ActionInputBindingSourceSchema = z.discriminatedUnion('kind', [...BindingSourceSchema.options, ExpressionBindingSourceSchema, FileFieldBindingSourceSchema]);
 const InteractionBindingSourceSchema = z.discriminatedUnion('kind', [
+  ExpressionBindingSourceSchema,
   z
     .object({
       kind: z.literal('constant'),
@@ -1161,6 +1184,8 @@ export const LegacyBrowserPreferenceImportSchema = z
 export const PageStateDefinitionSchema = z
   .object({
     stateId: ContractIdentifierSchema,
+    scopeNodeId: ContractIdentifierSchema.optional(),
+    initialValue: PageExpressionSchema.optional(),
     schemaRevisionRef: RevisionRefSchema,
     defaultValue: JsonValueSchema.optional(),
     persistence: z.enum(['none', 'session', 'url', 'tenant-preference', 'url-with-tenant-preference']),
@@ -1170,6 +1195,8 @@ export const PageStateDefinitionSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    if (value.scopeNodeId && value.persistence !== 'none') context.addIssue({ code: 'custom', path: ['persistence'], message: 'Repeated instance state must not persist outside its instance.' });
+    if (value.initialValue && !value.scopeNodeId && (value.persistence !== 'none' || value.initialValue.kind !== 'read' || value.initialValue.root !== 'state' || value.initialValue.path.length !== 1)) context.addIssue({ code: 'custom', path: ['initialValue'], message: 'Root initialization must directly read one persisted Page state into non-persistent state.' });
     if (value.schemaRevisionRef.kind !== 'schema') {
       context.addIssue({
         code: 'custom',
@@ -1224,7 +1251,7 @@ export const InteractionBindingSchema = z
         message: 'Interaction source intents must pin a schema revision.',
       });
     }
-    const mapsResult = Object.values(value.inputMapping).some((source) => source.kind === 'result-field');
+    const mapsResult = Object.values(value.inputMapping).some((source) => source.kind === 'result-field' || (source.kind === 'expression' && collectPageExpressionReads(source.expression).some((read) => read.root === 'result')));
     if (mapsResult && !value.sourceResultSchemaRevisionRef) {
       context.addIssue({
         code: 'custom',
@@ -1406,6 +1433,7 @@ export const DomainQueryDefinitionSchema = z
   });
 export const CursorWindowBindingSchema = z
   .object({
+    sourceCapabilityInstanceId: ContractIdentifierSchema.optional(),
     pageChangePort: ContractIdentifierSchema,
     pageChangeIntentSchemaRevisionRef: RevisionRefSchema,
   })
@@ -1447,6 +1475,9 @@ export const QueryBindingSchema = z
       })
       .strict(),
     renderModelSchemaRevisionRef: RevisionRefSchema,
+    targetProjection: z.object({ expression: PageExpressionSchema, schemaRevisionRef: RevisionRefSchema }).strict().optional(),
+    streamTargetProjection: z.object({ expression: PageExpressionSchema, schemaRevisionRef: RevisionRefSchema }).strict().optional(),
+    stateEffects: z.array(z.object({ targetStateId: ContractIdentifierSchema, value: PageExpressionSchema, when: PageExpressionSchema.optional() }).strict()).max(32).optional(),
     queryWhen: PageStateActivationSchema.optional(),
     accessFailure: z.literal('render-forbidden').optional(),
     resultStateBindings: z.array(QueryResultStateBindingSchema).max(32).optional(),
@@ -1456,12 +1487,33 @@ export const QueryBindingSchema = z
     cache: z.enum(['none', 'identity-scoped', 'tenant-scoped']),
     cancelOnChange: z.boolean(),
     refreshPolicy: z
-      .object({ intervalMs: z.number().int().min(1000).max(300000) })
+      .object({ intervalMs: z.number().int().min(1000).max(300000), when: PageExpressionSchema.optional() })
       .strict()
       .optional(),
   })
   .strict()
   .superRefine((value, context) => {
+    if (value.targetProjection) {
+      if (value.targetProjection.schemaRevisionRef.kind !== 'schema') context.addIssue({ code: 'custom', path: ['targetProjection', 'schemaRevisionRef'], message: 'Query target projections require an exact target schema revision.' });
+      for (const read of collectExternalPageExpressionReads(value.targetProjection.expression)) if (read.root !== 'model') context.addIssue({ code: 'custom', path: ['targetProjection', 'expression'], message: 'Query target projections may read only the validated raw model.' });
+    }
+    if (value.streamTargetProjection) {
+      const projection = value.streamTargetProjection;
+      if (projection.schemaRevisionRef.kind !== 'schema') context.addIssue({ code: 'custom', path: ['streamTargetProjection', 'schemaRevisionRef'], message: 'Stream target projections require an exact target schema revision.' });
+      for (const read of collectExternalPageExpressionReads(projection.expression)) if (read.root !== 'model') context.addIssue({ code: 'custom', path: ['streamTargetProjection', 'expression'], message: 'Stream target projections may read only the verified query and stream envelope.' });
+      if (value.execution !== 'server' || value.pagination !== 'none') context.addIssue({ code: 'custom', path: ['streamTargetProjection'], message: 'Stream target projections require a non-paginated Server query.' });
+    }
+    const effects = value.stateEffects ?? [];
+    if (new Set(effects.map((effect) => effect.targetStateId)).size !== effects.length) context.addIssue({ code: 'custom', path: ['stateEffects'], message: 'A query completion may update each state only once.' });
+    for (const [index, effect] of effects.entries()) for (const expression of [effect.value, ...(effect.when ? [effect.when] : [])]) {
+      for (const read of collectPageExpressionReads(expression)) if (!['model', 'state', 'scope'].includes(read.root)) context.addIssue({ code: 'custom', path: ['stateEffects', index], message: 'Query state effects may read only model, state, and scope.' });
+    }
+    if (effects.length && (value.execution !== 'server' || value.pagination !== 'none')) context.addIssue({ code: 'custom', path: ['stateEffects'], message: 'Query state effects require a non-paginated Server query.' });
+    if (value.refreshPolicy?.when) {
+      for (const read of collectExternalPageExpressionReads(value.refreshPolicy.when)) {
+        if (read.root !== 'model' && !(read.root === 'actions' && read.path.length === 2 && read.path[1] === 'pending')) context.addIssue({ code: 'custom', path: ['refreshPolicy', 'when'], message: 'Automatic refresh conditions may read only the verified raw model and declared action pending state.' });
+      }
+    }
     if (value.refreshPolicy && (value.execution !== 'server' || value.pagination !== 'none')) {
       context.addIssue({
         code: 'custom',
@@ -1535,6 +1587,13 @@ export const CapabilityInstanceSchema = z
     providerRevisionRef: RevisionRefSchema,
     propertySchemaRevisionRef: RevisionRefSchema,
     properties: JsonObjectSchema,
+    propertyBindings: z.array(PagePropertyBindingSchema).max(128).optional(),
+    eventPayloadBindings: z.array(z.object({ port: ContractIdentifierSchema, expression: PageExpressionSchema }).strict()).max(32).optional(),
+    eventEffects: z.array(z.object({
+      sourcePort: ContractIdentifierSchema,
+      sourceIntentSchemaRevisionRef: RevisionRefSchema,
+      refreshBindingIds: z.array(ContractIdentifierSchema).min(1).max(128),
+    }).strict()).max(32).optional(),
     accessPolicy: AccessPolicySchema.optional(),
     activationWhen: PageStateActivationSchema.optional(),
     allowedSideEffects: z.array(z.enum(['network', 'storage', 'navigation', 'clipboard', 'worker', 'websocket'])),
@@ -1707,7 +1766,9 @@ export const ActionBindingSchema = z
       .strict(),
     sourceIntentSchemaRevisionRef: RevisionRefSchema,
     inputSchemaRevisionRef: RevisionRefSchema,
-    inputMapping: z.record(ContractIdentifierSchema, BindingSourceSchema),
+    when: PageExpressionSchema.optional(),
+    fileInputs: z.array(ActionFileInputSchema).min(1).max(4).optional(),
+    inputMapping: z.record(ContractIdentifierSchema, ActionInputBindingSourceSchema),
     sensitiveInputPaths: SensitiveResultPathsSchema.optional(),
     accessPolicy: AccessPolicySchema,
     confirmation: I18nTextSchema.optional(),
@@ -1716,10 +1777,10 @@ export const ActionBindingSchema = z
     resultSchemaRevisionRef: RevisionRefSchema,
     success: z
       .object({
-        download: z
-          .object({ kind: z.literal('native') })
-          .strict()
-          .optional(),
+        download: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('native') }).strict(),
+          z.object({ kind: z.literal('text-artifact'), fileNamePath: PageValuePathSchema.min(1), mimeTypePath: PageValuePathSchema.min(1), contentPath: PageValuePathSchema.min(1), maxBytes: z.number().int().min(1).max(1048576) }).strict(),
+        ]).optional(),
         refreshBindingIds: z.array(ContractIdentifierSchema),
         ephemeralResult: z
           .object({
@@ -1744,6 +1805,21 @@ export const ActionBindingSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    const fileIds = new Set<string>();
+    for (const file of value.fileInputs ?? []) {
+      if (fileIds.has(file.inputId)) context.addIssue({ code: 'custom', path: ['fileInputs'], message: 'File input ids must be unique.' });
+      fileIds.add(file.inputId);
+      if (!Object.values(value.inputMapping).some(source => source.kind === 'file-field' && source.fileInputId === file.inputId)) context.addIssue({ code: 'custom', path: ['fileInputs'], message: 'File inputs require an explicit governed input mapping.' });
+    }
+    for (const [name, source] of Object.entries(value.inputMapping)) if (source.kind === 'file-field') {
+      const file = value.fileInputs?.find(file => file.inputId === source.fileInputId);
+      if ((source.path === 'canonicalUri' && !file?.upload) || (source.path === 'content' && file?.upload)) context.addIssue({ code: 'custom', path: ['inputMapping', name], message: 'File field must match its declared transport mode.' });
+      if (!fileIds.has(source.fileInputId)) context.addIssue({ code: 'custom', path: ['inputMapping', name], message: 'File fields must reference a declared file input.' });
+      if (source.path === 'content' && !value.sensitiveInputPaths?.includes(`/${name}`)) context.addIssue({ code: 'custom', path: ['sensitiveInputPaths'], message: 'File content must be declared as a sensitive command input.' });
+    }
+    if (value.when) for (const read of collectPageExpressionReads(value.when)) {
+      if (!['intent', 'state', 'scope'].includes(read.root)) context.addIssue({ code: 'custom', path: ['when'], message: 'Action conditions may read only intent, declared Page state, and instance scope.' });
+    }
     if (value.success.ephemeralResult) {
       const { valuePath, labelPath } = value.success.ephemeralResult;
       const segments = (path: string) => path.split('/').slice(1);
@@ -2057,6 +2133,122 @@ export const PageSchema = z
     });
     const instanceIds = new Set(value.capabilityInstances.map((instance) => instance.instanceId));
     const stateIds = new Set(stateDefinitions.map((state) => state.stateId));
+    value.capabilityInstances.forEach((instance, index) => {
+      const ports = new Set<string>();
+      const payloadPorts = new Set<string>();
+      instance.eventPayloadBindings?.forEach((binding, bindingIndex) => {
+        const path = ['capabilityInstances', index, 'eventPayloadBindings', bindingIndex];
+        if (payloadPorts.has(binding.port)) context.addIssue({ code: 'custom', path, message: 'An event payload can have only one declarative projection.' });
+        payloadPorts.add(binding.port);
+        for (const read of collectPageExpressionReads(binding.expression)) {
+          if (read.root === 'actions' || read.root === 'result' || (read.root === 'state' && !stateIds.has(read.path[0] ?? '')) || (read.root === 'bindings' && ![...value.ontologyBindings, ...queryBindings].some((candidate) => candidate.bindingId === read.path[0]))) context.addIssue({ code: 'custom', path, message: 'Event payload projections require local event, model, scope, declared query results, or declared state.' });
+        }
+      });
+
+      instance.eventEffects?.forEach((effect, effectIndex) => {
+        const path = ['capabilityInstances', index, 'eventEffects', effectIndex];
+        if (effect.sourceIntentSchemaRevisionRef.kind !== 'schema' || ports.has(effect.sourcePort)) context.addIssue({ code: 'custom', path, message: 'Event effects require one exact source schema per output port.' });
+        ports.add(effect.sourcePort);
+        if (value.actionBindings.some((binding) => binding.source.capabilityInstanceId === instance.instanceId && binding.source.port === effect.sourcePort)) context.addIssue({ code: 'custom', path, message: 'An Action output port must declare refresh effects through Action.success.' });
+        for (const id of effect.refreshBindingIds) if (![...value.ontologyBindings, ...queryBindings].some((binding) => binding.bindingId === id)) context.addIssue({ code: 'custom', path, message: 'Event effect references an unknown query binding.' });
+      });
+    });
+
+    const repeatNodes = new Set(value.renderTree.nodes.filter((node) => node.repeat).map((node) => node.nodeId));
+    stateDefinitions.forEach((definition, index) => {
+      if (definition.scopeNodeId && !repeatNodes.has(definition.scopeNodeId)) context.addIssue({ code: 'custom', path: ['stateDefinitions', index, 'scopeNodeId'], message: 'Instance state must reference an existing repeated RenderNode.' });
+      if (definition.initialValue && !definition.scopeNodeId) {
+        const expression = definition.initialValue;
+        const source = expression.kind === 'read' ? stateDefinitions.find(state => state.stateId === expression.path[0] && !state.scopeNodeId) : undefined;
+        if (!source || source.initialValue || !['tenant-preference', 'url-with-tenant-preference'].includes(source.persistence)) context.addIssue({ code: 'custom', path: ['stateDefinitions', index, 'initialValue'], message: 'Root initialization requires an independently hydrated tenant preference; initialization chains are forbidden.' });
+      }
+      if (definition.initialValue) {
+        for (const read of collectPageExpressionReads(definition.initialValue)) {
+          if (!['scope', 'state'].includes(read.root) || (read.root === 'state' && !stateDefinitions.some((state) => state.stateId === read.path[0] && !state.scopeNodeId))) context.addIssue({ code: 'custom', path: ['stateDefinitions', index, 'initialValue'], message: 'Instance initial values can read only their item scope and declared Page state.' });
+        }
+      }
+    });
+    value.renderTree.nodes.forEach((node, index) => {
+      if (!node.repeat) return;
+      for (const read of collectPageExpressionReads(node.repeat.source)) {
+        if (read.root === 'actions' || read.root === 'intent' || read.root === 'result' || read.root === 'model' || (read.root === 'state' && !stateIds.has(read.path[0] ?? '')) || (read.root === 'bindings' && ![...value.ontologyBindings, ...queryBindings].some((binding) => binding.bindingId === read.path[0]))) context.addIssue({ code: 'custom', path: ['renderTree', 'nodes', index, 'repeat', 'source'], message: 'Repeated nodes require declared Page state, query results, or parent item scope.' });
+      }
+    });
+
+    // A declaration can consume its own instance or ancestors, never an arbitrary sibling row.
+    const renderNodesById = new Map(value.renderTree.nodes.map((node) => [node.nodeId, node]));
+    const instanceNodes = new Map(value.capabilityInstances.map((instance) => [instance.instanceId, instance.nodeId]));
+    const scopesForNode = (nodeId: string | undefined): Set<string> => {
+      const scopes = new Set<string>();
+      const visited = new Set<string>();
+      let node = nodeId ? renderNodesById.get(nodeId) : undefined;
+      while (node && !visited.has(node.nodeId)) {
+        visited.add(node.nodeId);
+        if (node.repeat) scopes.add(node.nodeId);
+        node = node.parentNodeId ? renderNodesById.get(node.parentNodeId) : undefined;
+      }
+      return scopes;
+    };
+    const queryOwners = new Map([...value.ontologyBindings, ...queryBindings].map((binding) => [
+      binding.bindingId, [...scopesForNode(instanceNodes.get(binding.target.capabilityInstanceId))][0],
+    ]));
+    const actionScopes = new Map(value.actionBindings.map(binding => [binding.bindingId, scopesForNode(instanceNodes.get(binding.source.capabilityInstanceId))]));
+    const actionOwners = new Map([...actionScopes].map(([id, scopes]) => [id, [...scopes][0]]));
+    if (actionOwners.size !== value.actionBindings.length) context.addIssue({ code: 'custom', path: ['actionBindings'], message: 'Action binding identifiers must be unique.' });
+    const checkScopedReads = (reads: ReturnType<typeof collectPageExpressionReads>, scopes: Set<string>, path: (string | number)[]) => {
+      for (const read of reads) {
+        const owner = read.root === 'state' ? stateDefinitions.find((state) => state.stateId === read.path[0])?.scopeNodeId
+          : read.root === 'bindings' ? queryOwners.get(read.path[0]) : read.root === 'actions' ? actionOwners.get(read.path[0]) : undefined;
+        // A parent may observe only aggregate pending for its descendant action scopes.
+        // Error codes and individual row state remain scoped; unrelated repeat branches cannot aggregate.
+        const pendingAggregate = read.root === 'actions' && read.path.length === 2 && read.path[1] === 'pending'
+          && actionScopes.has(read.path[0]) && [...scopes].every(scope => actionScopes.get(read.path[0])!.has(scope));
+        if (owner && !scopes.has(owner) && !pendingAggregate) context.addIssue({ code: 'custom', path, message: 'A binding cannot read state, query results, or individual action status from a sibling or descendant instance.' });
+      }
+    };
+    const checkScopedSources = (sources: Record<string, z.infer<typeof BindingSourceSchema> | z.infer<typeof InteractionBindingSourceSchema> | z.infer<typeof FileFieldBindingSourceSchema>>, scopes: Set<string>, path: (string | number)[]) => {
+      Object.entries(sources).forEach(([name, source]) => {
+        if (source.kind === 'expression') checkScopedReads(collectPageExpressionReads(source.expression), scopes, [...path, name]);
+        if (source.kind === 'page-state') checkScopedReads([{ kind: 'read', root: 'state', path: [source.stateId] }], scopes, [...path, name]);
+        if (source.kind === 'binding-field') checkScopedReads([{ kind: 'read', root: 'bindings', path: [source.bindingId] }], scopes, [...path, name]);
+        if (source.kind === 'scope-field' && scopes.size === 0) context.addIssue({ code: 'custom', path: [...path, name], message: 'A scope field requires a repeated instance.' });
+      });
+    };
+    value.capabilityInstances.forEach((instance, index) => instance.eventPayloadBindings?.forEach((binding, bindingIndex) => checkScopedReads(collectPageExpressionReads(binding.expression), scopesForNode(instance.nodeId), ['capabilityInstances', index, 'eventPayloadBindings', bindingIndex])));
+    value.capabilityInstances.forEach((instance, index) => instance.propertyBindings?.forEach((binding, bindingIndex) => {
+      checkScopedReads(collectPageExpressionReads(binding.expression), scopesForNode(instance.nodeId), ['capabilityInstances', index, 'propertyBindings', bindingIndex]);
+    }));
+    for (const [collection, bindings] of [['ontologyBindings', value.ontologyBindings], ['queryBindings', queryBindings]] as const) {
+      bindings.forEach((binding, index) => checkScopedSources(binding.parameters, scopesForNode(instanceNodes.get(binding.target.capabilityInstanceId)), [collection, index, 'parameters']));
+    }
+    value.actionBindings.forEach((binding, index) => {
+      const scopes = scopesForNode(instanceNodes.get(binding.source.capabilityInstanceId));
+      checkScopedSources(binding.inputMapping, scopes, ['actionBindings', index, 'inputMapping']);
+      for (const [fileIndex, file] of (binding.fileInputs ?? []).entries()) {
+        if (file.source.kind === 'page-state') {
+          const stateId = file.source.stateId;
+          const state = stateDefinitions.find(candidate => candidate.stateId === stateId);
+          if (!state || state.persistence !== 'none') context.addIssue({ code: 'custom', path: ['actionBindings', index, 'fileInputs', fileIndex], message: 'File handles require declared nonpersistent Page state.' });
+          checkScopedSources({ file: file.source }, scopes, ['actionBindings', index, 'fileInputs', fileIndex]);
+        }
+      }
+
+      if (binding.when) {
+        const reads = collectPageExpressionReads(binding.when);
+        checkScopedReads(reads, scopes, ['actionBindings', index, 'when']);
+        for (const read of reads) if (read.root === 'state' && !stateIds.has(read.path[0]!)) context.addIssue({ code: 'custom', path: ['actionBindings', index, 'when'], message: 'Action condition references an unknown Page state.' });
+      }
+    });
+    interactionBindings.forEach((binding, index) => {
+      const sourceScopes = scopesForNode(instanceNodes.get(binding.source.capabilityInstanceId));
+      const targetScope = stateDefinitions.find((state) => state.stateId === binding.targetStateId)?.scopeNodeId;
+      if (targetScope && !sourceScopes.has(targetScope)) context.addIssue({ code: 'custom', path: ['interactionBindings', index, 'targetStateId'], message: 'An interaction must target its own instance or an ancestor.' });
+      checkScopedSources(binding.inputMapping, targetScope ? scopesForNode(targetScope) : new Set(), ['interactionBindings', index, 'inputMapping']);
+    });
+    value.renderTree.nodes.forEach((node, index) => {
+      if (node.repeat) checkScopedReads(collectPageExpressionReads(node.repeat.source), scopesForNode(node.parentNodeId), ['renderTree', 'nodes', index, 'repeat', 'source']);
+    });
+
     entryTransitions.forEach((transition, transitionIndex) => {
       if (
         transition.gestureSource &&
@@ -2116,10 +2308,17 @@ export const PageSchema = z
       });
     });
     const validatePageStateSources = (
-      sources: Record<string, z.infer<typeof BindingSourceSchema> | z.infer<typeof InteractionBindingSourceSchema>>,
+      sources: Record<string, z.infer<typeof BindingSourceSchema> | z.infer<typeof InteractionBindingSourceSchema> | z.infer<typeof FileFieldBindingSourceSchema>>,
       path: (string | number)[],
     ) => {
       Object.entries(sources).forEach(([name, source]) => {
+        if (source.kind === 'expression') {
+          for (const read of collectPageExpressionReads(source.expression)) {
+            if ((read.root === 'state' && (!read.path[0] || !stateIds.has(read.path[0]))) || read.root === 'model' || read.root === 'bindings' || (read.root === 'result' && path[0] !== 'interactionBindings')) {
+              context.addIssue({ code: 'custom', path: [...path, name, 'expression'], message: 'Expression references unavailable context or an undeclared Page state.' });
+            }
+          }
+        }
         if (source.kind === 'page-state' && !stateIds.has(source.stateId)) {
           context.addIssue({
             code: 'custom',
@@ -2145,7 +2344,7 @@ export const PageSchema = z
         });
       }
       validatePageStateSources(binding.inputMapping, ['interactionBindings', index, 'inputMapping']);
-      if (Object.values(binding.inputMapping).some((source) => source.kind === 'result-field')) {
+      if (Object.values(binding.inputMapping).some((source) => source.kind === 'result-field' || (source.kind === 'expression' && collectPageExpressionReads(source.expression).some((read) => read.root === 'result')))) {
         const action = value.actionBindings.find(
           (candidate) =>
             candidate.source.capabilityInstanceId === binding.source.capabilityInstanceId &&
@@ -2170,6 +2369,43 @@ export const PageSchema = z
       }
     });
     value.capabilityInstances.forEach((instance, index) => {
+      const paths: string[][] = [];
+      instance.propertyBindings?.forEach((binding, bindingIndex) => {
+        const path = ['capabilityInstances', index, 'propertyBindings', bindingIndex];
+        if (instance.capabilityRevisionRef.id.startsWith('monkeys.design.component.')) {
+          const [group, member, field] = binding.targetPath;
+          const messages = instance.properties.messages;
+          const message = messages && typeof messages === 'object' && !Array.isArray(messages) ? messages[member] : undefined;
+          const declaredMessage = message && typeof message === 'object' && !Array.isArray(message);
+          const allowed = (group === 'props' && binding.targetPath.length >= 2) ||
+            (group === 'messages' && declaredMessage && (
+              (field === 'values' && binding.targetPath.length >= 3) ||
+              (binding.targetPath.length === 3 && (field === 'key' || field === 'textI18n') &&
+                Object.prototype.hasOwnProperty.call(message, field))
+            ));
+          if (!allowed) context.addIssue({ code: 'custom', path: [...path, 'targetPath'], message: 'Component expressions can update property values or declared message fields, never executable wiring.' });
+        }
+
+        if (paths.some((previous) => previous.slice(0, Math.min(previous.length, binding.targetPath.length)).every((key, i) => key === binding.targetPath[i]))) {
+          context.addIssue({ code: 'custom', path: [...path, 'targetPath'], message: 'Dynamic property targets must not overlap.' });
+        }
+        paths.push(binding.targetPath);
+        visitPageExpression(binding.expression, (expression) => {
+          if (expression.kind !== 'read') return;
+          if (expression.root === 'state' && (!expression.path[0] || !stateIds.has(expression.path[0]))) {
+            context.addIssue({ code: 'custom', path: [...path, 'expression'], message: 'Property expressions must reference a declared Page state.' });
+          }
+          if (expression.root === 'bindings' && ![...value.ontologyBindings, ...queryBindings].some((candidate) => candidate.bindingId === expression.path[0])) {
+            context.addIssue({ code: 'custom', path: [...path, 'expression'], message: 'Property expressions must reference a declared Page query binding.' });
+          }
+          if (expression.root === 'actions' && (expression.path.length !== 2 || !actionOwners.has(expression.path[0]) || !['pending', 'errorCode'].includes(expression.path[1]))) {
+            context.addIssue({ code: 'custom', path: [...path, 'expression'], message: 'Property expressions may read only pending or errorCode from a declared Action binding.' });
+          }
+          if (expression.root === 'intent' || expression.root === 'result') {
+            context.addIssue({ code: 'custom', path: [...path, 'expression'], message: 'Property expressions cannot read transient event or Action results.' });
+          }
+        });
+      });
       if (!instance.activationWhen) return;
       forEachPageStateCondition(instance.activationWhen, (condition, conditionPath) => {
         if (!stateIds.has(condition.stateId)) {
@@ -2211,6 +2447,25 @@ export const PageSchema = z
           }
         });
       }
+      if (binding.refreshPolicy?.when) {
+        const path = ['queryBindings', index, 'refreshPolicy', 'when'];
+        const reads = collectExternalPageExpressionReads(binding.refreshPolicy.when);
+        checkScopedReads(reads, scopesForNode(instanceNodes.get(binding.target.capabilityInstanceId)), path);
+        for (const read of reads) if (read.root === 'actions' && !actionScopes.has(read.path[0])) context.addIssue({ code: 'custom', path, message: 'Automatic refresh condition references an unknown action binding.' });
+      }
+      const effectOwners = new Set(binding.stateEffects?.map((effect) => stateDefinitions.find((definition) => definition.stateId === effect.targetStateId)?.scopeNodeId ?? '') ?? []);
+      if (effectOwners.size > 1) context.addIssue({ code: 'custom', path: ['queryBindings', index, 'stateEffects'], message: 'A query completion must update a single state owner atomically.' });
+      binding.stateEffects?.forEach((effect, effectIndex) => {
+        const path = ['queryBindings', index, 'stateEffects', effectIndex];
+        const state = stateDefinitions.find((definition) => definition.stateId === effect.targetStateId);
+        const scopes = scopesForNode(instanceNodes.get(binding.target.capabilityInstanceId));
+        if (!state || (state.scopeNodeId && !scopes.has(state.scopeNodeId))) context.addIssue({ code: 'custom', path: [...path, 'targetStateId'], message: 'A query effect must target declared state in its own scope or an ancestor.' });
+        for (const expression of [effect.value, ...(effect.when ? [effect.when] : [])]) {
+          const reads = collectPageExpressionReads(expression);
+          checkScopedReads(reads, state?.scopeNodeId ? scopesForNode(state.scopeNodeId) : new Set(), path);
+          for (const read of reads) if (read.root === 'state' && !stateIds.has(read.path[0]!)) context.addIssue({ code: 'custom', path, message: 'Query effect references an unknown Page state.' });
+        }
+      });
       binding.resultStateBindings?.forEach((resultBinding, resultIndex) => {
         const stateDefinition = stateDefinitions.find(
           (definition) => definition.stateId === resultBinding.targetStateId,
@@ -2238,6 +2493,13 @@ export const PageSchema = z
           });
         }
       });
+    });
+    const dependencyBindings = [...value.ontologyBindings, ...queryBindings];
+    analyzePageBindingDependencies(dependencyBindings).errors.forEach((error) => {
+      const ontologyIndex = value.ontologyBindings.findIndex((binding) => binding.bindingId === error.bindingId);
+      const collection = ontologyIndex >= 0 ? 'ontologyBindings' : 'queryBindings';
+      const index = ontologyIndex >= 0 ? ontologyIndex : queryBindings.findIndex((binding) => binding.bindingId === error.bindingId);
+      context.addIssue({ code: 'custom', path: [collection, index, 'parameters'], message: `Page binding dependency ${error.code}: ${error.dependencyId ?? error.bindingId}` });
     });
     const projectedQueryStateIds = new Set<string>();
     queryBindings.forEach((binding, index) => {
@@ -2283,7 +2545,12 @@ export const PageSchema = z
     ].filter((candidate) => candidate.binding.cursorWindow !== undefined);
     const cursorWindowSources = new Set<string>();
     cursorWindowBindings.forEach(({ binding, index, collection }) => {
-      const sourceKey = `${binding.target.capabilityInstanceId}:${binding.cursorWindow!.pageChangePort}`;
+      const sourceId = binding.cursorWindow!.sourceCapabilityInstanceId ?? binding.target.capabilityInstanceId;
+      if (!instanceIds.has(sourceId)) context.addIssue({ code: 'custom', path: [collection, index, 'cursorWindow', 'sourceCapabilityInstanceId'], message: 'Cursor-window source must reference a declared capability instance.' });
+      const sourceScopes = [...scopesForNode(instanceNodes.get(sourceId))];
+      const targetScopes = [...scopesForNode(instanceNodes.get(binding.target.capabilityInstanceId))];
+      if (sourceScopes.length !== targetScopes.length || sourceScopes.some((id, index) => id !== targetScopes[index])) context.addIssue({ code: 'custom', path: [collection, index, 'cursorWindow', 'sourceCapabilityInstanceId'], message: 'Cursor-window source and query target must share the same repeated scope.' });
+      const sourceKey = `${sourceId}:${binding.cursorWindow!.pageChangePort}`;
       if (cursorWindowSources.has(sourceKey)) {
         context.addIssue({
           code: 'custom',
@@ -2294,12 +2561,12 @@ export const PageSchema = z
       cursorWindowSources.add(sourceKey);
       const conflictingInteraction = interactionBindings.some(
         (candidate) =>
-          candidate.source.capabilityInstanceId === binding.target.capabilityInstanceId &&
+          candidate.source.capabilityInstanceId === sourceId &&
           candidate.source.port === binding.cursorWindow!.pageChangePort,
       );
       const conflictingAction = value.actionBindings.some(
         (candidate) =>
-          candidate.source.capabilityInstanceId === binding.target.capabilityInstanceId &&
+          candidate.source.capabilityInstanceId === sourceId &&
           candidate.source.port === binding.cursorWindow!.pageChangePort,
       );
       if (conflictingInteraction || conflictingAction) {

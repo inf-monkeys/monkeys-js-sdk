@@ -14,3 +14,13 @@ export * from './view-provider-registry';
 export * from './view-render-model';
 export * from './workflow-compiler';
 export * from './access-compiler';
+
+export { compileComponentAssemblyValidator } from "./component-assembly";
+
+export * from './page-expression';
+
+export * from './record-editor-draft';
+
+export * from './target-render-model';
+
+export * from './page-stream';

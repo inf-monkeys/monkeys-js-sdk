@@ -22,3 +22,9 @@ test("response download failure preserves success evidence and excludes target",
  assert.equal(DeclarativeRuntimeActionExecuteResultSchema.safeParse({...failed,download:{url:"https://example.com",fileName:"model"}}).success,false);
  assert.equal(DeclarativeRuntimeActionExecuteResultSchema.safeParse({...failed,downloadError:{code:"DECLARATIVE_DOWNLOAD_UNAVAILABLE",message:"sensitive"}}).success,false);
 });
+test('text artifact download pins explicit safe result paths and a bounded size', () => {
+ const action = page.actionBindings[0];
+ const download = { kind: 'text-artifact', fileNamePath: ['artifact', 'fileName'], mimeTypePath: ['artifact', 'mimeType'], contentPath: ['artifact', 'content'], maxBytes: 1048576 };
+ assert.equal(ActionBindingSchema.safeParse({ ...action, success: { ...action.success, download } }).success, true);
+ for (const change of [{ maxBytes: 1048577 }, { contentPath: [] }, { contentPath: ['__proto__'] }]) assert.equal(ActionBindingSchema.safeParse({ ...action, success: { ...action.success, download: { ...download, ...change } } }).success, false);
+});

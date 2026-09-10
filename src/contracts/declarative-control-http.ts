@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assertPageValueBudget } from './page-expression';
 import {
   AccessPolicySchema,
   CompiledRouteClaimSchema,
@@ -264,6 +265,15 @@ export const DeclarativeRuntimeActionExecuteIntentSchema = DeclarativeRuntimePag
   intent: JsonObjectSchema,
   recoveryOnly: z.literal(true).optional(),
   pageState: DeclarativeRuntimeParametersSchema,
+  files: z.record(z.string().min(1).max(256), z.union([
+    z.object({ fileName: z.string().min(1).max(255), content: z.string().max(1048576) }).strict(),
+    z.object({ fileName: z.string().min(1).max(255), canonicalUri: z.string().regex(/^file:\/\/[^\s/?#]+$/).max(1024) }).strict(),
+  ])).superRefine((files, context) => {
+    if (Object.keys(files).length > 4 || Object.values(files).reduce((bytes, file) => bytes + ('content' in file ? new TextEncoder().encode(file.content).byteLength : 0), 0) > 1048576) context.addIssue({ code: 'custom', message: 'Action files exceed the transient input budget.' });
+  }).optional(),
+  scope: z.unknown().superRefine((value, context) => {
+    try { assertPageValueBudget(value); } catch { context.addIssue({ code: 'custom', message: 'Action instance scope exceeds the safe JSON budget.' }); }
+  }).pipe(JsonObjectSchema).optional(),
   routePath: DeclarativeRuntimeActionRoutePathSchema.optional(),
   idempotencyKey: z.string().trim().min(1).max(256),
 }).strict();
