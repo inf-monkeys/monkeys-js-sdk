@@ -31,6 +31,7 @@ const page = ({
   input = { schemaRef: 'schema://page/data-browser-input' },
   permissionAllOf = ['studio:access'],
   permissionAnyOf = ['data_asset:read', 'data_asset:manage'],
+  legacyRoutePolicy,
 } = {}) => ({
   applicationId,
   page: {
@@ -44,6 +45,7 @@ const page = ({
     surface: 'page',
     routeId: `${pageId}-route`,
     routePath: `/${pageId}`,
+    ...(legacyRoutePolicy ? { legacyRoutePolicy } : {}),
     rendererKey: 'asset-browser',
     capabilityRef: {
       ...capabilityRef,
@@ -63,6 +65,33 @@ const page = ({
       productContexts: [applicationId],
     },
   },
+});
+
+test('application PageDefinitions carry one strict governed legacy route policy', () => {
+  const registration = page({
+    applicationId: 'kernel',
+    pageId: 'data-assets',
+    legacyRoutePolicy: {
+      contract: 'LegacyRoutePolicy',
+      schemaVersion: 1,
+      fallback: 'forbidden',
+      restoration: 'forbidden',
+    },
+  });
+  assert.deepEqual(
+    schemas.MenuPageRegistrationSchema.parse(registration).page.legacyRoutePolicy,
+    registration.page.legacyRoutePolicy,
+  );
+  assert.equal(
+    schemas.MenuPageRegistrationSchema.safeParse({
+      ...registration,
+      page: {
+        ...registration.page,
+        legacyRoutePolicy: { ...registration.page.legacyRoutePolicy, restoration: 'sometimes' },
+      },
+    }).success,
+    false,
+  );
 });
 
 const navigateItem = ({ nodeId, activationId, scope, exposure = 'client', parentNodeId = 'assets' }) => ({

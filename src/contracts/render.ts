@@ -1,3 +1,4 @@
+import { PageExpressionSchema, PageValuePathSchema } from './page-expression';
 import { z } from 'zod';
 import {
   ContractIdentifierSchema,
@@ -196,6 +197,7 @@ export const RenderNodeSchema = z
     evidenceRef: EntityRefSchema.optional(),
     state: RenderNodeStateSchema,
     renderModel: JsonObjectSchema,
+    repeat: z.object({ source: PageExpressionSchema, keyPath: PageValuePathSchema.min(1), limit: z.number().int().min(1).max(1000).default(200) }).strict().optional(),
   })
   .strict()
   .superRefine((node, context) => {
@@ -367,7 +369,7 @@ export const ViewProviderDescriptorSchema = z
       .min(1),
     frameOwner: z.enum(['host', 'provider', 'none']),
     sideEffects: z
-      .array(z.enum(['network', 'storage', 'navigation', 'worker', 'websocket'])),
+      .array(z.enum(['network', 'storage', 'navigation', 'clipboard', 'worker', 'websocket'])),
     sideEffectAdapterRef: EntityRefSchema.optional(),
     lifecycle: z
       .object({

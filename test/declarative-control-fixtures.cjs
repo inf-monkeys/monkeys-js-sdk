@@ -80,6 +80,7 @@ const providerRevisionRef = revision('view-provider', 'studio.gallery', { visibi
 const propertySchemaRevisionRef = revision('schema', 'monkeys.design.gallery.properties', { visibility: 'global', ownerRepo: 'monkeys-design' });
 const ontologyRevisionRef = revision('ontology-definition', 'ontology.inspiration', { ownerRepo: 'monkeys-data-server' });
 const viewRevisionRef = revision('view', 'view.inspiration.gallery', { ownerRepo: 'monkeys-data-server' });
+const canonicalDataViewRevisionRef = revision('view', 'data.view.inspiration.gallery', { ownerRepo: 'monkeys-data-server', contentHash: HASH_B });
 const renderModelSchemaRevisionRef = revision('schema', 'render-model.inspiration.gallery', { visibility: 'global', ownerRepo: 'monkeys-data-server' });
 const actionRevisionRef = revision('domain-command', 'inspiration.favorite', { ownerRepo: 'monkeys-data-server' });
 const actionSourceIntentSchemaRevisionRef = revision('schema', 'monkeys.design.gallery.favorite.intent', { visibility: 'global', ownerRepo: 'monkeys-design', contentHash: HASH_B });
@@ -157,6 +158,7 @@ const page = Object.freeze({
     bindingId: 'inspiration-list',
     ontologyDefinitionRevisionRef: ontologyRevisionRef,
     viewRevisionRef,
+    canonicalDataViewRevisionRef,
     parameters: {
       cursor: { kind: 'route-parameter', name: 'cursor' },
       teamId: { kind: 'identity', name: 'teamId' },
@@ -216,6 +218,7 @@ const pageDependencySnapshot = Object.freeze([
   dependency('schema', propertySchemaRevisionRef),
   dependency('ontology-definition', ontologyRevisionRef),
   dependency('view', viewRevisionRef),
+  dependency('view', canonicalDataViewRevisionRef),
   dependency('schema', renderModelSchemaRevisionRef),
   dependency('action', actionRevisionRef),
   dependency('schema', actionSourceIntentSchemaRevisionRef),
@@ -450,6 +453,7 @@ module.exports = {
   access,
   actionSourceIntentSchemaRevisionRef,
   capabilityRevisionRef,
+  canonicalDataViewRevisionRef,
   compilerRevisionRef,
   dependency,
   environmentRef,

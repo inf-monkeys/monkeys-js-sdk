@@ -21,6 +21,45 @@ export const ContractVersionSchema = z.number().int().positive();
 export const IsoDateTimeSchema = z.string().datetime({ offset: true });
 export const Sha256Schema = z.string().regex(/^[a-f0-9]{64}$/i, 'Expected a SHA-256 hex digest.');
 
+export const SensitiveResultPathSchema = z
+  .string()
+  .startsWith('/')
+  .max(512)
+  .refine(
+    (path) => {
+      const rawSegments = path.split('/').slice(1);
+      const segments = rawSegments.map((segment) => segment.replace(/~1/g, '/').replace(/~0/g, '~'));
+      return (
+        segments.every((segment) => segment.length > 0 && !['__proto__', 'prototype', 'constructor'].includes(segment)) &&
+        !rawSegments.some((segment) => /~(?![01])/u.test(segment))
+      );
+    },
+    { message: 'Sensitive result paths must be safe RFC 6901 JSON Pointers.' },
+  );
+
+export const SensitiveResultPathsSchema = z
+  .array(SensitiveResultPathSchema)
+  .max(64)
+  .superRefine((paths, context) => {
+    const segments = (path: string) => path.split('/').slice(1);
+    for (let index = 0; index < paths.length; index += 1) {
+      const candidate = segments(paths[index]!);
+      const conflict = paths.findIndex((other, otherIndex) => {
+        if (otherIndex >= index) return false;
+        const existing = segments(other);
+        const sharedLength = Math.min(existing.length, candidate.length);
+        return existing.slice(0, sharedLength).every((segment, segmentIndex) => segment === candidate[segmentIndex]);
+      });
+      if (conflict >= 0) {
+        context.addIssue({
+          code: 'custom',
+          path: [index],
+          message: 'Sensitive result paths cannot duplicate or contain one another.',
+        });
+      }
+    }
+  });
+
 export const LocaleIdentifierSchema = z
   .string()
   .regex(/^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-[A-Z]{2}|-\d{3})?$/, 'Expected a BCP 47 locale identifier.');

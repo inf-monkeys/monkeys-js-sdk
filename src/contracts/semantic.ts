@@ -1,55 +1,46 @@
-import { z } from 'zod';
-import { CapabilityManifestSchema } from './capability';
-import {
-  ContractIdentifierSchema,
-  EntityRefSchema,
-  IsoDateTimeSchema,
-  JsonObjectSchema,
-} from './common';
-import { OntologyDefinitionSchema, ProjectionSpecSchema } from './data';
-import { MenuDefinitionSchema } from './menu';
-import { PageDefinitionSchema } from './page';
-import { RevisionRefSchema } from './declarative-control';
-
-const ExactRefKindSchema = (kind: string) =>
-  RevisionRefSchema.superRefine((value, context) => {
-    if (value.kind !== kind) context.addIssue({ code: 'custom', path: ['kind'], message: `Reference must use kind ${kind}.` });
-  });
-
+import { z } from "zod";
+import { CapabilityManifestSchema } from "./capability";
+import { ContractIdentifierSchema, EntityRefSchema, IsoDateTimeSchema, JsonObjectSchema, SensitiveResultPathsSchema, } from "./common";
+import { OntologyDefinitionSchema, ProjectionSpecSchema } from "./data";
+import { MenuDefinitionSchema } from "./menu";
+import { PageDefinitionSchema } from "./page";
+import { RevisionRefSchema } from "./declarative-control";
+const ExactRefKindSchema = (kind: string) => RevisionRefSchema.superRefine((value, context) => {
+    if (value.kind !== kind)
+        context.addIssue({ code: "custom", path: ["kind"], message: `Reference must use kind ${kind}.` });
+});
 export const SchemaDefinitionSchema = z
-  .object({
-    contract: z.literal('Schema'),
+    .object({
+    contract: z.literal("Schema"),
     schemaVersion: z.literal(1),
     schemaId: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
-    dialect: z.literal('https://json-schema.org/draft/2020-12/schema'),
+    dialect: z.literal("https://json-schema.org/draft/2020-12/schema"),
     document: JsonObjectSchema,
-  })
-  .strict();
-
+})
+    .strict();
 export const OntologyViewDefinitionSchema = z
-  .object({
-    contract: z.literal('View'),
+    .object({
+    contract: z.literal("View"),
     schemaVersion: z.literal(1),
     viewId: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
-    ontologyDefinitionRevisionRef: ExactRefKindSchema('ontology-definition'),
-    renderModelSchemaRevisionRef: ExactRefKindSchema('schema'),
+    ontologyDefinitionRevisionRef: ExactRefKindSchema("ontology-definition"),
+    canonicalDataViewRevisionRef: ExactRefKindSchema("view"),
+    renderModelSchemaRevisionRef: ExactRefKindSchema("schema"),
     requiredPermissionCodes: z.array(ContractIdentifierSchema).default([]),
-  })
-  .strict();
-
+})
+    .strict();
 export const ConceptRelationshipSchema = z
-  .object({
+    .object({
     kind: ContractIdentifierSchema,
     targetConceptId: ContractIdentifierSchema,
-    cardinality: z.enum(['one', 'optional', 'many']),
-  })
-  .strict();
-
+    cardinality: z.enum(["one", "optional", "many"]),
+})
+    .strict();
 export const ConceptDefinitionSchema = z
-  .object({
-    contract: z.literal('ConceptDefinition'),
+    .object({
+    contract: z.literal("ConceptDefinition"),
     conceptId: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
     displayName: z.string().trim().min(1),
@@ -59,12 +50,11 @@ export const ConceptDefinitionSchema = z
     capabilityIds: z.array(ContractIdentifierSchema).default([]),
     commandNames: z.array(ContractIdentifierSchema).default([]),
     relationships: z.array(ConceptRelationshipSchema).default([]),
-  })
-  .strict();
-
+})
+    .strict();
 export const DomainCommandDefinitionSchema = z
-  .object({
-    contract: z.literal('DomainCommandDefinition'),
+    .object({
+    contract: z.literal("DomainCommandDefinition"),
     commandName: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
     displayName: z.string().trim().min(1),
@@ -72,17 +62,18 @@ export const DomainCommandDefinitionSchema = z
     targetKinds: z.array(ContractIdentifierSchema).min(1),
     inputSchemaRef: ContractIdentifierSchema,
     outputSchemaRef: ContractIdentifierSchema.optional(),
+    sensitiveInputPaths: SensitiveResultPathsSchema.optional(),
+    sensitiveResultPaths: SensitiveResultPathsSchema.optional(),
     requiredPermissionCodes: z.array(ContractIdentifierSchema).default([]),
     handlerRef: EntityRefSchema,
     sideEffects: z
-      .array(z.enum(['data-write', 'execution', 'navigation', 'notification', 'external-call']))
-      .default([]),
-  })
-  .strict();
-
+        .array(z.enum(["data-write", "execution", "navigation", "notification", "external-call"]))
+        .default([]),
+})
+    .strict();
 export const DomainCommandSchema = z
-  .object({
-    contract: z.literal('DomainCommand'),
+    .object({
+    contract: z.literal("DomainCommand"),
     commandId: ContractIdentifierSchema,
     commandName: ContractIdentifierSchema,
     requestId: ContractIdentifierSchema,
@@ -91,20 +82,19 @@ export const DomainCommandSchema = z
     targetRef: EntityRefSchema,
     actorRef: EntityRefSchema,
     source: z
-      .object({
-        product: z.enum(['studio', 'kernel', 'agent', 'mcp', 'service']),
+        .object({
+        product: z.enum(["studio", "kernel", "agent", "mcp", "service"]),
         pageId: ContractIdentifierSchema.optional(),
         capabilityId: ContractIdentifierSchema.optional(),
-      })
-      .strict(),
+    })
+        .strict(),
     payload: JsonObjectSchema,
     issuedAt: IsoDateTimeSchema,
-  })
-  .strict();
-
+})
+    .strict();
 export const ProductDeclarationSchema = z
-  .object({
-    contract: z.literal('ProductDeclaration'),
+    .object({
+    contract: z.literal("ProductDeclaration"),
     declarationId: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
     concepts: z.array(ConceptDefinitionSchema).default([]),
@@ -114,42 +104,38 @@ export const ProductDeclarationSchema = z
     capabilities: z.array(CapabilityManifestSchema).default([]),
     pages: z.array(PageDefinitionSchema).default([]),
     menus: z.array(MenuDefinitionSchema).default([]),
-  })
-  .strict();
-
+})
+    .strict();
 export const DeclarationGraphEdgeSchema = z
-  .object({
+    .object({
     from: EntityRefSchema,
     to: EntityRefSchema,
     relation: z.enum([
-      'uses-ontology',
-      'uses-projection',
-      'uses-capability',
-      'uses-command',
-      'relates-to-concept',
+        "uses-ontology",
+        "uses-projection",
+        "uses-capability",
+        "uses-command",
+        "relates-to-concept",
     ]),
-  })
-  .strict();
-
+})
+    .strict();
 export const ChangeImpactSchema = z
-  .object({
+    .object({
     changedRef: EntityRefSchema,
     affectedRefs: z.array(EntityRefSchema),
     reasons: z.array(ContractIdentifierSchema).min(1),
-  })
-  .strict();
-
+})
+    .strict();
 export const ChangeImpactGraphSchema = z
-  .object({
-    contract: z.literal('ChangeImpactGraph'),
+    .object({
+    contract: z.literal("ChangeImpactGraph"),
     declarationId: ContractIdentifierSchema,
     nodes: z.array(EntityRefSchema),
     edges: z.array(DeclarationGraphEdgeSchema),
     impacts: z.array(ChangeImpactSchema),
     generatedAt: IsoDateTimeSchema,
-  })
-  .strict();
-
+})
+    .strict();
 export type ConceptRelationship = z.infer<typeof ConceptRelationshipSchema>;
 export type ConceptDefinition = z.infer<typeof ConceptDefinitionSchema>;
 export type SchemaDefinition = z.infer<typeof SchemaDefinitionSchema>;

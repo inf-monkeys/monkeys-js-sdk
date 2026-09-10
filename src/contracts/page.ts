@@ -5,6 +5,7 @@ import {
   JsonObjectSchema,
   LocalizedTextSchema,
 } from './common';
+import { LegacyRoutePolicySchema } from './legacy-route';
 
 export const PageTypeSchema = z.enum([
   'page',
@@ -92,6 +93,7 @@ export const PageDefinitionSchema = z
     surface: z.enum(['page', 'workspace', 'view', 'record', 'action', 'overlay', 'agent']),
     routeId: ContractIdentifierSchema,
     routePath: PageRoutePathSchema,
+    legacyRoutePolicy: LegacyRoutePolicySchema.optional(),
     rendererKey: ContractIdentifierSchema,
     capabilityRef: EntityRefSchema,
     capabilityRefs: z.array(EntityRefSchema).default([]),

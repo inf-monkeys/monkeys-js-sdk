@@ -241,6 +241,7 @@ test('legacy claims gain one surface from their exact RouteSpace and runtime bun
   const legacyRuntimeBundle = {
     ...runtime.compilePageRuntimeBundle({
       page: fixture.page,
+      shellRegistration: fixture.shellRegistration,
       pageRevisionRef: fixture.pageRevisionRef,
       release: fixture.pageRelease,
       releaseRevisionRef: fixture.pageReleaseRevisionRef,
@@ -258,6 +259,8 @@ test('legacy claims gain one surface from their exact RouteSpace and runtime bun
       capabilityRegistry: [{
         capabilityRevisionRef: fixture.capabilityRevisionRef,
         providerRevisionRef: fixture.providerRevisionRef,
+        propertySchemaRevisionRef: fixture.page.capabilityInstances[0].propertySchemaRevisionRef,
+        accessPolicy: fixture.page.pageAccessPolicy,
         editorEligible: true,
         inputPorts: [{ name: 'items', schemaRevisionRef: fixture.page.ontologyBindings[0].renderModelSchemaRevisionRef }],
         outputPorts: [{ name: 'favorite', schemaRevisionRef: fixture.page.actionBindings[0].sourceIntentSchemaRevisionRef }],
@@ -272,7 +275,17 @@ test('legacy claims gain one surface from their exact RouteSpace and runtime bun
       matcher: fixture.routeMatcher,
     }],
   };
+  assert.equal(contracts.PageRuntimeBundleSchema.safeParse({ ...legacyRuntimeBundle, routeClaims: [compiled] }).success, true);
   assert.equal(contracts.PageRuntimeBundleSchema.safeParse(legacyRuntimeBundle).success, false);
+  assert.equal(contracts.PageRuntimeBundleSchema.safeParse({
+    ...legacyRuntimeBundle,
+    routeClaims: [{ ...compiled, matcher: { ...compiled.matcher, surface: 'kernel' } }],
+  }).success, false);
+
+  assert.equal(contracts.PageRuntimeBundleSchema.safeParse({
+    ...legacyRuntimeBundle,
+    routeClaims: [{ ...compiled, surface: 'kernel', matcher: { ...compiled.matcher, surface: 'kernel' } }],
+  }).success, false);
 
   const legacyWorkbenchTarget = {
     ...fixture.workbenchRelease.target,
@@ -300,6 +313,16 @@ test('legacy claims gain one surface from their exact RouteSpace and runtime bun
     },
   });
   assert.equal(compiledWorkbench.target.routeClaim.surface, 'studio');
+  assert.equal(contracts.WorkbenchRuntimeBundleSchema.safeParse(compiledWorkbench).success, true);
+  assert.equal(contracts.WorkbenchRuntimeBundleSchema.safeParse({
+    ...compiledWorkbench,
+    routeClaims: compiledWorkbench.routeClaims.map(claim => ({ ...claim, matcher: { ...claim.matcher, surface: 'kernel' } })),
+  }).success, false);
+  assert.equal(contracts.WorkbenchRuntimeBundleSchema.safeParse({
+    ...compiledWorkbench,
+    routeClaims: compiledWorkbench.routeClaims.map(claim => ({ ...claim, surface: 'kernel', matcher: { ...claim.matcher, surface: 'kernel' } })),
+  }).success, false);
+
   assert.equal(contracts.WorkbenchRuntimeBundleSchema.safeParse({
     ...compiledWorkbench,
     target: legacyWorkbenchTarget,

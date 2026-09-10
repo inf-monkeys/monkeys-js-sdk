@@ -1058,6 +1058,18 @@ export const TenantApplicationConfigSchema = z
   })
   .strict();
 
+export const DeclarativeRuntimeRolloutCapabilitySchema = z
+  .object({
+    contract: z.literal('DeclarativeRuntimeRolloutCapability'),
+    schemaVersion: z.literal(1),
+    state: z.enum(['disabled', 'enabled']),
+    apiVersion: ContractIdentifierSchema,
+    enabledSurfaces: z.array(z.enum(['studio', 'kernel'])),
+    generation: z.number().int().nonnegative(),
+    etag: z.string().trim().min(1),
+  })
+  .strict();
+
 export const TenantProductConfigSchema = z
   .object({
     contract: z.literal('TenantProductConfig'),
@@ -1074,6 +1086,7 @@ export const TenantProductConfigSchema = z
     warnings: z.array(z.string()).default([]),
     menus: MenuDefinitionSetSchema.optional(),
     applicationConfig: TenantApplicationConfigSchema,
+    declarativeRuntime: DeclarativeRuntimeRolloutCapabilitySchema.optional(),
   })
   .strict();
 
@@ -1094,11 +1107,13 @@ export const TenantRuntimeConfigSchema = z
     warnings: z.array(z.string()).default([]),
     menuBundle: MenuRuntimeBundleSchema.optional(),
     applicationConfig: TenantApplicationConfigSchema,
+    declarativeRuntime: DeclarativeRuntimeRolloutCapabilitySchema.optional(),
   })
   .strict();
 
 export type TenantProductConfig = z.infer<typeof TenantProductConfigSchema>;
 export type TenantRuntimeConfig = z.infer<typeof TenantRuntimeConfigSchema>;
+export type DeclarativeRuntimeRolloutCapability = z.infer<typeof DeclarativeRuntimeRolloutCapabilitySchema>;
 export type TenantApplicationConfig = z.infer<typeof TenantApplicationConfigSchema>;
 export type TenantAgentThemeConfig = z.infer<typeof TenantAgentThemeConfigSchema>;
 export type TenantListFooterConfig = z.infer<typeof TenantListFooterConfigSchema>;
