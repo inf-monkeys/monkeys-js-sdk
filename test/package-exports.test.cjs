@@ -108,7 +108,8 @@ test('generated declarative control JSON Schemas preserve strict public record b
   const ajv = new Ajv2020({ strict: false });
   const pageSchema = require(`${PACKAGE_NAME}/json-schema/page.schema.json`);
   const publicationPlanSchema = require(`${PACKAGE_NAME}/json-schema/publication-plan.schema.json`);
-  const { page } = require('./declarative-control-fixtures.cjs');
+  const { page: resolved } = require('./declarative-control-fixtures.cjs');
+  const page = { contract: 'Page', schemaVersion: 1, pageId: resolved.pageId, tenantScope: resolved.tenantScope, identity: resolved.identity, surface: 'studio', route: '/gallery', lifecycle: 'active', body: { id: 'gallery', component: resolved.capabilityInstances[0].capabilityRevisionRef.id }, access: resolved.pageAccessPolicy, managementAccess: resolved.managementAccess, privacyClassification: 'internal' };
   const validatePage = ajv.compile(pageSchema);
 
   assert.equal(validatePage(page), true, JSON.stringify(validatePage.errors));

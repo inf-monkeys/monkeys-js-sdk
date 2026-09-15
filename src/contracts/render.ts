@@ -1,67 +1,69 @@
-import { PageExpressionSchema, PageValuePathSchema } from './page-expression';
-import { z } from 'zod';
+import { PageExpressionSchema, PageValuePathSchema } from "./page-expression";
+import { z } from "zod";
 import {
   ContractIdentifierSchema,
   ContractVersionSchema,
   EntityRefSchema,
   IsoDateTimeSchema,
   JsonObjectSchema,
-} from './common';
+} from "./common";
 
-export const ProductContextSchema = z.enum(['studio', 'kernel']);
+export const ProductContextSchema = z.enum(["studio", "kernel"]);
 
 export const RenderNodeStateSchema = z.enum([
-  'idle',
-  'loading',
-  'empty',
-  'error',
-  'success',
-  'disabled',
-  'selected',
+  "idle",
+  "loading",
+  "empty",
+  "error",
+  "success",
+  "disabled",
+  "selected",
 ]);
 
 export const RenderNodeKindSchema = z.enum([
-  'shell',
-  'page',
-  'navigation',
-  'view',
-  'record',
-  'control',
-  'detail',
-  'action',
-  'overlay',
-  'professional-provider',
+  "shell",
+  "page",
+  "navigation",
+  "view",
+  "record",
+  "control",
+  "detail",
+  "action",
+  "overlay",
+  "professional-provider",
 ]);
 
 export const RenderSurfaceSchema = z
   .object({
-    frameOwner: z.enum(['host', 'provider', 'none']),
+    frameOwner: z.enum(["host", "provider", "none"]),
     tone: ContractIdentifierSchema.optional(),
-    density: z.enum(['compact', 'default', 'comfortable']),
+    density: z.enum(["compact", "default", "comfortable"]),
   })
   .strict();
 
 export const RenderScrollSchema = z
   .object({
-    owner: z.enum(['page', 'surface', 'provider']),
-    axis: z.enum(['x', 'y', 'both', 'none']),
+    owner: z.enum(["page", "surface", "provider"]),
+    axis: z.enum(["x", "y", "both", "none"]),
     restoreKey: ContractIdentifierSchema.optional(),
     virtualizationBoundary: z.boolean(),
   })
   .strict()
   .superRefine((scroll, context) => {
-    if (scroll.owner === 'provider' && scroll.restoreKey) {
+    if (scroll.owner === "provider" && scroll.restoreKey) {
       context.addIssue({
-        code: 'custom',
-        path: ['restoreKey'],
-        message: 'Provider-owned scroll state cannot declare a host restoreKey.',
+        code: "custom",
+        path: ["restoreKey"],
+        message:
+          "Provider-owned scroll state cannot declare a host restoreKey.",
       });
     }
-    if (scroll.virtualizationBoundary && scroll.owner !== 'provider') {
+    if (scroll.virtualizationBoundary && scroll.owner !== "provider") {
       context.addIssue({
-        code: 'custom',
-        path: ['owner'],
-        message: 'A virtualization boundary must keep scroll ownership in the provider.',
+        code: "custom",
+        path: ["owner"],
+        message:
+          "A virtualization boundary must keep scroll ownership in the provider.",
       });
     }
   });
@@ -69,24 +71,44 @@ export const RenderScrollSchema = z
 export const RenderActivationSchema = z
   .object({
     activationId: ContractIdentifierSchema,
-    mode: z.enum(['navigate', 'select', 'drawer', 'modal', 'fullscreen', 'inline']),
-    targetPath: z.string().trim().regex(/^\/(?!\/)/, 'Expected an application-relative path.').optional(),
-    history: z.enum(['push', 'replace']).optional(),
+    mode: z.enum([
+      "navigate",
+      "select",
+      "drawer",
+      "modal",
+      "fullscreen",
+      "inline",
+    ]),
+    targetPath: z
+      .string()
+      .trim()
+      .regex(/^\/(?!\/)/, "Expected an application-relative path.")
+      .optional(),
+    history: z.enum(["push", "replace"]).optional(),
   })
   .strict()
   .superRefine((activation, context) => {
-    if (activation.mode === 'navigate' && !activation.targetPath) {
-      context.addIssue({ code: 'custom', path: ['targetPath'], message: 'Navigate activation requires an application-relative targetPath.' });
+    if (activation.mode === "navigate" && !activation.targetPath) {
+      context.addIssue({
+        code: "custom",
+        path: ["targetPath"],
+        message:
+          "Navigate activation requires an application-relative targetPath.",
+      });
     }
-    if (activation.mode !== 'navigate' && activation.targetPath) {
-      context.addIssue({ code: 'custom', path: ['targetPath'], message: 'Only navigate activation may declare targetPath.' });
+    if (activation.mode !== "navigate" && activation.targetPath) {
+      context.addIssue({
+        code: "custom",
+        path: ["targetPath"],
+        message: "Only navigate activation may declare targetPath.",
+      });
     }
   });
 
 export const RenderLifecycleSchema = z
   .object({
-    mountPolicy: z.enum(['always', 'when-visible', 'when-active']),
-    queryPolicy: z.enum(['always', 'when-visible', 'when-active', 'manual']),
+    mountPolicy: z.enum(["always", "when-visible", "when-active"]),
+    queryPolicy: z.enum(["always", "when-visible", "when-active", "manual"]),
     retainOnDeactivate: z.boolean(),
     deepLink: z.boolean(),
     focusReturn: z.boolean(),
@@ -95,23 +117,35 @@ export const RenderLifecycleSchema = z
 
 export const RenderLayoutSchema = z
   .object({
-    mode: z.enum(['contents', 'block', 'flex', 'grid', 'absolute']),
-    direction: z.enum(['row', 'column']).optional(),
+    mode: z.enum(["contents", "block", "flex", "grid", "absolute"]),
+    direction: z.enum(["row", "column"]).optional(),
     columns: z.number().int().positive().optional(),
-    align: z.enum(['start', 'center', 'end', 'stretch']).optional(),
-    justify: z.enum(['start', 'center', 'end', 'between', 'around']).optional(),
+    align: z.enum(["start", "center", "end", "stretch"]).optional(),
+    justify: z.enum(["start", "center", "end", "between", "around"]).optional(),
     gapTokenRef: EntityRefSchema.optional(),
   })
   .strict()
   .superRefine((layout, context) => {
-    if (layout.direction && layout.mode !== 'flex') {
-      context.addIssue({ code: 'custom', path: ['direction'], message: 'direction is only valid for flex layout.' });
+    if (layout.direction && layout.mode !== "flex") {
+      context.addIssue({
+        code: "custom",
+        path: ["direction"],
+        message: "direction is only valid for flex layout.",
+      });
     }
-    if (layout.columns && layout.mode !== 'grid') {
-      context.addIssue({ code: 'custom', path: ['columns'], message: 'columns is only valid for grid layout.' });
+    if (layout.columns && layout.mode !== "grid") {
+      context.addIssue({
+        code: "custom",
+        path: ["columns"],
+        message: "columns is only valid for grid layout.",
+      });
     }
-    if (layout.gapTokenRef && layout.gapTokenRef.kind !== 'design-token') {
-      context.addIssue({ code: 'custom', path: ['gapTokenRef', 'kind'], message: 'gapTokenRef must reference design-token.' });
+    if (layout.gapTokenRef && layout.gapTokenRef.kind !== "design-token") {
+      context.addIssue({
+        code: "custom",
+        path: ["gapTokenRef", "kind"],
+        message: "gapTokenRef must reference design-token.",
+      });
     }
   });
 
@@ -124,12 +158,142 @@ export const RenderResponsiveRuleSchema = z
   .strict()
   .superRefine((rule, context) => {
     if (rule.minWidthPx === undefined && rule.maxWidthPx === undefined) {
-      context.addIssue({ code: 'custom', path: [], message: 'Responsive rule must declare minWidthPx or maxWidthPx.' });
+      context.addIssue({
+        code: "custom",
+        path: [],
+        message: "Responsive rule must declare minWidthPx or maxWidthPx.",
+      });
     }
-    if (rule.minWidthPx !== undefined && rule.maxWidthPx !== undefined && rule.minWidthPx > rule.maxWidthPx) {
-      context.addIssue({ code: 'custom', path: ['maxWidthPx'], message: 'maxWidthPx must be greater than or equal to minWidthPx.' });
+    if (
+      rule.minWidthPx !== undefined &&
+      rule.maxWidthPx !== undefined &&
+      rule.minWidthPx > rule.maxWidthPx
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["maxWidthPx"],
+        message: "maxWidthPx must be greater than or equal to minWidthPx.",
+      });
     }
   });
+
+export const RenderStyleValueSchema = z.union([
+  z.number().finite(),
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(256)
+    .superRefine((value, context) => {
+      if (
+        /[;{}]/.test(value) ||
+        /(?:url|expression|javascript|var)\s*\(/i.test(value)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Render style values must be bounded CSS values or $ Design Token references.",
+        });
+      }
+    }),
+]);
+
+export const RenderStyleSchema = z
+  .object({
+    width: RenderStyleValueSchema.optional(),
+    height: RenderStyleValueSchema.optional(),
+    minWidth: RenderStyleValueSchema.optional(),
+    maxWidth: RenderStyleValueSchema.optional(),
+    minHeight: RenderStyleValueSchema.optional(),
+    maxHeight: RenderStyleValueSchema.optional(),
+    padding: RenderStyleValueSchema.optional(),
+    paddingBlock: RenderStyleValueSchema.optional(),
+    paddingInline: RenderStyleValueSchema.optional(),
+    margin: RenderStyleValueSchema.optional(),
+    marginBlockStart: RenderStyleValueSchema.optional(),
+    marginBlockEnd: RenderStyleValueSchema.optional(),
+    marginInlineStart: RenderStyleValueSchema.optional(),
+    marginInlineEnd: RenderStyleValueSchema.optional(),
+    display: z
+      .enum([
+        "none",
+        "block",
+        "inline",
+        "inline-block",
+        "flex",
+        "inline-flex",
+        "grid",
+        "contents",
+      ])
+      .optional(),
+    gap: RenderStyleValueSchema.optional(),
+    rowGap: RenderStyleValueSchema.optional(),
+    columnGap: RenderStyleValueSchema.optional(),
+    background: RenderStyleValueSchema.optional(),
+    color: RenderStyleValueSchema.optional(),
+    borderColor: RenderStyleValueSchema.optional(),
+    borderWidth: RenderStyleValueSchema.optional(),
+    borderStyle: z.enum(["none", "solid", "dashed", "dotted"]).optional(),
+    borderRadius: RenderStyleValueSchema.optional(),
+    boxShadow: RenderStyleValueSchema.optional(),
+    fontSize: RenderStyleValueSchema.optional(),
+    fontFamily: RenderStyleValueSchema.optional(),
+    fontWeight: RenderStyleValueSchema.optional(),
+    lineHeight: RenderStyleValueSchema.optional(),
+    textAlign: z.enum(["start", "center", "end", "left", "right"]).optional(),
+    whiteSpace: z
+      .enum(["normal", "nowrap", "pre", "pre-wrap", "pre-line", "break-spaces"])
+      .optional(),
+    overflow: z
+      .enum(["visible", "hidden", "auto", "scroll", "clip"])
+      .optional(),
+    overflowX: z
+      .enum(["visible", "hidden", "auto", "scroll", "clip"])
+      .optional(),
+    overflowY: z
+      .enum(["visible", "hidden", "auto", "scroll", "clip"])
+      .optional(),
+    position: z
+      .enum(["static", "relative", "absolute", "sticky", "fixed"])
+      .optional(),
+    inset: RenderStyleValueSchema.optional(),
+    top: RenderStyleValueSchema.optional(),
+    right: RenderStyleValueSchema.optional(),
+    bottom: RenderStyleValueSchema.optional(),
+    left: RenderStyleValueSchema.optional(),
+    gridTemplateColumns: RenderStyleValueSchema.optional(),
+    gridColumn: RenderStyleValueSchema.optional(),
+    gridRow: RenderStyleValueSchema.optional(),
+    flex: RenderStyleValueSchema.optional(),
+    flexDirection: z
+      .enum(["row", "row-reverse", "column", "column-reverse"])
+      .optional(),
+    flexWrap: z.enum(["nowrap", "wrap", "wrap-reverse"]).optional(),
+    alignItems: z
+      .enum(["start", "center", "end", "stretch", "baseline"])
+      .optional(),
+    justifyContent: z
+      .enum([
+        "start",
+        "center",
+        "end",
+        "space-between",
+        "space-around",
+        "space-evenly",
+      ])
+      .optional(),
+    flexGrow: z.number().finite().nonnegative().optional(),
+    flexShrink: z.number().finite().nonnegative().optional(),
+    alignSelf: z.enum(["auto", "start", "center", "end", "stretch"]).optional(),
+    justifySelf: z
+      .enum(["auto", "start", "center", "end", "stretch"])
+      .optional(),
+    objectFit: z
+      .enum(["contain", "cover", "fill", "none", "scale-down"])
+      .optional(),
+    opacity: z.number().finite().min(0).max(1).optional(),
+  })
+  .strict();
 
 const requireRef = (
   reference: z.infer<typeof EntityRefSchema> | undefined,
@@ -140,9 +304,9 @@ const requireRef = (
   if (!reference) return;
   if (reference.kind !== expectedKind) {
     context.addIssue({
-      code: 'custom',
-      path: [...path, 'kind'],
-      message: `${path.join('.')} must reference ${expectedKind}.`,
+      code: "custom",
+      path: [...path, "kind"],
+      message: `${path.join(".")} must reference ${expectedKind}.`,
     });
   }
 };
@@ -157,23 +321,23 @@ const requirePinnedOwnedRef = (
   if (!reference) return;
   if (reference.version === undefined) {
     context.addIssue({
-      code: 'custom',
-      path: [...path, 'version'],
-      message: `${path.join('.')} must pin a version.`,
+      code: "custom",
+      path: [...path, "version"],
+      message: `${path.join(".")} must pin a version.`,
     });
   }
   if (reference.ownerRepo === undefined) {
     context.addIssue({
-      code: 'custom',
-      path: [...path, 'ownerRepo'],
-      message: `${path.join('.')} must declare its owner repository.`,
+      code: "custom",
+      path: [...path, "ownerRepo"],
+      message: `${path.join(".")} must declare its owner repository.`,
     });
   }
 };
 
 export const RenderNodeSchema = z
   .object({
-    contract: z.literal('RenderNode'),
+    contract: z.literal("RenderNode"),
     nodeId: ContractIdentifierSchema,
     kind: RenderNodeKindSchema,
     version: ContractVersionSchema,
@@ -192,45 +356,71 @@ export const RenderNodeSchema = z
     activation: RenderActivationSchema,
     lifecycle: RenderLifecycleSchema,
     layout: RenderLayoutSchema,
+    style: RenderStyleSchema.optional(),
     responsive: z.array(RenderResponsiveRuleSchema),
     accessRef: EntityRefSchema.optional(),
     evidenceRef: EntityRefSchema.optional(),
     state: RenderNodeStateSchema,
     renderModel: JsonObjectSchema,
-    repeat: z.object({ source: PageExpressionSchema, keyPath: PageValuePathSchema.min(1), limit: z.number().int().min(1).max(1000).default(200) }).strict().optional(),
+    repeat: z
+      .object({
+        source: PageExpressionSchema,
+        keyPath: PageValuePathSchema.min(1),
+        limit: z.number().int().min(1).max(1000).default(200),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((node, context) => {
-    requireRef(node.pageRef, 'page', ['pageRef'], context);
-    requirePinnedOwnedRef(node.capabilityRef, 'capability', ['capabilityRef'], context);
-    requirePinnedOwnedRef(node.providerRef, 'view-provider', ['providerRef'], context);
-    requireRef(node.accessRef, 'access-policy', ['accessRef'], context);
-    requireRef(node.evidenceRef, 'evidence', ['evidenceRef'], context);
+    requireRef(node.pageRef, "page", ["pageRef"], context);
+    requirePinnedOwnedRef(
+      node.capabilityRef,
+      "capability",
+      ["capabilityRef"],
+      context,
+    );
+    requirePinnedOwnedRef(
+      node.providerRef,
+      "view-provider",
+      ["providerRef"],
+      context,
+    );
+    requireRef(node.accessRef, "access-policy", ["accessRef"], context);
+    requireRef(node.evidenceRef, "evidence", ["evidenceRef"], context);
     if (node.parentNodeId === node.nodeId) {
       context.addIssue({
-        code: 'custom',
-        path: ['parentNodeId'],
-        message: 'RenderNode cannot be its own parent.',
+        code: "custom",
+        path: ["parentNodeId"],
+        message: "RenderNode cannot be its own parent.",
       });
     }
     if (new Set(node.children).size !== node.children.length) {
-      context.addIssue({ code: 'custom', path: ['children'], message: 'RenderNode children must be unique.' });
+      context.addIssue({
+        code: "custom",
+        path: ["children"],
+        message: "RenderNode children must be unique.",
+      });
     }
     if (node.children.includes(node.nodeId)) {
-      context.addIssue({ code: 'custom', path: ['children'], message: 'RenderNode cannot be its own child.' });
-    }
-    if (node.surface.frameOwner === 'provider' && !node.providerRef) {
       context.addIssue({
-        code: 'custom',
-        path: ['providerRef'],
-        message: 'Provider-owned surfaces require providerRef.',
+        code: "custom",
+        path: ["children"],
+        message: "RenderNode cannot be its own child.",
+      });
+    }
+    if (node.surface.frameOwner === "provider" && !node.providerRef) {
+      context.addIssue({
+        code: "custom",
+        path: ["providerRef"],
+        message: "Provider-owned surfaces require providerRef.",
       });
     }
   });
 
 export const RenderTreeSchema = z
   .object({
-    contract: z.literal('RenderTree'),
+    contract: z.literal("RenderTree"),
     treeId: ContractIdentifierSchema,
     product: ProductContextSchema,
     rootNodeId: ContractIdentifierSchema,
@@ -239,31 +429,31 @@ export const RenderTreeSchema = z
   .strict();
 
 export const OverlayZIndexLaneSchema = z.enum([
-  'popover',
-  'drawer',
-  'modal',
-  'fullscreen',
-  'system',
+  "popover",
+  "drawer",
+  "modal",
+  "fullscreen",
+  "system",
 ]);
 
 export const OverlayNodeSchema = z
   .object({
-    contract: z.literal('OverlayNode'),
+    contract: z.literal("OverlayNode"),
     overlayId: ContractIdentifierSchema,
     renderNode: RenderNodeSchema,
-    presentation: z.enum(['drawer', 'modal', 'fullscreen']),
+    presentation: z.enum(["drawer", "modal", "fullscreen"]),
     zIndexLane: OverlayZIndexLaneSchema,
     url: z
       .object({
         parameter: ContractIdentifierSchema,
         value: ContractIdentifierSchema,
-        openMode: z.enum(['push', 'replace']),
-        closeMode: z.enum(['back', 'replace']),
+        openMode: z.enum(["push", "replace"]),
+        closeMode: z.enum(["back", "replace"]),
       })
       .strict(),
     focus: z
       .object({
-        initial: z.enum(['first-interactive', 'container', 'explicit']),
+        initial: z.enum(["first-interactive", "container", "explicit"]),
         trap: z.boolean(),
       })
       .strict(),
@@ -276,39 +466,45 @@ export const OverlayNodeSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.renderNode.kind !== 'overlay') {
+    if (value.renderNode.kind !== "overlay") {
       context.addIssue({
-        code: 'custom',
-        path: ['renderNode', 'kind'],
-        message: 'OverlayNode renderNode.kind must be overlay.',
+        code: "custom",
+        path: ["renderNode", "kind"],
+        message: "OverlayNode renderNode.kind must be overlay.",
       });
     }
     if (value.renderNode.activation.mode !== value.presentation) {
       context.addIssue({
-        code: 'custom',
-        path: ['renderNode', 'activation', 'mode'],
-        message: 'OverlayNode presentation must match the RenderNode activation mode.',
+        code: "custom",
+        path: ["renderNode", "activation", "mode"],
+        message:
+          "OverlayNode presentation must match the RenderNode activation mode.",
       });
     }
-    if (value.presentation === 'drawer' && value.zIndexLane !== 'drawer') {
+    if (value.presentation === "drawer" && value.zIndexLane !== "drawer") {
       context.addIssue({
-        code: 'custom',
-        path: ['zIndexLane'],
-        message: 'Drawer overlays must use the drawer z-index lane.',
+        code: "custom",
+        path: ["zIndexLane"],
+        message: "Drawer overlays must use the drawer z-index lane.",
       });
     }
-    if (value.presentation === 'modal' && value.zIndexLane !== 'modal') {
+    if (value.presentation === "modal" && value.zIndexLane !== "modal") {
       context.addIssue({
-        code: 'custom',
-        path: ['zIndexLane'],
-        message: 'Modal overlays must use the modal z-index lane.',
+        code: "custom",
+        path: ["zIndexLane"],
+        message: "Modal overlays must use the modal z-index lane.",
       });
     }
-    if (value.presentation === 'fullscreen' && value.zIndexLane !== 'fullscreen' && value.zIndexLane !== 'system') {
+    if (
+      value.presentation === "fullscreen" &&
+      value.zIndexLane !== "fullscreen" &&
+      value.zIndexLane !== "system"
+    ) {
       context.addIssue({
-        code: 'custom',
-        path: ['zIndexLane'],
-        message: 'Fullscreen overlays must use the fullscreen or system z-index lane.',
+        code: "custom",
+        path: ["zIndexLane"],
+        message:
+          "Fullscreen overlays must use the fullscreen or system z-index lane.",
       });
     }
   });
@@ -316,7 +512,7 @@ export const OverlayNodeSchema = z
 const ProductPathSchema = z
   .string()
   .trim()
-  .regex(/^\/(?!\/)/, 'Expected an application-relative path.');
+  .regex(/^\/(?!\/)/, "Expected an application-relative path.");
 
 export const ApplicationHandoffEndpointSchema = z
   .object({
@@ -332,7 +528,7 @@ export const ApplicationHandoffEndpointSchema = z
 
 export const ApplicationHandoffSchema = z
   .object({
-    contract: z.literal('ApplicationHandoff'),
+    contract: z.literal("ApplicationHandoff"),
     handoffId: ContractIdentifierSchema,
     source: ApplicationHandoffEndpointSchema,
     target: ApplicationHandoffEndpointSchema,
@@ -342,18 +538,22 @@ export const ApplicationHandoffSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.source.product === value.target.product && value.source.pageId === value.target.pageId) {
+    if (
+      value.source.product === value.target.product &&
+      value.source.pageId === value.target.pageId
+    ) {
       context.addIssue({
-        code: 'custom',
-        path: ['target'],
-        message: 'ApplicationHandoff target must identify a different product page.',
+        code: "custom",
+        path: ["target"],
+        message:
+          "ApplicationHandoff target must identify a different product page.",
       });
     }
   });
 
 export const ViewProviderDescriptorSchema = z
   .object({
-    contract: z.literal('ViewProviderDescriptor'),
+    contract: z.literal("ViewProviderDescriptor"),
     providerId: ContractIdentifierSchema,
     providerVersion: ContractIdentifierSchema,
     ownerRepo: ContractIdentifierSchema,
@@ -361,15 +561,33 @@ export const ViewProviderDescriptorSchema = z
     rendererKey: ContractIdentifierSchema,
     renderModelSchemaRef: ContractIdentifierSchema,
     intentSchemaRef: ContractIdentifierSchema.optional(),
-    loading: z.enum(['eager', 'lazy', 'viewport', 'on-activation']),
-    stateOwner: z.enum(['host', 'provider', 'external']),
+    loading: z.enum(["eager", "lazy", "viewport", "on-activation"]),
+    stateOwner: z.enum(["host", "provider", "external"]),
     supportedPageTypes: z.array(ContractIdentifierSchema).min(1),
     supportedSurfaces: z
-      .array(z.enum(['page', 'workspace', 'view', 'record', 'action', 'overlay', 'agent']))
+      .array(
+        z.enum([
+          "page",
+          "workspace",
+          "view",
+          "record",
+          "action",
+          "overlay",
+          "agent",
+        ]),
+      )
       .min(1),
-    frameOwner: z.enum(['host', 'provider', 'none']),
-    sideEffects: z
-      .array(z.enum(['network', 'storage', 'navigation', 'clipboard', 'worker', 'websocket'])),
+    frameOwner: z.enum(["host", "provider", "none"]),
+    sideEffects: z.array(
+      z.enum([
+        "network",
+        "storage",
+        "navigation",
+        "clipboard",
+        "worker",
+        "websocket",
+      ]),
+    ),
     sideEffectAdapterRef: EntityRefSchema.optional(),
     lifecycle: z
       .object({
@@ -390,29 +608,54 @@ export const ViewProviderDescriptorSchema = z
   })
   .strict()
   .superRefine((provider, context) => {
-    requirePinnedOwnedRef(provider.capabilityRef, 'capability', ['capabilityRef'], context);
-    requirePinnedOwnedRef(provider.sideEffectAdapterRef, 'side-effect-adapter', ['sideEffectAdapterRef'], context);
-    requireRef(provider.accessRef, 'access-policy', ['accessRef'], context);
-    requireRef(provider.evidenceRef, 'evidence', ['evidenceRef'], context);
+    requirePinnedOwnedRef(
+      provider.capabilityRef,
+      "capability",
+      ["capabilityRef"],
+      context,
+    );
+    requirePinnedOwnedRef(
+      provider.sideEffectAdapterRef,
+      "side-effect-adapter",
+      ["sideEffectAdapterRef"],
+      context,
+    );
+    requireRef(provider.accessRef, "access-policy", ["accessRef"], context);
+    requireRef(provider.evidenceRef, "evidence", ["evidenceRef"], context);
     if (provider.capabilityRef.version === undefined) {
       context.addIssue({
-        code: 'custom',
-        path: ['capabilityRef', 'version'],
-        message: 'Provider capabilityRef must pin an active capability version.',
+        code: "custom",
+        path: ["capabilityRef", "version"],
+        message:
+          "Provider capabilityRef must pin an active capability version.",
       });
     }
-    if (provider.frameOwner === 'provider' && provider.stateOwner === 'host' && !provider.lifecycle.preserveMount) {
+    if (
+      provider.frameOwner === "provider" &&
+      provider.stateOwner === "host" &&
+      !provider.lifecycle.preserveMount
+    ) {
       context.addIssue({
-        code: 'custom',
-        path: ['lifecycle', 'preserveMount'],
-        message: 'Host-owned state on a provider-owned frame must preserve the provider mount.',
+        code: "custom",
+        path: ["lifecycle", "preserveMount"],
+        message:
+          "Host-owned state on a provider-owned frame must preserve the provider mount.",
       });
     }
     if (provider.sideEffects.length > 0 && !provider.sideEffectAdapterRef) {
-      context.addIssue({ code: 'custom', path: ['sideEffectAdapterRef'], message: 'Providers with side effects require a pinned side-effect adapter.' });
+      context.addIssue({
+        code: "custom",
+        path: ["sideEffectAdapterRef"],
+        message:
+          "Providers with side effects require a pinned side-effect adapter.",
+      });
     }
     if (provider.sideEffects.length === 0 && provider.sideEffectAdapterRef) {
-      context.addIssue({ code: 'custom', path: ['sideEffectAdapterRef'], message: 'Pure providers cannot declare a side-effect adapter.' });
+      context.addIssue({
+        code: "custom",
+        path: ["sideEffectAdapterRef"],
+        message: "Pure providers cannot declare a side-effect adapter.",
+      });
     }
   });
 
@@ -425,10 +668,15 @@ export type RenderActivation = z.infer<typeof RenderActivationSchema>;
 export type RenderLifecycle = z.infer<typeof RenderLifecycleSchema>;
 export type RenderLayout = z.infer<typeof RenderLayoutSchema>;
 export type RenderResponsiveRule = z.infer<typeof RenderResponsiveRuleSchema>;
+export type RenderStyle = z.infer<typeof RenderStyleSchema>;
 export type RenderNode = z.infer<typeof RenderNodeSchema>;
 export type RenderTree = z.infer<typeof RenderTreeSchema>;
 export type OverlayZIndexLane = z.infer<typeof OverlayZIndexLaneSchema>;
 export type OverlayNode = z.infer<typeof OverlayNodeSchema>;
-export type ApplicationHandoffEndpoint = z.infer<typeof ApplicationHandoffEndpointSchema>;
+export type ApplicationHandoffEndpoint = z.infer<
+  typeof ApplicationHandoffEndpointSchema
+>;
 export type ApplicationHandoff = z.infer<typeof ApplicationHandoffSchema>;
-export type ViewProviderDescriptor = z.infer<typeof ViewProviderDescriptorSchema>;
+export type ViewProviderDescriptor = z.infer<
+  typeof ViewProviderDescriptorSchema
+>;

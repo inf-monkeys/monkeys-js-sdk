@@ -44,7 +44,7 @@ test('one multi-surface Page compiles only claims for the requested surface', ()
     routeSpaceRevisionRef: kernelRouteSpaceRevisionRef,
     pathTemplate: '/data-assets',
   }];
-  const page = contracts.PageSchema.parse({
+  const page = contracts.ResolvedPageSchema.parse({
     ...fixture.page,
     supportedSurfaces: ['studio', 'kernel'],
     routeClaims: claims,
@@ -142,7 +142,7 @@ test('Navigation route registrations reject a claim from another surface', () =>
 });
 
 test('fully explicit Page claims require exactly one canonical per supported surface', () => {
-  const result = contracts.PageSchema.safeParse({
+  const result = contracts.ResolvedPageSchema.safeParse({
     ...fixture.page,
     supportedSurfaces: ['studio', 'kernel'],
     routeClaims: [{
@@ -163,7 +163,7 @@ test('fully explicit Page claims require exactly one canonical per supported sur
 });
 
 test('Page rejects mixed legacy and explicit-surface route claim groups', () => {
-  const result = contracts.PageSchema.safeParse({
+  const result = contracts.ResolvedPageSchema.safeParse({
     ...fixture.page,
     routeClaims: [
       ...fixture.page.routeClaims,
@@ -199,7 +199,7 @@ test('Workbench rejects mixed legacy and explicit-surface route claim groups', (
 });
 
 test('legacy Page, Workbench and release route claims remain readable', () => {
-  assert.equal(contracts.PageSchema.safeParse(fixture.page).success, true);
+  assert.equal(contracts.ResolvedPageSchema.safeParse(fixture.page).success, true);
   assert.equal(contracts.WorkbenchSchema.safeParse(fixture.workbench).success, true);
   assert.equal(contracts.PageReleaseSchema.safeParse(fixture.pageRelease).success, true);
   assert.equal(contracts.WorkbenchReleaseSchema.safeParse(fixture.workbenchRelease).success, true);

@@ -59,13 +59,13 @@ test('publishes six isolated declarative control Ontology Definitions', () => {
   }
 });
 test('parses all six strict Ontology record contracts', () => {
-  assert.equal(schemas.PageSchema.parse(page).pageId, page.pageId);
+  assert.equal(schemas.ResolvedPageSchema.parse(page).pageId, page.pageId);
   assert.equal(schemas.PageReleaseSchema.parse(pageRelease).releaseSlotId, pageRelease.releaseSlotId);
   assert.equal(schemas.WorkbenchSchema.parse(workbench).workbenchId, workbench.workbenchId);
   assert.equal(schemas.WorkbenchReleaseSchema.parse(workbenchRelease).releaseSlotId, workbenchRelease.releaseSlotId);
   assert.equal(schemas.NavigationSchema.parse(navigation).navigationId, navigation.navigationId);
   assert.equal(schemas.NavigationReleaseSchema.parse(navigationRelease).releaseSlotId, navigationRelease.releaseSlotId);
-  assert.equal(schemas.PageSchema.safeParse({ ...page, businessRecords: [] }).success, false);
+  assert.equal(schemas.ResolvedPageSchema.safeParse({ ...page, businessRecords: [] }).success, false);
   assert.equal(schemas.PageReleaseSchema.safeParse({ ...pageRelease, published: true }).success, false);
   assert.equal(
     schemas.WorkbenchSchema.safeParse({
@@ -83,9 +83,9 @@ test('parses all six strict Ontology record contracts', () => {
   );
 });
 test('Page legacy route policy is explicit, strict, and backward compatible', () => {
-  assert.equal(schemas.PageSchema.parse(page).legacyRoutePolicy, undefined);
+  assert.equal(schemas.ResolvedPageSchema.parse(page).legacyRoutePolicy, undefined);
   assert.deepEqual(
-    schemas.PageSchema.parse({
+    schemas.ResolvedPageSchema.parse({
       ...page,
       legacyRoutePolicy: {
         contract: 'LegacyRoutePolicy',
@@ -102,7 +102,7 @@ test('Page legacy route policy is explicit, strict, and backward compatible', ()
     },
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       legacyRoutePolicy: {
         contract: 'LegacyRoutePolicy',
@@ -159,11 +159,11 @@ test('Page migration equivalence is a strict baseline, scenario, viewport and ev
     allowedDifferences: [],
   };
   assert.deepEqual(
-    schemas.PageSchema.parse({ ...page, migrationEquivalence }).migrationEquivalence,
+    schemas.ResolvedPageSchema.parse({ ...page, migrationEquivalence }).migrationEquivalence,
     migrationEquivalence,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       migrationEquivalence: {
         ...migrationEquivalence,
@@ -173,7 +173,7 @@ test('Page migration equivalence is a strict baseline, scenario, viewport and ev
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       migrationEquivalence: {
         ...migrationEquivalence,
@@ -197,35 +197,35 @@ test('Page route-state presentations are strict, localized, and surface-owned', 
     description: text('This account cannot access the page.'),
   };
   assert.deepEqual(
-    schemas.PageSchema.parse({
+    schemas.ResolvedPageSchema.parse({
       ...page,
       routeStatePresentations: [presentation],
     }).routeStatePresentations,
     [presentation],
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       routeStatePresentations: [presentation, presentation],
     }).success,
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       routeStatePresentations: [{ ...presentation, surface: 'kernel' }],
     }).success,
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       routeStatePresentations: [{ ...presentation, releaseSlotId: 'secret' }],
     }).success,
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       routeStatePresentations: [
         {
@@ -351,9 +351,9 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
       },
     ],
   };
-  assert.equal(schemas.PageSchema.parse(page).stateDefinitions, undefined);
-  assert.equal(schemas.PageSchema.parse(page).interactionBindings, undefined);
-  assert.equal(schemas.PageSchema.parse(page).queryBindings, undefined);
+  assert.equal(schemas.ResolvedPageSchema.parse(page).stateDefinitions, undefined);
+  assert.equal(schemas.ResolvedPageSchema.parse(page).interactionBindings, undefined);
+  assert.equal(schemas.ResolvedPageSchema.parse(page).queryBindings, undefined);
   assert.equal(schemas.DomainQueryDefinitionSchema.safeParse(queryDefinition).success, true);
   const cursorWindow = {
     pageChangePort: 'capability.gallery.page-change',
@@ -366,10 +366,10 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     ...statefulPage,
     queryBindings: [{ ...statefulPage.queryBindings[0], cursorWindow }],
   };
-  const cursorWindowPageParse = schemas.PageSchema.safeParse(cursorWindowPage);
+  const cursorWindowPageParse = schemas.ResolvedPageSchema.safeParse(cursorWindowPage);
   assert.equal(cursorWindowPageParse.success, true, cursorWindowPageParse.error?.message);
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...cursorWindowPage,
       interactionBindings: [
         {
@@ -384,13 +384,13 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...cursorWindowPage,
       ontologyBindings: [{ ...page.ontologyBindings[0], cursorWindow }],
     }).success,
     false,
   );
-  assert.equal(schemas.PageSchema.safeParse(statefulPage).success, true);
+  assert.equal(schemas.ResolvedPageSchema.safeParse(statefulPage).success, true);
   const resultBindingEffect = {
     bindingId: 'inspiration-query',
     operation: 'upsert-append',
@@ -424,7 +424,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
       },
     ],
   };
-  const resultProjectedPageParse = schemas.PageSchema.safeParse(resultProjectedPage);
+  const resultProjectedPageParse = schemas.ResolvedPageSchema.safeParse(resultProjectedPage);
   assert.equal(resultProjectedPageParse.success, true, resultProjectedPageParse.error?.message);
   assert.equal(resultProjectedPageParse.data.actionBindings[0].success.toast.values['en-US'], 'Action completed');
   const ephemeralResult = {
@@ -437,7 +437,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     copyFailureToast: text('Copy failed'),
   };
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...statefulPage,
       actionBindings: [
         {
@@ -516,7 +516,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     );
   }
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...resultProjectedPage,
       actionBindings: [
         {
@@ -531,7 +531,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...resultProjectedPage,
       actionBindings: [
         {
@@ -546,7 +546,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...resultProjectedPage,
       actionBindings: [
         {
@@ -579,7 +579,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     sourceResultSchemaRevisionRef: page.actionBindings[0].resultSchemaRevisionRef,
     inputMapping: { value: { kind: 'result-field', path: 'recordId' } },
   };
-  const resultDrivenPageParse = schemas.PageSchema.safeParse({
+  const resultDrivenPageParse = schemas.ResolvedPageSchema.safeParse({
     ...statefulPage,
     interactionBindings: [resultDrivenInteraction],
   });
@@ -592,7 +592,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...statefulPage,
       interactionBindings: [
         {
@@ -607,7 +607,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...statefulPage,
       interactionBindings: [
         {
@@ -619,7 +619,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...statefulPage,
       queryBindings: [
         {
@@ -633,7 +633,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...statefulPage,
       capabilityInstances: [
         {
@@ -670,7 +670,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     }).success,
     true,
   );
-  const nestedUnknownState = schemas.PageSchema.safeParse({
+  const nestedUnknownState = schemas.ResolvedPageSchema.safeParse({
     ...statefulPage,
     capabilityInstances: [
       {
@@ -698,7 +698,7 @@ test('Page state, interaction, and governed Domain Query contracts remain typed 
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...statefulPage,
       interactionBindings: [
         {
@@ -1025,7 +1025,7 @@ test('Page entry transitions are state-driven governed targets and never raw URL
     query: { preserve: true, remove: ['panel'], set: {} },
   };
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       stateDefinitions: [panelState],
       entryTransitions: [transition],
@@ -1033,7 +1033,7 @@ test('Page entry transitions are state-driven governed targets and never raw URL
     true,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       stateDefinitions: [panelState],
       entryTransitions: [{ ...transition, targetRef: stable('page', page.pageId) }],
@@ -1041,7 +1041,7 @@ test('Page entry transitions are state-driven governed targets and never raw URL
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       stateDefinitions: [panelState],
       entryTransitions: [{ ...transition, url: 'https://example.com' }],
@@ -1049,7 +1049,7 @@ test('Page entry transitions are state-driven governed targets and never raw URL
     false,
   );
   assert.equal(
-    schemas.PageSchema.safeParse({
+    schemas.ResolvedPageSchema.safeParse({
       ...page,
       stateDefinitions: [panelState],
       entryTransitions: [
@@ -1692,8 +1692,8 @@ test('entry transitions accept only named route parameters as route sources', ()
     pathParameters: { workloadId: { kind: 'route-parameter', name: 'workloadId' } },
     query: { preserve: false, remove: [], set: {} },
   };
-  assert.equal(schemas.PageSchema.safeParse({ ...sourcePage, stateDefinitions: [state], entryTransitions: [entry] }).success, true);
+  assert.equal(schemas.ResolvedPageSchema.safeParse({ ...sourcePage, stateDefinitions: [state], entryTransitions: [entry] }).success, true);
   for (const source of [{ kind: 'route-parameter', name: '' }, { kind: 'route-parameter', name: 'unknown' }, { kind: 'route-parameter', name: 'workloadId', value: 'forged' }, { kind: 'query-parameter', name: 'workloadId' }]) {
-    assert.equal(schemas.PageSchema.safeParse({ ...sourcePage, stateDefinitions: [state], entryTransitions: [{ ...entry, pathParameters: { workloadId: source } }] }).success, false);
+    assert.equal(schemas.ResolvedPageSchema.safeParse({ ...sourcePage, stateDefinitions: [state], entryTransitions: [{ ...entry, pathParameters: { workloadId: source } }] }).success, false);
   }
 });

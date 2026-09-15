@@ -7,7 +7,7 @@ const runtime = require('@inf-monkeys-tech/monkeys/runtime');
 const {
   NavigationRuntimeBundleSchema,
   PageRuntimeBundleSchema,
-  PageSchema,
+  ResolvedPageSchema,
   ProductDeclarativeCapabilityRegistrationSchema,
   WorkbenchRuntimeBundleSchema,
   WorkbenchSchema,
@@ -812,17 +812,17 @@ test('route claims belong to one exact surface and compile without a surface cro
   ]);
   assert.equal(studioClaims.every((claim) => claim.matcher.surface === 'studio'), true);
   assert.equal(kernelClaims.every((claim) => claim.matcher.surface === 'kernel'), true);
-  assert.equal(PageSchema.safeParse({ ...page, supportedSurfaces: ['studio', 'kernel'], routeClaims: claims }).success, true);
-  assert.equal(PageSchema.safeParse({
+  assert.equal(ResolvedPageSchema.safeParse({ ...page, supportedSurfaces: ['studio', 'kernel'], routeClaims: claims }).success, true);
+  assert.equal(ResolvedPageSchema.safeParse({
     ...page,
     routeClaims: [page.routeClaims[0], claims[1]],
   }).success, false);
-  assert.equal(PageSchema.safeParse({
+  assert.equal(ResolvedPageSchema.safeParse({
     ...page,
     supportedSurfaces: ['studio', 'kernel'],
     routeClaims: [...claims, { ...claims[0], pathTemplate: '/gallery-second-canonical' }],
   }).success, false);
-  assert.equal(PageSchema.safeParse({
+  assert.equal(ResolvedPageSchema.safeParse({
     ...page,
     supportedSurfaces: ['studio', 'kernel'],
     routeClaims: claims.map((claim) => claim.surface === 'kernel' && claim.kind === 'canonical' ? { ...claim, kind: 'alias' } : claim),
@@ -879,7 +879,7 @@ test('route takeover authorization is exact and cannot bypass reserved aliases o
   });
   assert.equal(claim.kind, 'canonical');
   assert.equal(claim.normalizedPath, '/settings');
-  const authoringPage = PageSchema.parse({
+  const authoringPage = ResolvedPageSchema.parse({
     ...page,
     routeClaims: [{ ...page.routeClaims[0], pathTemplate: '/settings', legacyRouteTakeoverAuthorization: authorization }],
   });

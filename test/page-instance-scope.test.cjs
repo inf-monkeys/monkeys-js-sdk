@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { PageSchema, PageStateDefinitionSchema } = require('../lib/contracts/declarative-control.js');
+const { ResolvedPageSchema, PageStateDefinitionSchema } = require('../lib/contracts/declarative-control.js');
 const { BindingSourceSchema } = require('../lib/contracts/declarative-control.js');
 const { page } = require('./declarative-control-fixtures.cjs');
 const read = (root, ...path) => ({ kind: 'read', root, path });
@@ -12,16 +12,16 @@ const fixture = () => {
 };
 test('repeat scope is published explicitly and scope query parameters require a repeated owner', () => {
   const input = fixture();
-  assert.equal(PageSchema.safeParse(input).success, true);
+  assert.equal(ResolvedPageSchema.safeParse(input).success, true);
   delete input.renderTree.nodes[0].repeat;
-  assert.equal(PageSchema.safeParse(input).success, false);
+  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
   assert.equal(BindingSourceSchema.safeParse({ kind: 'scope-field', path: 'item.__proto__.secret' }).success, false);
 });
 test('a repeat cannot consume the query it instantiates, and empty/unsafe keys are rejected by schema', () => {
   const input = fixture();
   input.renderTree.nodes[0].repeat.source = read('bindings', input.ontologyBindings[0].bindingId, 'items');
-  assert.equal(PageSchema.safeParse(input).success, false);
+  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
   input.renderTree.nodes[0].repeat.source = { kind: 'literal', value: [] };
   input.renderTree.nodes[0].repeat.keyPath = [];
-  assert.equal(PageSchema.safeParse(input).success, false);
+  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
 });

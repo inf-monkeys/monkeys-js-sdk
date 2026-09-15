@@ -425,10 +425,10 @@ test('product declarative authoring catalog is a strict release-owned fragment',
 
   const templateRegistration = {
     templateRevisionRef: fixture.revision('create-template', 'page.blank', { visibility: 'global', ownerRepo: 'monkeys' }),
-    resourceKind: 'page', supportedSurfaces: ['studio'], document: fixture.page,
-    sourceContentHash: sdk.declarativeCreateTemplateSourceHash(fixture.page),
+    resourceKind: 'page', supportedSurfaces: ['studio'], document: { contract: 'Page', schemaVersion: 1, pageId: fixture.page.pageId, tenantScope: fixture.page.tenantScope, identity: fixture.page.identity, surface: 'studio', route: '/gallery', lifecycle: 'active', body: { id: 'gallery', component: fixture.page.capabilityInstances[0].capabilityRevisionRef.id }, access: fixture.page.pageAccessPolicy, managementAccess: fixture.page.managementAccess },
+    sourceContentHash: sdk.declarativeCreateTemplateSourceHash({ contract: 'Page', schemaVersion: 1, pageId: fixture.page.pageId, tenantScope: fixture.page.tenantScope, identity: fixture.page.identity, surface: 'studio', route: '/gallery', lifecycle: 'active', body: { id: 'gallery', component: fixture.page.capabilityInstances[0].capabilityRevisionRef.id }, access: fixture.page.pageAccessPolicy, managementAccess: fixture.page.managementAccess }),
   };
-  assert.equal(sdk.declarativeCreateTemplateRevisionHash(templateRegistration), sdk.canonicalContentHash(fixture.page));
+  assert.equal(sdk.declarativeCreateTemplateRevisionHash(templateRegistration), sdk.canonicalContentHash(templateRegistration.document));
   assert.equal(sdk.declarativeCreateTemplateRevisionHash(templateRegistration), templateRegistration.sourceContentHash);
 
   const migrationTemplate = {
@@ -482,8 +482,9 @@ test('Shell resources declare exact per-surface chrome without implicit placemen
 
 test('authoring summaries, Workbench targets and command results remain strict and typed', () => {
   const actorRef = fixture.stable('actor', 'user-1');
+  const simplePage = { contract: 'Page', schemaVersion: 1, pageId: fixture.page.pageId, tenantScope: fixture.page.tenantScope, identity: fixture.page.identity, surface: 'studio', route: '/gallery', lifecycle: 'active', body: { id: 'gallery', component: fixture.page.capabilityInstances[0].capabilityRevisionRef.id }, access: fixture.page.pageAccessPolicy, managementAccess: fixture.page.managementAccess };
   const draft = {
-    action: 'create', resourceKind: 'page', resourceId: fixture.page.pageId, document: fixture.page,
+    action: 'create', resourceKind: 'page', resourceId: fixture.page.pageId, document: simplePage,
     revisionRef: fixture.pageRevisionRef, actorRef, occurredAt: '2026-08-28T12:00:00.000Z',
   };
   assert.equal(sdk.DeclarativeDraftResultSchema.safeParse(draft).success, true);

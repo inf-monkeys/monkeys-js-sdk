@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { ActionBindingSchema, PageSchema } = require('../lib/contracts/declarative-control.js');
+const { ActionBindingSchema, ResolvedPageSchema } = require('../lib/contracts/declarative-control.js');
 const { page, revision } = require('./declarative-control-fixtures.cjs');
 const fileAction = () => ({ ...page.actionBindings[0], fileInputs: [{ inputId: 'config', source: { kind: 'intent-field', path: 'handleId' }, maxBytes: 1048576, accept: '.json' }], inputMapping: { content: { kind: 'file-field', fileInputId: 'config', path: 'content' } }, sensitiveInputPaths: ['/content'] });
 test('file bytes require declared inputs and sensitive command mapping', () => {
@@ -25,9 +25,9 @@ test('file handles cannot be persisted or read from undeclared Page state', () =
   action.fileInputs[0].source = { kind: 'page-state', stateId: 'file-handle' };
   const state = { stateId: 'file-handle', schemaRevisionRef: revision('schema', 'file-handle'), defaultValue: '', persistence: 'none' };
   const value = { ...page, actionBindings: [action], stateDefinitions: [state] };
-  assert.equal(PageSchema.safeParse(value).success, true);
-  assert.equal(PageSchema.safeParse({ ...value, stateDefinitions: [] }).success, false);
-  assert.equal(PageSchema.safeParse({ ...value, stateDefinitions: [{ ...state, persistence: 'session' }] }).success, false);
+  assert.equal(ResolvedPageSchema.safeParse(value).success, true);
+  assert.equal(ResolvedPageSchema.safeParse({ ...value, stateDefinitions: [] }).success, false);
+  assert.equal(ResolvedPageSchema.safeParse({ ...value, stateDefinitions: [{ ...state, persistence: 'session' }] }).success, false);
 });
 test('Action conditions are explicit and reject unavailable query/model context', () => {
   const value = page.actionBindings[0];

@@ -49,19 +49,19 @@ test('forbidden access, expression size, depth, collection and operation budgets
 });
 
 test('Page validation rejects unknown state references, event-only roots and duplicate property ownership', () => {
-  const { PageSchema } = require('../lib/contracts/declarative-control.js');
+  const { ResolvedPageSchema } = require('../lib/contracts/declarative-control.js');
   const { page } = require('./declarative-control-fixtures.cjs');
   for (const expression of [read('state', 'unknown'), read('intent', 'value'), read('result', 'secret')]) {
     const input = structuredClone(page);
     input.capabilityInstances[0].propertyBindings = [{ targetPath: ['props', 'value'], expression }];
-    assert.equal(PageSchema.safeParse(input).success, false);
+    assert.equal(ResolvedPageSchema.safeParse(input).success, false);
   }
   const input = structuredClone(page);
   input.capabilityInstances[0].propertyBindings = [
     { targetPath: ['props'], expression: lit({}) },
     { targetPath: ['props', 'value'], expression: lit('x') },
   ];
-  assert.equal(PageSchema.safeParse(input).success, false);
+  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
 });
 
 test('direct expression schema parsing rejects cyclic and oversized AST inputs', () => {
@@ -90,15 +90,15 @@ test('entry projection and fixed decimal preview have deterministic typed result
 });
 
 test('Action expression context is constrained by the Page and result interactions pin evidence', () => {
-  const { PageSchema } = require('../lib/contracts/declarative-control.js');
+  const { ResolvedPageSchema } = require('../lib/contracts/declarative-control.js');
   const { page } = require('./declarative-control-fixtures.cjs');
   const input = structuredClone(page);
   input.actionBindings[0].inputMapping = { value: { kind: 'expression', expression: read('intent', 'value') } };
-  assert.equal(PageSchema.safeParse(input).success, true);
+  assert.equal(ResolvedPageSchema.safeParse(input).success, true);
   input.actionBindings[0].inputMapping.value.expression = read('model', 'secret');
-  assert.equal(PageSchema.safeParse(input).success, false);
+  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
   input.actionBindings[0].inputMapping.value.expression = read('state', 'missing');
-  assert.equal(PageSchema.safeParse(input).success, false);
+  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
 });
 
 test('number formatting uses explicit locales, precision and grouping', () => {

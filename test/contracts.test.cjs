@@ -846,7 +846,7 @@ const fixtures = {
   navigation: declarativeControl.navigation,
   "navigation-release": declarativeControl.navigationRelease,
   "navigation-runtime-bundle": declarativeNavigationBundle,
-  page: declarativeControl.page,
+  page: { contract: 'Page', schemaVersion: 1, pageId: declarativeControl.page.pageId, tenantScope: declarativeControl.page.tenantScope, identity: declarativeControl.page.identity, surface: 'studio', route: '/gallery', lifecycle: 'active', body: { id: 'gallery', component: declarativeControl.page.capabilityInstances[0].capabilityRevisionRef.id }, access: declarativeControl.page.pageAccessPolicy, managementAccess: declarativeControl.page.managementAccess },
   "page-release": declarativeControl.pageRelease,
   "page-runtime-bundle": declarativePageBundle,
   "permission-alternative-policy": {

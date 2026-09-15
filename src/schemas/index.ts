@@ -9,18 +9,18 @@ export {
   AggregateFeatureRelationReplaceSchema,
   AggregateFeatureRelationTargetSchema,
   AggregateFeatureValueWriteSchema,
-} from '../contracts/aggregate-commit';
+} from "../contracts/aggregate-commit";
 export {
   PermissionBundleSchema,
   PermissionDefinitionSchema,
   ProductAccessDeclarationSchema,
   SystemGroupDefinitionSchema,
-} from '../contracts/access';
+} from "../contracts/access";
 export {
   ArtifactManifestSchema,
   OutputRecordSchema,
   StorageLocatorSchema,
-} from '../contracts/artifact';
+} from "../contracts/artifact";
 export {
   CapabilityRegistryDocumentSchema,
   CapabilityRegistryEntrySchema,
@@ -28,7 +28,7 @@ export {
   CapabilitySourceTypeSchema,
   CapabilityManifestSchema,
   ContractPortSchema,
-} from '../contracts/capability';
+} from "../contracts/capability";
 export {
   ContractMetadataSchema,
   EntityRefSchema,
@@ -36,7 +36,7 @@ export {
   JsonValueSchema,
   SensitiveResultPathSchema,
   SensitiveResultPathsSchema,
-} from '../contracts/common';
+} from "../contracts/common";
 export {
   AgentConfigurationCapabilitySchema,
   StudioAgentModeSchema,
@@ -89,28 +89,28 @@ export {
   AgentWorkbenchNavigationViewModelSchema,
   AgentWorkbenchSessionItemSchema,
   AgentExecutionModeSchema,
-} from '../contracts/agent';
+} from "../contracts/agent";
 export {
   AgentRuntimeEventSchema,
   CompletionEventSchema,
   CompletionHeaderSchema,
   ExecutionLinkSchema,
   RequestScopeSchema,
-} from '../contracts/context';
+} from "../contracts/context";
 export {
   ApplicationRunSchema,
   BodyRelationRecordSchema,
   DataContinuityEnvelopeSchema,
   ExpiringAccessGrantSchema,
-} from '../contracts/continuity';
+} from "../contracts/continuity";
 export {
   DomainEventSchema,
   LineageRecordSchema,
   OntologyDefinitionSchema,
   ProjectionSpecSchema,
   SourceRecordRefSchema,
-} from '../contracts/data';
-export { LegacyRoutePolicySchema } from '../contracts/legacy-route';
+} from "../contracts/data";
+export { LegacyRoutePolicySchema } from "../contracts/legacy-route";
 export {
   AccessPolicySchema,
   ActionBindingSchema,
@@ -162,6 +162,7 @@ export {
   PageMigrationEquivalenceDimensionSchema,
   PageMigrationEquivalenceSchema,
   PageSchema,
+  ResolvedPageSchema,
   PermissionAlternativePolicySchema,
   ProductSurfaceSchema,
   PublicationPlanOperationSchema,
@@ -192,7 +193,7 @@ export {
   WorkbenchSchema,
   DeclarativeRouteClaimSchema,
   LegacyRouteClaimSchema,
-} from '../contracts/declarative-control';
+} from "../contracts/declarative-control";
 export {
   DeclarativeAuthoringChoicePageQuerySchema,
   DeclarativeAuthoringChoicePageSchema,
@@ -201,7 +202,7 @@ export {
   DeclarativeAuthoringResourcePageSchema,
   DesignCapabilityCatalogArtifactSchema,
   ProductDeclarativeCapabilityRegistrationSchema,
-} from '../contracts/declarative-control-http';
+} from "../contracts/declarative-control-http";
 
 export {
   CompiledMenuActionBehaviorSchema,
@@ -234,7 +235,7 @@ export {
   MenuRuntimeBundleSchema,
   MenuRuntimeInputBindingSchema,
   MenuSourceInputBindingSchema,
-} from '../contracts/menu';
+} from "../contracts/menu";
 export {
   PageDefinitionSchema,
   PageGuardProjectionSchema,
@@ -245,7 +246,7 @@ export {
   PageRuntimeProjectionSchema,
   PageTypeSchema,
   PageVisibilitySchema,
-} from '../contracts/page';
+} from "../contracts/page";
 export {
   ApplicationHandoffEndpointSchema,
   ApplicationHandoffSchema,
@@ -263,14 +264,14 @@ export {
   RenderSurfaceSchema,
   RenderTreeSchema,
   ViewProviderDescriptorSchema,
-} from '../contracts/render';
+} from "../contracts/render";
 export {
   ChangeImpactGraphSchema,
   ConceptDefinitionSchema,
   DomainCommandDefinitionSchema,
   DomainCommandSchema,
   ProductDeclarationSchema,
-} from '../contracts/semantic';
+} from "../contracts/semantic";
 export {
   CurrentUserMenuActionItemSchema,
   CurrentUserMenuConfigSchema,
@@ -295,14 +296,14 @@ export {
   TenantWorkbenchPageContextSchema,
   TenantWorkbenchPageEnvelopeSchema,
   TenantWorkbenchPageGroupSchema,
-} from '../contracts/tenant';
+} from "../contracts/tenant";
 export {
   ResolvedThemeTokensSchema,
   ThemeTokenGroupSchema,
   ThemeTokenTypeSchema,
   ThemeTokenSchema,
   ThemeTokensSchema,
-} from '../contracts/theme';
+} from "../contracts/theme";
 export {
   BrandGeneticsProfileSchema,
   BrandBodySchema,
@@ -340,7 +341,7 @@ export {
   TrendMetricSnapshotSchema,
   TrendSourceSchema,
   TrendSourceRecordSchema,
-} from '../contracts/trend';
+} from "../contracts/trend";
 export {
   ConductorTaskDefinitionSchema,
   ConductorTaskTypeSchema,
@@ -353,16 +354,19 @@ export {
   WorkflowParameterTypeSchema,
   WorkflowTriggerSchema,
   WorkflowValidationIssueSchema,
-} from '../contracts/workflow-definition';
+} from "../contracts/workflow-definition";
 export {
   WorkflowCatalogEntrySchema,
   WorkflowCompletionCommitSchema,
   WorkflowCompletionReceiptSchema,
   WorkflowPublicationSchema,
-} from '../contracts/workflow-runtime';
+} from "../contracts/workflow-runtime";
 
-import { AggregateCommitRequestSchema } from '../contracts/aggregate-commit';
-import { ArtifactManifestSchema, OutputRecordSchema } from '../contracts/artifact';
+import { AggregateCommitRequestSchema } from "../contracts/aggregate-commit";
+import {
+  ArtifactManifestSchema,
+  OutputRecordSchema,
+} from "../contracts/artifact";
 import {
   AgentSessionCommandResultSchema,
   AgentSessionCommandSchema,
@@ -376,27 +380,30 @@ import {
   AgentWorkbenchComposerViewModelSchema,
   AgentWorkbenchNavigationViewModelSchema,
   AgentWorkbenchQuickStartViewModelSchema,
-} from '../contracts/agent';
-import { CapabilityManifestSchema, CapabilityRegistryDocumentSchema } from '../contracts/capability';
+} from "../contracts/agent";
+import {
+  CapabilityManifestSchema,
+  CapabilityRegistryDocumentSchema,
+} from "../contracts/capability";
 import {
   AgentRuntimeEventSchema,
   CompletionEventSchema,
   CompletionHeaderSchema,
   ExecutionLinkSchema,
   RequestScopeSchema,
-} from '../contracts/context';
+} from "../contracts/context";
 import {
   ApplicationRunSchema,
   BodyRelationRecordSchema,
   DataContinuityEnvelopeSchema,
   ExpiringAccessGrantSchema,
-} from '../contracts/continuity';
+} from "../contracts/continuity";
 import {
   DomainEventSchema,
   LineageRecordSchema,
   OntologyDefinitionSchema,
   ProjectionSpecSchema,
-} from '../contracts/data';
+} from "../contracts/data";
 import {
   DeclarativeControlOntologyDefinitionSchema,
   DeclarativeRouteOwnerIndexSchema,
@@ -411,6 +418,7 @@ import {
   PageMigrationEquivalenceDimensionSchema,
   PageMigrationEquivalenceSchema,
   PageSchema,
+  ResolvedPageSchema,
   PermissionAlternativePolicySchema,
   PublicationPlanSchema,
   RouteSpaceSchema,
@@ -418,30 +426,37 @@ import {
   WorkbenchReleaseSchema,
   WorkbenchRuntimeBundleSchema,
   WorkbenchSchema,
-} from '../contracts/declarative-control';
-import { DesignCapabilityCatalogArtifactSchema } from '../contracts/declarative-control-http';
+} from "../contracts/declarative-control";
+import { DesignCapabilityCatalogArtifactSchema } from "../contracts/declarative-control-http";
 import {
   MenuDefinitionSchema,
   MenuDefinitionSetSchema,
   MenuRuntimeBundleSchema,
-} from '../contracts/menu';
-import { PageDefinitionSchema, PageRuntimeDescriptorSchema, PageRuntimeProjectionSchema } from '../contracts/page';
+} from "../contracts/menu";
+import {
+  PageDefinitionSchema,
+  PageRuntimeDescriptorSchema,
+  PageRuntimeProjectionSchema,
+} from "../contracts/page";
 import {
   ApplicationHandoffSchema,
   OverlayNodeSchema,
   RenderNodeSchema,
   RenderTreeSchema,
   ViewProviderDescriptorSchema,
-} from '../contracts/render';
-import { TenantProductConfigSchema, TenantRuntimeConfigSchema } from '../contracts/tenant';
+} from "../contracts/render";
+import {
+  TenantProductConfigSchema,
+  TenantRuntimeConfigSchema,
+} from "../contracts/tenant";
 import {
   ChangeImpactGraphSchema,
   ConceptDefinitionSchema,
   DomainCommandDefinitionSchema,
   DomainCommandSchema,
   ProductDeclarationSchema,
-} from '../contracts/semantic';
-import { ThemeTokensSchema } from '../contracts/theme';
+} from "../contracts/semantic";
+import { ThemeTokensSchema } from "../contracts/theme";
 import {
   BrandGeneticsProfileSchema,
   BrandBodySchema,
@@ -462,119 +477,138 @@ import {
   TrendIngestRunSchema,
   TrendMetricSnapshotSchema,
   TrendSourceRecordSchema,
-} from '../contracts/trend';
-import { ConductorWorkflowDefinitionSchema, WorkflowDefinitionSchema } from '../contracts/workflow-definition';
+} from "../contracts/trend";
+import {
+  ConductorWorkflowDefinitionSchema,
+  WorkflowDefinitionSchema,
+} from "../contracts/workflow-definition";
 import {
   WorkflowCatalogEntrySchema,
   WorkflowCompletionCommitSchema,
   WorkflowCompletionReceiptSchema,
   WorkflowPublicationSchema,
-} from '../contracts/workflow-runtime';
+} from "../contracts/workflow-runtime";
 
-export { WorkflowColumnBindingSchema, WorkflowColumnInputSchema, WorkflowColumnDependencySchema, WorkflowColumnOutputSchema, WorkflowColumnFieldRefSchema } from '../contracts/workflow-column';
-import { WorkflowColumnBindingSchema } from '../contracts/workflow-column';
+export {
+  WorkflowColumnBindingSchema,
+  WorkflowColumnInputSchema,
+  WorkflowColumnDependencySchema,
+  WorkflowColumnOutputSchema,
+  WorkflowColumnFieldRefSchema,
+} from "../contracts/workflow-column";
+import { WorkflowColumnBindingSchema } from "../contracts/workflow-column";
 
 export const canonicalContractSchemas = {
-  'aggregate-commit-request': AggregateCommitRequestSchema,
-  'workflow-column-binding': WorkflowColumnBindingSchema,
-  'agent-session-command': AgentSessionCommandSchema,
-  'agent-session-targeted-command': AgentSessionTargetedCommandSchema,
-  'agent-session-command-result': AgentSessionCommandResultSchema,
-  'agent-session-continuation-request': AgentSessionContinuationRequestSchema,
-  'agent-session-continuation-result': AgentSessionContinuationResultSchema,
-  'agent-session-event': AgentSessionEventSchema,
-  'agent-session-run-event': AgentSessionRunEventSchema,
-  'agent-session-run': AgentSessionRunSchema,
-  'agent-session-view-model': AgentSessionViewModelSchema,
-  'agent-workbench-composer-view-model': AgentWorkbenchComposerViewModelSchema,
-  'agent-workbench-navigation-view-model': AgentWorkbenchNavigationViewModelSchema,
-  'agent-workbench-quick-start-view-model': AgentWorkbenchQuickStartViewModelSchema,
-  'agent-runtime-event': AgentRuntimeEventSchema,
-  'application-run': ApplicationRunSchema,
-  'application-handoff': ApplicationHandoffSchema,
-  'artifact-manifest': ArtifactManifestSchema,
-  'brand-body': BrandBodySchema,
-  'body-relation-record': BodyRelationRecordSchema,
-  'brand-genetics-profile': BrandGeneticsProfileSchema,
-  'capability-manifest': CapabilityManifestSchema,
-  'capability-registry': CapabilityRegistryDocumentSchema,
-  'change-impact-graph': ChangeImpactGraphSchema,
-  'concept-definition': ConceptDefinitionSchema,
-  'completion-event': CompletionEventSchema,
-  'completion-header': CompletionHeaderSchema,
-  'conductor-workflow-definition': ConductorWorkflowDefinitionSchema,
-  'domain-event': DomainEventSchema,
-  'domain-command': DomainCommandSchema,
-  'domain-command-definition': DomainCommandDefinitionSchema,
-  'data-continuity-envelope': DataContinuityEnvelopeSchema,
-  'domain-query-definition': DomainQueryDefinitionSchema,
-  'declarative-control-ontology-definition': DeclarativeControlOntologyDefinitionSchema,
-  'declarative-route-owner-index': DeclarativeRouteOwnerIndexSchema,
-  'declarative-workbench-catalog': DeclarativeWorkbenchCatalogSchema,
-  'design-capability-catalog-artifact': DesignCapabilityCatalogArtifactSchema,
-  'execution-link': ExecutionLinkSchema,
-  'expiring-access-grant': ExpiringAccessGrantSchema,
-  'hotword-body': HotwordBodySchema,
-  'lineage-record': LineageRecordSchema,
-  'legacy-route-takeover-authorization': LegacyRouteTakeoverAuthorizationSchema,
-  'menu-definition': MenuDefinitionSchema,
-  'menu-definition-set': MenuDefinitionSetSchema,
-  'menu-runtime-bundle': MenuRuntimeBundleSchema,
-  'navigation': NavigationSchema,
-  'navigation-release': NavigationReleaseSchema,
-  'navigation-runtime-bundle': NavigationRuntimeBundleSchema,
-  'ontology-definition': OntologyDefinitionSchema,
-  'overlay-node': OverlayNodeSchema,
-  'output-record': OutputRecordSchema,
-  'page-definition': PageDefinitionSchema,
-  'page': PageSchema,
-  'page-release': PageReleaseSchema,
-  'page-runtime-bundle': PageRuntimeBundleSchema,
-  'page-runtime-descriptor': PageRuntimeDescriptorSchema,
-  'page-runtime-projection': PageRuntimeProjectionSchema,
-  'permission-alternative-policy': PermissionAlternativePolicySchema,
-  'projection-spec': ProjectionSpecSchema,
-  'publication-plan': PublicationPlanSchema,
-  'product-declaration': ProductDeclarationSchema,
-  'product-body': ProductBodySchema,
-  'radar-action-record': RadarActionRecordSchema,
-  'radar-analysis-detail': RadarAnalysisDetailSchema,
-  'radar-analysis-run': RadarAnalysisRunSchema,
-  'radar-opportunity-matrix': RadarOpportunityMatrixSchema,
-  'radar-panorama': RadarPanoramaSchema,
-  'radar-query-body': RadarQueryBodySchema,
-  'radar-score-model-body': RadarScoreModelBodySchema,
-  'radar-score-projection': RadarScoreProjectionSchema,
-  'radar-selection': RadarSelectionSchema,
-  'radar-writeback-record': RadarWritebackRecordSchema,
-  'request-scope': RequestScopeSchema,
-  'route-space': RouteSpaceSchema,
-  'render-node': RenderNodeSchema,
-  'render-tree': RenderTreeSchema,
-  'saved-radar-query': SavedRadarQuerySchema,
-  'stable-ref-alias-map': StableRefAliasMapSchema,
-  'tenant-product-config': TenantProductConfigSchema,
-  'tenant-runtime-config': TenantRuntimeConfigSchema,
-  'theme-tokens': ThemeTokensSchema,
-  'trend-radar-collection-item': TrendRadarCollectionItemSchema,
-  'trend-ingest-run': TrendIngestRunSchema,
-  'trend-metric-snapshot': TrendMetricSnapshotSchema,
-  'trend-source-record': TrendSourceRecordSchema,
-  'view-provider-descriptor': ViewProviderDescriptorSchema,
-  'workbench': WorkbenchSchema,
-  'workbench-release': WorkbenchReleaseSchema,
-  'workbench-runtime-bundle': WorkbenchRuntimeBundleSchema,
-  'workflow-definition': WorkflowDefinitionSchema,
-  'workflow-catalog-entry': WorkflowCatalogEntrySchema,
-  'workflow-publication': WorkflowPublicationSchema,
-  'workflow-completion-commit': WorkflowCompletionCommitSchema,
-  'workflow-completion-receipt': WorkflowCompletionReceiptSchema,
+  "aggregate-commit-request": AggregateCommitRequestSchema,
+  "workflow-column-binding": WorkflowColumnBindingSchema,
+  "agent-session-command": AgentSessionCommandSchema,
+  "agent-session-targeted-command": AgentSessionTargetedCommandSchema,
+  "agent-session-command-result": AgentSessionCommandResultSchema,
+  "agent-session-continuation-request": AgentSessionContinuationRequestSchema,
+  "agent-session-continuation-result": AgentSessionContinuationResultSchema,
+  "agent-session-event": AgentSessionEventSchema,
+  "agent-session-run-event": AgentSessionRunEventSchema,
+  "agent-session-run": AgentSessionRunSchema,
+  "agent-session-view-model": AgentSessionViewModelSchema,
+  "agent-workbench-composer-view-model": AgentWorkbenchComposerViewModelSchema,
+  "agent-workbench-navigation-view-model":
+    AgentWorkbenchNavigationViewModelSchema,
+  "agent-workbench-quick-start-view-model":
+    AgentWorkbenchQuickStartViewModelSchema,
+  "agent-runtime-event": AgentRuntimeEventSchema,
+  "application-run": ApplicationRunSchema,
+  "application-handoff": ApplicationHandoffSchema,
+  "artifact-manifest": ArtifactManifestSchema,
+  "brand-body": BrandBodySchema,
+  "body-relation-record": BodyRelationRecordSchema,
+  "brand-genetics-profile": BrandGeneticsProfileSchema,
+  "capability-manifest": CapabilityManifestSchema,
+  "capability-registry": CapabilityRegistryDocumentSchema,
+  "change-impact-graph": ChangeImpactGraphSchema,
+  "concept-definition": ConceptDefinitionSchema,
+  "completion-event": CompletionEventSchema,
+  "completion-header": CompletionHeaderSchema,
+  "conductor-workflow-definition": ConductorWorkflowDefinitionSchema,
+  "domain-event": DomainEventSchema,
+  "domain-command": DomainCommandSchema,
+  "domain-command-definition": DomainCommandDefinitionSchema,
+  "data-continuity-envelope": DataContinuityEnvelopeSchema,
+  "domain-query-definition": DomainQueryDefinitionSchema,
+  "declarative-control-ontology-definition":
+    DeclarativeControlOntologyDefinitionSchema,
+  "declarative-route-owner-index": DeclarativeRouteOwnerIndexSchema,
+  "declarative-workbench-catalog": DeclarativeWorkbenchCatalogSchema,
+  "design-capability-catalog-artifact": DesignCapabilityCatalogArtifactSchema,
+  "execution-link": ExecutionLinkSchema,
+  "expiring-access-grant": ExpiringAccessGrantSchema,
+  "hotword-body": HotwordBodySchema,
+  "lineage-record": LineageRecordSchema,
+  "legacy-route-takeover-authorization": LegacyRouteTakeoverAuthorizationSchema,
+  "menu-definition": MenuDefinitionSchema,
+  "menu-definition-set": MenuDefinitionSetSchema,
+  "menu-runtime-bundle": MenuRuntimeBundleSchema,
+  navigation: NavigationSchema,
+  "navigation-release": NavigationReleaseSchema,
+  "navigation-runtime-bundle": NavigationRuntimeBundleSchema,
+  "ontology-definition": OntologyDefinitionSchema,
+  "overlay-node": OverlayNodeSchema,
+  "output-record": OutputRecordSchema,
+  "page-definition": PageDefinitionSchema,
+  page: PageSchema,
+  "page-release": PageReleaseSchema,
+  "page-runtime-bundle": PageRuntimeBundleSchema,
+  "page-runtime-descriptor": PageRuntimeDescriptorSchema,
+  "page-runtime-projection": PageRuntimeProjectionSchema,
+  "permission-alternative-policy": PermissionAlternativePolicySchema,
+  "projection-spec": ProjectionSpecSchema,
+  "publication-plan": PublicationPlanSchema,
+  "product-declaration": ProductDeclarationSchema,
+  "product-body": ProductBodySchema,
+  "radar-action-record": RadarActionRecordSchema,
+  "radar-analysis-detail": RadarAnalysisDetailSchema,
+  "radar-analysis-run": RadarAnalysisRunSchema,
+  "radar-opportunity-matrix": RadarOpportunityMatrixSchema,
+  "radar-panorama": RadarPanoramaSchema,
+  "radar-query-body": RadarQueryBodySchema,
+  "radar-score-model-body": RadarScoreModelBodySchema,
+  "radar-score-projection": RadarScoreProjectionSchema,
+  "radar-selection": RadarSelectionSchema,
+  "radar-writeback-record": RadarWritebackRecordSchema,
+  "request-scope": RequestScopeSchema,
+  "route-space": RouteSpaceSchema,
+  "render-node": RenderNodeSchema,
+  "render-tree": RenderTreeSchema,
+  "saved-radar-query": SavedRadarQuerySchema,
+  "stable-ref-alias-map": StableRefAliasMapSchema,
+  "tenant-product-config": TenantProductConfigSchema,
+  "tenant-runtime-config": TenantRuntimeConfigSchema,
+  "theme-tokens": ThemeTokensSchema,
+  "trend-radar-collection-item": TrendRadarCollectionItemSchema,
+  "trend-ingest-run": TrendIngestRunSchema,
+  "trend-metric-snapshot": TrendMetricSnapshotSchema,
+  "trend-source-record": TrendSourceRecordSchema,
+  "view-provider-descriptor": ViewProviderDescriptorSchema,
+  workbench: WorkbenchSchema,
+  "workbench-release": WorkbenchReleaseSchema,
+  "workbench-runtime-bundle": WorkbenchRuntimeBundleSchema,
+  "workflow-definition": WorkflowDefinitionSchema,
+  "workflow-catalog-entry": WorkflowCatalogEntrySchema,
+  "workflow-publication": WorkflowPublicationSchema,
+  "workflow-completion-commit": WorkflowCompletionCommitSchema,
+  "workflow-completion-receipt": WorkflowCompletionReceiptSchema,
 } as const;
 
 export type CanonicalContractSchemaName = keyof typeof canonicalContractSchemas;
 
-export { ComponentAssemblySchema, ComponentEventArgumentSchema, ComponentEventBindingSchema } from "../contracts/component-assembly";
+export {
+  ComponentAssemblySchema,
+  ComponentEventArgumentSchema,
+  ComponentEventBindingSchema,
+} from "../contracts/component-assembly";
 
-export { PageExpressionSchema, PagePropertyBindingSchema } from '../contracts/page-expression';
+export {
+  PageExpressionSchema,
+  PagePropertyBindingSchema,
+} from "../contracts/page-expression";
 
-export * from '../contracts/record-editor-draft';
+export * from "../contracts/record-editor-draft";
