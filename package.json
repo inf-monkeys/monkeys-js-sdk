@@ -1,6 +1,6 @@
 {
   "name": "@inf-monkeys-tech/monkeys",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Monkeys JS SDK",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
