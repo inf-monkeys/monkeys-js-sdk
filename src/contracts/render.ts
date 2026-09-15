@@ -154,6 +154,7 @@ export const RenderResponsiveRuleSchema = z
     minWidthPx: z.number().nonnegative().optional(),
     maxWidthPx: z.number().positive().optional(),
     layout: RenderLayoutSchema,
+    style: z.lazy(() => RenderStyleSchema).optional(),
   })
   .strict()
   .superRefine((rule, context) => {

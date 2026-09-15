@@ -423,7 +423,13 @@ const renderNode = {
     focusReturn: true,
   },
   layout: { mode: "block" },
-  responsive: [],
+  responsive: [
+    {
+      maxWidthPx: 640,
+      layout: { mode: 'block' },
+      style: { padding: '$semantic.spacing.global', borderRadius: '0' },
+    },
+  ],
   state: "idle",
   renderModel: {},
 };
