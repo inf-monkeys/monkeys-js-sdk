@@ -2243,6 +2243,27 @@ test('WorkflowDefinition preserves webhook identity and custom event configurati
   });
 });
 
+test('WorkflowDefinition preserves optional image crop settings without changing legacy inputs', () => {
+  for (const enabled of [undefined, false, true]) {
+    const workflow = structuredClone(fixtures['workflow-definition']);
+    const typeOptions = { multipleValues: false };
+    if (enabled !== undefined) typeOptions.enableImageCrop = enabled;
+    workflow.parameters.variables = [{ name: 'fabric', displayName: 'Fabric Upload', type: 'file', typeOptions }];
+
+    const parsed = schemas.WorkflowDefinitionSchema.parse(workflow);
+    assert.deepEqual(parsed.parameters.variables[0].typeOptions, typeOptions);
+    assert.deepEqual(schemas.WorkflowDefinitionSchema.parse(JSON.parse(JSON.stringify(parsed))), parsed);
+  }
+});
+
+test('WorkflowDefinition keeps strict validation for malformed crop settings and unknown options', () => {
+  for (const typeOptions of [{ enableImageCrop: 'true' }, { enableImageCrop: null }, { enableImageCrop: 1 }, { enableImageCrop: true, unknownCropOption: true }]) {
+    const workflow = structuredClone(fixtures['workflow-definition']);
+    workflow.parameters.variables = [{ name: 'fabric', displayName: 'Fabric Upload', type: 'file', typeOptions }];
+    assert.equal(schemas.WorkflowDefinitionSchema.safeParse(workflow).success, false);
+  }
+});
+
 test('WorkflowDefinition preserves canonical ComfyUI workflow port bindings', () => {
   const workflow = structuredClone(fixtures['workflow-definition']);
   workflow.parameters.variables = [

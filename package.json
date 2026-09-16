@@ -1,6 +1,6 @@
 {
   "name": "@inf-monkeys-tech/monkeys",
-  "version": "1.0.72",
+  "version": "1.0.73",
   "description": "Monkeys JS SDK",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -56,7 +56,8 @@
     "pack:check": "npm pack --dry-run"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "legacy-1.0"
   },
   "devDependencies": {
     "tsup": "^8.5.0",
