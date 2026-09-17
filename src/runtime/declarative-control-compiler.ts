@@ -30,7 +30,10 @@ import {
   NavigationSchema,
   PageReleaseSchema,
   PageRuntimeBundleSchema,
+  LegacyPageRuntimeBundleSchema,
   ResolvedPageSchema,
+  OntologyBindingSchema,
+  LegacyOntologyBindingSchema,
   ProductSurfaceSchema,
   RevisionRefSchema,
   RouteClaimSchema,
@@ -58,6 +61,7 @@ import {
   type ResolvedPage,
   type PageRelease,
   type PageRuntimeBundle,
+  type LegacyPageRuntimeBundle,
   type ReleaseDependency,
   type RevisionRef,
   type RouteClaim,
@@ -140,7 +144,12 @@ export interface DeclarativeCapabilityRegistration {
   inputPorts: readonly CapabilityPortRegistration[];
   outputPorts: readonly CapabilityPortRegistration[];
   allowedSideEffects: readonly (
-    "network" | "storage" | "navigation" | "clipboard" | "worker" | "websocket"
+    | "network"
+    | "storage"
+    | "navigation"
+    | "clipboard"
+    | "worker"
+    | "websocket"
   )[];
 }
 export interface DomainQueryRegistration {
@@ -1383,11 +1392,25 @@ const pageDependencies = (
       role: "ontology-definition" as const,
       revisionRef: binding.ontologyDefinitionRevisionRef,
     },
-    { role: "view" as const, revisionRef: binding.viewRevisionRef },
-    {
-      role: "view" as const,
-      revisionRef: binding.canonicalDataViewRevisionRef,
-    },
+    ...(binding.viewRevisionRef
+      ? [{ role: "view" as const, revisionRef: binding.viewRevisionRef }]
+      : []),
+    ...("projectionRevisionRef" in binding && binding.projectionRevisionRef
+      ? [
+          {
+            role: "projection-spec" as const,
+            revisionRef: binding.projectionRevisionRef,
+          },
+        ]
+      : []),
+    ...(binding.canonicalDataViewRevisionRef
+      ? [
+          {
+            role: "view" as const,
+            revisionRef: binding.canonicalDataViewRevisionRef,
+          },
+        ]
+      : []),
     {
       role: "schema" as const,
       revisionRef: binding.renderModelSchemaRevisionRef,
@@ -2041,10 +2064,63 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
   };
   return ResolvedPageSchema.parse(resolved);
 };
+export type LegacyCompilePageRuntimeBundleInput = Omit<
+  CompilePageRuntimeBundleInput,
+  "capabilityRegistry" | "shellRegistration"
+> & {
+  capabilityRegistry: readonly (Omit<
+    DeclarativeCapabilityRegistration,
+    "propertySchemaRevisionRef" | "accessPolicy"
+  > &
+    Partial<
+      Pick<
+        DeclarativeCapabilityRegistration,
+        "propertySchemaRevisionRef" | "accessPolicy"
+      >
+    >)[];
+};
+
+/** Explicit compatibility boundary for previously persisted resolved Page documents. */
+export const compileLegacyPageRuntimeBundle = (
+  input: LegacyCompilePageRuntimeBundleInput,
+): LegacyPageRuntimeBundle =>
+  deepFreeze(
+    LegacyPageRuntimeBundleSchema.parse(
+      compilePageRuntimeBundleInternal(input, true),
+    ),
+  );
+
 export const compilePageRuntimeBundle = (
   input: CompilePageRuntimeBundleInput,
-): PageRuntimeBundle => {
+): PageRuntimeBundle =>
+  deepFreeze(
+    PageRuntimeBundleSchema.parse(
+      compilePageRuntimeBundleInternal(input, false),
+    ),
+  );
+
+const compilePageRuntimeBundleInternal = (
+  input: LegacyCompilePageRuntimeBundleInput & {
+    shellRegistration?: DeclarativeProductResourceRegistration;
+  },
+  legacy: boolean,
+): unknown => {
   const parsedPage = ResolvedPageSchema.parse(input.page);
+  parsedPage.ontologyBindings.forEach((binding) =>
+    (legacy ? LegacyOntologyBindingSchema : OntologyBindingSchema).parse(
+      binding,
+    ),
+  );
+  if (
+    legacy &&
+    (parsedPage.queryBindings?.length || input.domainQueryRegistry?.length)
+  ) {
+    throw new DeclarativeControlCompilationError(
+      "QUERY_DEFINITION_MISMATCH",
+      "queryBindings",
+      "Domain queries require the current compiler and its governed registries.",
+    );
+  }
   const page = {
     ...parsedPage,
     routeStatePresentations: parsedPage.routeStatePresentations ?? [],
@@ -2194,50 +2270,57 @@ export const compilePageRuntimeBundle = (
       domainQueryDependencies(definition),
     );
   });
-  const shellRegistration = DeclarativeProductResourceRegistrationSchema.parse(
-    input.shellRegistration,
-  );
-  if (
-    shellRegistration.resourceKind !== "shell" ||
-    !sameRevisionRef(
-      shellRegistration.resourceRevisionRef,
-      page.shellRevisionRef,
-    ) ||
-    declarativeProductResourceRevisionHash(shellRegistration) !==
-      shellRegistration.resourceRevisionRef.contentHash ||
-    declarativeProductResourceSourceHash(shellRegistration.document) !==
-      shellRegistration.sourceContentHash
-  ) {
-    throw new DeclarativeControlCompilationError(
-      "SHELL_REVISION_MISMATCH",
-      "shellRegistration",
-      "The active Shell registration does not match the Page exact Shell revision.",
-    );
-  }
-  if (!shellRegistration.supportedSurfaces.includes(release.target.surface)) {
-    throw new DeclarativeControlCompilationError(
-      "SHELL_SURFACE_MISMATCH",
-      "shellRegistration.supportedSurfaces",
-      "The active Shell registration does not support the release surface.",
-    );
-  }
-  const shellDocument = DeclarativeShellResourceDocumentSchema.parse(
-    shellRegistration.document,
-  );
-  const shellChrome = shellDocument.surfaceChrome.find(
-    (entry) => entry.surface === release.target.surface,
-  );
-  if (!shellChrome) {
-    throw new DeclarativeControlCompilationError(
-      "SHELL_CHROME_UNAVAILABLE",
-      "shellRegistration.document.surfaceChrome",
-      "The active Shell does not declare chrome for the release surface.",
-    );
-  }
-  const shellDescriptor = {
-    shellRevisionRef: page.shellRevisionRef,
-    header: shellChrome.header,
-  };
+  const shellDescriptor = legacy
+    ? undefined
+    : (() => {
+        const shellRegistration =
+          DeclarativeProductResourceRegistrationSchema.parse(
+            input.shellRegistration,
+          );
+        if (
+          shellRegistration.resourceKind !== "shell" ||
+          !sameRevisionRef(
+            shellRegistration.resourceRevisionRef,
+            page.shellRevisionRef,
+          ) ||
+          declarativeProductResourceRevisionHash(shellRegistration) !==
+            shellRegistration.resourceRevisionRef.contentHash ||
+          declarativeProductResourceSourceHash(shellRegistration.document) !==
+            shellRegistration.sourceContentHash
+        ) {
+          throw new DeclarativeControlCompilationError(
+            "SHELL_REVISION_MISMATCH",
+            "shellRegistration",
+            "The active Shell registration does not match the Page exact Shell revision.",
+          );
+        }
+        if (
+          !shellRegistration.supportedSurfaces.includes(release.target.surface)
+        ) {
+          throw new DeclarativeControlCompilationError(
+            "SHELL_SURFACE_MISMATCH",
+            "shellRegistration.supportedSurfaces",
+            "The active Shell registration does not support the release surface.",
+          );
+        }
+        const shellDocument = DeclarativeShellResourceDocumentSchema.parse(
+          shellRegistration.document,
+        );
+        const shellChrome = shellDocument.surfaceChrome.find(
+          (entry) => entry.surface === release.target.surface,
+        );
+        if (!shellChrome) {
+          throw new DeclarativeControlCompilationError(
+            "SHELL_CHROME_UNAVAILABLE",
+            "shellRegistration.document.surfaceChrome",
+            "The active Shell does not declare chrome for the release surface.",
+          );
+        }
+        return {
+          shellRevisionRef: page.shellRevisionRef,
+          header: shellChrome.header,
+        };
+      })();
   if (page.renderTree.nodes.length > input.limits.maxRenderNodes)
     throw new DeclarativeControlCompilationError(
       "RENDER_NODE_LIMIT_EXCEEDED",
@@ -2346,10 +2429,12 @@ export const compilePageRuntimeBundle = (
       );
     }
     if (
-      !sameRevisionRef(
-        instance.propertySchemaRevisionRef,
-        registration.propertySchemaRevisionRef,
-      )
+      !legacy &&
+      (!registration.propertySchemaRevisionRef ||
+        !sameRevisionRef(
+          instance.propertySchemaRevisionRef,
+          registration.propertySchemaRevisionRef,
+        ))
     ) {
       throw new DeclarativeControlCompilationError(
         "CAPABILITY_BINDING_MISMATCH",
@@ -2358,13 +2443,15 @@ export const compilePageRuntimeBundle = (
       );
     }
     if (
-      !accessPolicyChainImplies(
-        [
-          page.pageAccessPolicy,
-          ...(instance.accessPolicy ? [instance.accessPolicy] : []),
-        ],
-        registration.accessPolicy,
-      )
+      !legacy &&
+      (!registration.accessPolicy ||
+        !accessPolicyChainImplies(
+          [
+            page.pageAccessPolicy,
+            ...(instance.accessPolicy ? [instance.accessPolicy] : []),
+          ],
+          registration.accessPolicy,
+        ))
     ) {
       throw new DeclarativeControlCompilationError(
         "AUDIENCE_WIDER_THAN_TARGET",
@@ -2734,7 +2821,8 @@ export const compilePageRuntimeBundle = (
         ? [
             {
               role: target.releaseRevisionRef.kind as
-                "page-release" | "workbench-release",
+                | "page-release"
+                | "workbench-release",
               revisionRef: target.releaseRevisionRef,
             },
           ]
@@ -2769,7 +2857,7 @@ export const compilePageRuntimeBundle = (
       (presentation) => presentation.surface === release.target.surface,
     ),
     shellRevisionRef: page.shellRevisionRef,
-    shellDescriptor,
+    ...(shellDescriptor ? { shellDescriptor } : {}),
     renderTree,
     capabilityInstances: page.capabilityInstances,
     deniedCapabilityInstanceIds: [],
@@ -2785,12 +2873,7 @@ export const compilePageRuntimeBundle = (
     observationPolicyRevisionRef: page.observationPolicyRevisionRef,
     privacyClassification: page.privacyClassification,
   };
-  return deepFreeze(
-    PageRuntimeBundleSchema.parse({
-      ...unsigned,
-      contentHash: canonicalContentHash(unsigned),
-    }),
-  );
+  return { ...unsigned, contentHash: canonicalContentHash(unsigned) };
 };
 const workbenchDependencyRole = (kind: string): ReleaseDependency["role"] => {
   switch (kind) {

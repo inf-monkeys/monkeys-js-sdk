@@ -44,3 +44,10 @@ yarn pack:check
 ```
 
 `yarn test` 会重新构建包、生成全部 JSON Schema，并验证公开导出、所有 canonical 合同、严格字段边界和跨字段不变量。
+
+
+### Legacy declarative Page releases
+
+`compileLegacyPageRuntimeBundle` and `LegacyPageRuntimeBundleSchema` are explicit compatibility boundaries for pre-canonical resolved Page releases. They retain exact historical View or projection references, dependency checks, and content identities without inventing canonical View references or Shell descriptors. Legacy compilation rejects canonical bindings and Domain Query bindings; use `resolvePage` and `compilePageRuntimeBundle` for current declarations.
+
+The current `OntologyBindingSchema`, `PageRuntimeBundleSchema`, and `compilePageRuntimeBundle` keep their canonical View and Shell requirements. Do not choose the legacy compiler as a fallback after a current contract fails validation. Server migrations must select the compatibility boundary for the existing legacy API, not expose that choice as an untrusted request option.

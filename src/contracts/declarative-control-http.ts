@@ -6,6 +6,7 @@ import {
   DeclarativeShellSurfaceChromeSchema,
   I18nTextSchema,
   PageRuntimeBundleSchema,
+  ReadablePageRuntimeBundleSchema,
   PageRouteStatePresentationSchema,
   ProductSurfaceSchema,
   RevisionRefSchema,
@@ -20,6 +21,7 @@ import {
   NavigationReleaseSchema,
   ManagementAccessSchema,
   PageSchema,
+  ResolvedPageSchema,
   PageReleaseSchema,
   WorkbenchSchema,
   WorkbenchReleaseSchema,
@@ -423,6 +425,10 @@ export const DeclarativeRuntimeActionExecuteIntentSchema =
     routePath: DeclarativeRuntimeActionRoutePathSchema.optional(),
     idempotencyKey: z.string().trim().min(1).max(256),
   }).strict();
+/** Old actions have no page-state payload; current action requests retain their strict requirement. */
+export const LegacyDeclarativeRuntimeActionExecuteIntentSchema = DeclarativeRuntimeActionExecuteIntentSchema.safeExtend({ pageState: DeclarativeRuntimeParametersSchema.default({}) });
+export type LegacyDeclarativeRuntimeActionExecuteIntent = z.infer<typeof LegacyDeclarativeRuntimeActionExecuteIntentSchema>;
+
 export type DeclarativeRuntimeActionExecuteIntent = z.infer<
   typeof DeclarativeRuntimeActionExecuteIntentSchema
 >;
@@ -1012,7 +1018,12 @@ export const DeclarativeCreateTemplateRegistrationSchema = z
       .min(1)
       .max(256)
       .optional(),
-    document: z.union([PageSchema, NavigationSchema, WorkbenchSchema]),
+    document: z.union([
+      PageSchema,
+      ResolvedPageSchema,
+      NavigationSchema,
+      WorkbenchSchema,
+    ]),
     sourceContentHash: Sha256Schema,
   })
   .strict()
@@ -1654,6 +1665,7 @@ export type DeclarativeCreateIntent = z.infer<
 
 export const DeclarativeDocumentSchema = z.union([
   PageSchema,
+  ResolvedPageSchema,
   NavigationSchema,
   WorkbenchSchema,
 ]);
@@ -2085,7 +2097,7 @@ export const DeclarativePreviewResultSchema = z
     revision: z.number().int().positive(),
     contentHash: Sha256Schema,
     bundle: z.union([
-      PageRuntimeBundleSchema,
+      ReadablePageRuntimeBundleSchema,
       NavigationRuntimeBundleSchema,
       WorkbenchRuntimeBundleSchema,
     ]),
@@ -2109,7 +2121,7 @@ export const DeclarativePublicationItemResultSchema = z
     ]),
     bundle: z
       .union([
-        PageRuntimeBundleSchema,
+        ReadablePageRuntimeBundleSchema,
         NavigationRuntimeBundleSchema,
         WorkbenchRuntimeBundleSchema,
       ])
@@ -2532,7 +2544,7 @@ export const DeclarativeRuntimeResolvedSchema = z
     surface: ProductSurfaceSchema,
     normalizedPath: z.string().trim().min(1),
     routeParameters: z.record(ContractIdentifierSchema, z.string()),
-    page: PageRuntimeBundleSchema.optional(),
+    page: ReadablePageRuntimeBundleSchema.optional(),
     workbench: WorkbenchRuntimeBundleSchema.optional(),
     redirect: DeclarativeRuntimeRedirectSchema.optional(),
     navigation: NavigationRuntimeBundleSchema.optional(),

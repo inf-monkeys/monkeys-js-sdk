@@ -158,6 +158,10 @@ test('runtime route owner is fenced for authenticated team-scoped product routes
 test('runtime query and binding parameter limits fail closed', () => {
   const ref = (kind, id) => ({ kind, id, ownerRepo: 'monkeys-server', visibility: 'global', revision: 1, schemaVersion: 1, contentHash: 'a'.repeat(64) });
   const target = { activeReleaseRevisionRef: ref('page-release', 'page-slot'), pageRevisionRef: ref('page', 'gallery') };
+  const legacyAction = { ...target, intent: { recordId: 'asset-1' }, idempotencyKey: 'legacy-action-1' };
+  assert.deepEqual(sdk.LegacyDeclarativeRuntimeActionExecuteIntentSchema.parse(legacyAction).pageState, {});
+  assert.equal(sdk.LegacyDeclarativeRuntimeActionExecuteIntentSchema.safeParse({ ...legacyAction, unknown: true }).success, false);
+  assert.equal(sdk.LegacyDeclarativeRuntimeActionExecuteIntentSchema.safeParse({ ...legacyAction, pageRevisionRef: ref('workbench', 'wrong') }).success, false);
   assert.equal(sdk.DeclarativeRuntimeResolveQuerySchema.safeParse({ surface: 'studio', path: `/${'x'.repeat(2048)}` }).success, false);
   assert.equal(sdk.DeclarativeRuntimeBindingQueryIntentSchema.safeParse({ ...target, parameters: Object.fromEntries(Array.from({ length: 33 }, (_, index) => [`key${index}`, index])) }).success, false);
   let nested = { value: 'leaf' };
@@ -257,6 +261,9 @@ test('governed Schema and View records pin the exact Ontology render-model bound
   assert.equal(sdk.OntologyViewDefinitionSchema.safeParse({ ...view, canonicalDataViewRevisionRef: ref('schema', 'wrong') }).success, false);
   const { canonicalDataViewRevisionRef: _omitted, ...viewWithoutCanonicalDataView } = view;
   assert.equal(sdk.OntologyViewDefinitionSchema.safeParse(viewWithoutCanonicalDataView).success, false);
+  assert.deepEqual(sdk.LegacyOntologyViewDefinitionSchema.parse(viewWithoutCanonicalDataView), viewWithoutCanonicalDataView);
+  assert.equal(sdk.LegacyOntologyViewDefinitionSchema.safeParse(view).success, false);
+  assert.equal(sdk.LegacyOntologyViewDefinitionSchema.safeParse({ ...viewWithoutCanonicalDataView, renderModelSchemaRevisionRef: ref('view', 'wrong') }).success, false);
   assert.equal(sdk.OntologyViewDefinitionSchema.safeParse({ ...view, renderModelSchemaRevisionRef: ref('view', 'wrong') }).success, false);
   assert.equal(sdk.SchemaDefinitionSchema.safeParse({ ...schema, executable: 'return true' }).success, false);
 });

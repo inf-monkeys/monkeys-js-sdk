@@ -1398,3 +1398,49 @@ test("Page instance access narrows a restricted capability without changing Page
   assert.throws(() => runtime.compilePageRuntimeBundle({ ...input, page: wider, capabilityRegistry: registry }), error => error.code === "AUDIENCE_WIDER_THAN_TARGET");
   assert.equal(PageRuntimeBundleSchema.safeParse({ ...bundle, deniedCapabilityInstanceIds: ["unknown"] }).success, false);
 });
+
+
+test('legacy page compilation preserves exact view/projection bindings without inventing canonical revisions', () => {
+  const sdk = require('@inf-monkeys-tech/monkeys');
+  for (const projection of [false, true]) {
+    const input = pageInput();
+    input.page = structuredClone(input.page);
+    input.release = structuredClone(input.release);
+    const binding = input.page.ontologyBindings[0];
+    const canonical = binding.canonicalDataViewRevisionRef;
+    delete binding.canonicalDataViewRevisionRef;
+    input.release.dependencySnapshot = input.release.dependencySnapshot.filter(entry => !sdk.sameRevisionRef(entry.revisionRef, canonical));
+    if (projection) {
+      const view = binding.viewRevisionRef;
+      binding.projectionRevisionRef = { ...view, kind: 'projection-spec' };
+      delete binding.viewRevisionRef;
+      input.release.dependencySnapshot = input.release.dependencySnapshot.map(entry => sdk.sameRevisionRef(entry.revisionRef, view) ? { role: 'projection-spec', revisionRef: binding.projectionRevisionRef } : entry);
+    }
+    const hash = sdk.canonicalContentHash(input.page);
+    assert.equal(sdk.canonicalContentHash(sdk.ResolvedPageSchema.parse(input.page)), hash);
+    input.capabilityRegistry = input.capabilityRegistry.map(({ propertySchemaRevisionRef, accessPolicy, ...entry }) => entry);
+    delete input.shellRegistration;
+    const bundle = runtime.compileLegacyPageRuntimeBundle(input);
+    assert.deepEqual(bundle.ontologyBindings[0], binding);
+    assert.equal(bundle.shellDescriptor, undefined);
+    assert.equal(sdk.LegacyPageRuntimeBundleSchema.safeParse(bundle).success, true);
+    assert.equal(sdk.PageRuntimeBundleSchema.safeParse(bundle).success, false);
+    assert.equal(sdk.ReadablePageRuntimeBundleSchema.safeParse(bundle).success, true);
+    assert.equal(sdk.ReadablePageRuntimeBundleSchema.safeParse({ ...bundle, ontologyBindings: [{ ...binding, canonicalDataViewRevisionRef: canonical }] }).success, false);
+    assert.throws(() => runtime.compilePageRuntimeBundle(input));
+    const malformed = { ...binding, viewRevisionRef: revision('view', 'extra'), projectionRevisionRef: revision('projection-spec', 'extra') };
+    assert.equal(sdk.LegacyOntologyBindingSchema.safeParse(malformed).success, false);
+    assert.equal(sdk.OntologyBindingSchema.safeParse(binding).success, false);
+    const missing = structuredClone(input);
+    missing.release.dependencySnapshot = missing.release.dependencySnapshot.filter(entry => entry.role !== (projection ? 'projection-spec' : 'view'));
+    assert.throws(() => runtime.compileLegacyPageRuntimeBundle(missing));
+  }
+});
+
+test('legacy compilation cannot bypass the canonical binding authority of modern pages', () => {
+  const sdk = require('@inf-monkeys-tech/monkeys');
+  const bundle = runtime.compilePageRuntimeBundle(pageInput());
+  assert.equal(sdk.ReadablePageRuntimeBundleSchema.safeParse(bundle).success, true);
+  assert.equal(sdk.LegacyPageRuntimeBundleSchema.safeParse(bundle).success, false);
+  assert.throws(() => runtime.compileLegacyPageRuntimeBundle(pageInput()));
+});

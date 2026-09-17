@@ -157,8 +157,12 @@ export {
   NavigationSeparatorNodeSchema,
   NavigationTargetNodeSchema,
   OntologyBindingSchema,
+  LegacyOntologyBindingSchema,
+  PersistedOntologyBindingSchema,
+  ReadablePageRuntimeBundleSchema,
   PageReleaseSchema,
   PageRuntimeBundleSchema,
+  LegacyPageRuntimeBundleSchema,
   PageMigrationEquivalenceDimensionSchema,
   PageMigrationEquivalenceSchema,
   PageSchema,
@@ -196,6 +200,7 @@ export {
 } from "../contracts/declarative-control";
 export {
   DeclarativeAuthoringChoicePageQuerySchema,
+  LegacyDeclarativeRuntimeActionExecuteIntentSchema,
   DeclarativeAuthoringChoicePageSchema,
   DeclarativeAuthoringPageInfoSchema,
   DeclarativeAuthoringResourcePageQuerySchema,

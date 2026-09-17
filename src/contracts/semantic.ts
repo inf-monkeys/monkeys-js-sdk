@@ -31,6 +31,9 @@ export const OntologyViewDefinitionSchema = z
     requiredPermissionCodes: z.array(ContractIdentifierSchema).default([]),
 })
     .strict();
+/** Exact pre-canonical View records remain readable without synthesizing a new revision. */
+export const LegacyOntologyViewDefinitionSchema = OntologyViewDefinitionSchema.omit({ canonicalDataViewRevisionRef: true });
+
 export const ConceptRelationshipSchema = z
     .object({
     kind: ContractIdentifierSchema,

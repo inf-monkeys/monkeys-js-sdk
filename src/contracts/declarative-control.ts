@@ -566,6 +566,7 @@ export const ReleaseDependencyRoleSchema = z.enum([
   "capability",
   "provider",
   "ontology-definition",
+  "projection-spec",
   "query-definition",
   "view",
   "projection",
@@ -597,6 +598,7 @@ const DependencyKindByRole: Readonly<
   capability: "capability",
   provider: "view-provider",
   "ontology-definition": "ontology-definition",
+  "projection-spec": "projection-spec",
   "query-definition": "domain-query-definition",
   view: "view",
   projection: "projection",
@@ -2185,6 +2187,72 @@ export const OntologyBindingSchema = z
       });
     }
   });
+/** Persisted pre-canonical bindings retain their exact references and content hashes. */
+export const LegacyOntologyBindingSchema = z
+  .object({
+    ...OntologyBindingSchema.shape,
+    viewRevisionRef: RevisionRefSchema.optional(),
+    canonicalDataViewRevisionRef: z.never().optional(),
+    projectionRevisionRef: RevisionRefSchema.optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      Boolean(value.viewRevisionRef) === Boolean(value.projectionRevisionRef)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["viewRevisionRef"],
+        message:
+          "Legacy bindings require exactly one View or projection revision.",
+      });
+    }
+    for (const [key, reference, kind] of [
+      [
+        "ontologyDefinitionRevisionRef",
+        value.ontologyDefinitionRevisionRef,
+        "ontology-definition",
+      ],
+      ["viewRevisionRef", value.viewRevisionRef, "view"],
+      ["projectionRevisionRef", value.projectionRevisionRef, "projection-spec"],
+    ] as const) {
+      if (reference && reference.kind !== kind)
+        context.addIssue({
+          code: "custom",
+          path: [key, "kind"],
+          message: `Expected a ${kind} revision.`,
+        });
+    }
+    if (value.cursorWindow && value.pagination !== "cursor")
+      context.addIssue({
+        code: "custom",
+        path: ["cursorWindow"],
+        message: "Cursor-window navigation requires cursor pagination.",
+      });
+  });
+
+export const PersistedOntologyBindingSchema = z
+  .object({
+    ...OntologyBindingSchema.shape,
+    viewRevisionRef: RevisionRefSchema.optional(),
+    canonicalDataViewRevisionRef: RevisionRefSchema.optional(),
+    projectionRevisionRef: RevisionRefSchema.optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const schema = value.canonicalDataViewRevisionRef
+      ? OntologyBindingSchema
+      : LegacyOntologyBindingSchema;
+    const parsed = schema.safeParse(value);
+    if (!parsed.success)
+      for (const issue of parsed.error.issues)
+        context.addIssue({
+          code: "custom",
+          path: issue.path,
+          message: issue.message,
+        });
+  });
+
 export const ActionResultBindingEffectSourceSchema = z.discriminatedUnion(
   "kind",
   [
@@ -2909,7 +2977,7 @@ export const ResolvedPageSchema = z
     stateDefinitions: z.array(PageStateDefinitionSchema).optional(),
     entryTransitions: z.array(PageEntryTransitionSchema).optional(),
     interactionBindings: z.array(InteractionBindingSchema).optional(),
-    ontologyBindings: z.array(OntologyBindingSchema),
+    ontologyBindings: z.array(PersistedOntologyBindingSchema),
     queryBindings: z.array(QueryBindingSchema).optional(),
     actionBindings: z.array(ActionBindingSchema),
     pageAccessPolicy: AccessPolicySchema,
@@ -5074,7 +5142,7 @@ export const DeclarativeWorkbenchCatalogSchema = z
       });
     }
   });
-export const PageRuntimeBundleSchema = z
+const CompatiblePageRuntimeBundleSchema = z
   .object({
     contract: z.literal("PageRuntimeBundle"),
     ...RuntimeBundleBaseShape,
@@ -5086,7 +5154,7 @@ export const PageRuntimeBundleSchema = z
       .array(PageRouteStatePresentationSchema)
       .default([]),
     shellRevisionRef: RevisionRefSchema,
-    shellDescriptor: DeclarativeRuntimeShellDescriptorSchema,
+    shellDescriptor: DeclarativeRuntimeShellDescriptorSchema.optional(),
     renderTree: RenderTreeSchema,
     capabilityInstances: z.array(CapabilityInstanceSchema),
     deniedCapabilityInstanceIds: z.array(ContractIdentifierSchema).default([]),
@@ -5094,7 +5162,7 @@ export const PageRuntimeBundleSchema = z
     stateDefinitions: z.array(PageStateDefinitionSchema).default([]),
     entryTransitions: z.array(ResolvedPageEntryTransitionSchema).default([]),
     interactionBindings: z.array(InteractionBindingSchema).default([]),
-    ontologyBindings: z.array(OntologyBindingSchema),
+    ontologyBindings: z.array(PersistedOntologyBindingSchema),
     queryBindings: z.array(QueryBindingSchema).default([]),
     actionBindings: z.array(ActionBindingSchema),
     pageAccessPolicy: AccessPolicySchema,
@@ -5158,6 +5226,22 @@ export const ResolvedWorkbenchAppInstanceSchema =
   WorkbenchAppInstanceSchema.extend({
     targetAccessPolicy: AccessPolicySchema,
   }).strict();
+export const PageRuntimeBundleSchema =
+  CompatiblePageRuntimeBundleSchema.safeExtend({
+    shellDescriptor: DeclarativeRuntimeShellDescriptorSchema,
+    ontologyBindings: z.array(OntologyBindingSchema),
+  });
+
+/** Pre-canonical releases have no Shell descriptor and retain their legacy bindings. */
+export const LegacyPageRuntimeBundleSchema: z.ZodType<LegacyPageRuntimeBundle> =
+  CompatiblePageRuntimeBundleSchema.safeExtend({
+    shellDescriptor: z.never().optional(),
+    ontologyBindings: z.array(LegacyOntologyBindingSchema),
+  });
+
+/** Transport readers accept either complete contract, never a mixed partial document. */
+export const ReadablePageRuntimeBundleSchema: z.ZodType<PageRuntimeBundle | LegacyPageRuntimeBundle> = z.union([PageRuntimeBundleSchema, LegacyPageRuntimeBundleSchema]);
+
 export const WorkbenchRuntimeIdentitySchema = z
   .object({
     name: I18nTextSchema,
@@ -5509,6 +5593,13 @@ export type DeclarativeShellSurfaceChrome = z.infer<
 export type DeclarativeRuntimeShellDescriptor = z.infer<
   typeof DeclarativeRuntimeShellDescriptorSchema
 >;
+export type LegacyPageRuntimeBundle = Omit<
+  PageRuntimeBundle,
+  "shellDescriptor" | "ontologyBindings"
+> & {
+  shellDescriptor?: never;
+  ontologyBindings: z.infer<typeof LegacyOntologyBindingSchema>[];
+};
 export type PageRuntimeBundle = z.infer<typeof PageRuntimeBundleSchema>;
 export type WorkbenchRuntimeBundle = z.infer<
   typeof WorkbenchRuntimeBundleSchema
