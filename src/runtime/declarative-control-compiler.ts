@@ -1701,6 +1701,12 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
   const actionBindings: ResolvedPage["actionBindings"] = [];
   const interactionBindings: NonNullable<ResolvedPage["interactionBindings"]> =
     [];
+  const nodesById = new Map<string, Page["body"]>();
+  const indexNode = (node: Page["body"]): void => {
+    nodesById.set(node.id, node);
+    node.children?.forEach(indexNode);
+  };
+  indexNode(page.body);
   const visitNode = (node: Page["body"], parentNodeId?: string): void => {
     const registration = singleByStableIdentity(
       capabilityRegistrations,
@@ -1834,17 +1840,15 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
                 pageChangeIntentSchemaRevisionRef: (() => {
                   const sourceInstanceId =
                     cursorWindow.sourceCapabilityInstanceId ?? node.id;
-                  const sourceRegistration = capabilityInstances.find(
-                    (instance) => instance.instanceId === sourceInstanceId,
-                  );
-                  const sourceCapability =
-                    sourceRegistration &&
-                    capabilityRegistrations.find((candidate) =>
-                      sameRevisionRef(
-                        candidate.revisionRef,
-                        sourceRegistration.capabilityRevisionRef,
-                      ),
-                    );
+                  const sourceNode = nodesById.get(sourceInstanceId);
+                  const sourceCapability = sourceNode
+                    ? singleByStableIdentity(
+                        capabilityRegistrations,
+                        "capability",
+                        sourceNode.component,
+                        `page.body.${sourceNode.id}.component`,
+                      )
+                    : undefined;
                   const sourcePort = sourceCapability?.outputPorts.find(
                     (candidate) =>
                       candidate.name === cursorWindow.pageChangePort,

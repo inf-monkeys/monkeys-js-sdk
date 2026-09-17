@@ -161,3 +161,47 @@ test("resolvePage rejects unknown stable component identities", () => {
     (error) => error && error.code === "DEPENDENCY_MISSING",
   );
 });
+
+test("cursor event sources resolve before or after the query node and in descendants", () => {
+  const queryId = "query.cursor-items";
+  const definition = {
+    contract: "DomainQueryDefinition",
+    schemaVersion: 1,
+    queryId,
+    tenantScope,
+    dataSource: { kind: "tenant-catalog", resource: "ontology" },
+    handlerRef: { kind: "domain-query", id: queryId, ownerRepo: "monkeys-server", version: 1 },
+    inputSchemaRevisionRef: propertySchemaRevisionRef,
+    resultSchemaRevisionRef: propertySchemaRevisionRef,
+    accessPolicy: access,
+    lineageRequired: true,
+  };
+  const queryNode = {
+    id: "items",
+    component: capabilityRevisionRef.id,
+    data: [{ bindingId: "items-query", query: queryId, port: "items", parameters: {}, pagination: "cursor", cache: "identity-scoped", cancelOnChange: true, cursorWindow: { sourceCapabilityInstanceId: "pager", pageChangePort: "page-change" } }],
+  };
+  const pager = { id: "pager", component: capabilityRevisionRef.id };
+  const registry = [{ ...capabilityRegistry[0], inputPorts: [{ name: "items", schemaRevisionRef: propertySchemaRevisionRef }], outputPorts: [{ name: "page-change", schemaRevisionRef: propertySchemaRevisionRef }] }];
+  const input = {
+    pageOwnerRepo: "monkeys-js-sdk",
+    defaults,
+    capabilityRegistry: registry,
+    domainQueryRegistry: [{ definition, definitionRevisionRef: { ...propertySchemaRevisionRef, kind: "domain-query-definition", id: queryId } }],
+  };
+  for (const body of [
+    { ...page.body, children: [pager, queryNode] },
+    { ...page.body, children: [queryNode, pager] },
+    { ...queryNode, children: [pager] },
+  ]) {
+    const resolved = resolvePage({ ...input, page: { ...page, body } });
+    assert.equal(resolved.queryBindings[0].cursorWindow.sourceCapabilityInstanceId, "pager");
+    assert.deepEqual(resolved.queryBindings[0].cursorWindow.pageChangeIntentSchemaRevisionRef, propertySchemaRevisionRef);
+  }
+  for (const source of ["missing", "pager"]) {
+    const invalid = structuredClone(queryNode);
+    invalid.data[0].cursorWindow.sourceCapabilityInstanceId = source;
+    if (source === "pager") invalid.data[0].cursorWindow.pageChangePort = "unknown-port";
+    assert.throws(() => resolvePage({ ...input, page: { ...page, body: { ...invalid, children: [pager] } } }), (error) => error.code === "PORT_TYPE_MISMATCH");
+  }
+});
