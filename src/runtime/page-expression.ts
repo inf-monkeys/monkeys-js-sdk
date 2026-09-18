@@ -20,7 +20,7 @@ export const readPageValue = (value: JsonValue | undefined, path: readonly strin
   return current;
 };
 
-const unary = new Set(['not', 'string', 'number', 'length', 'round', 'entries', 'from-entries', 'trim']);
+const unary = new Set(['not', 'string', 'number', 'length', 'round', 'entries', 'from-entries', 'trim', 'encode-uri-component']);
 const binary = new Set(['subtract', 'divide', 'equals', 'not-equals', 'less-than', 'less-or-equal', 'greater-than', 'greater-or-equal', 'includes', 'get', 'fixed']);
 
 export const compilePageExpression = (input: unknown): PageExpression => {
@@ -160,6 +160,10 @@ const evaluateCompiled = (expression: PageExpression, context: PageExpressionCon
         return first.slice(start, end);
       }
       case 'trim': return typeof first === 'string' ? first.trim() : fail('PAGE_EXPRESSION_TYPE_STRING');
+      case 'encode-uri-component': {
+        if (typeof first !== 'string') return fail('PAGE_EXPRESSION_TYPE_STRING');
+        try { return encodeURIComponent(first); } catch { return fail('PAGE_EXPRESSION_INVALID_UNICODE'); }
+      }
       case 'number-format': {
         if (second !== 'en-US' && second !== 'zh-CN') return fail('PAGE_EXPRESSION_LOCALE');
         const minimumFractionDigits = number(values[2]!);

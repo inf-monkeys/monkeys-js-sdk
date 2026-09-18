@@ -5,6 +5,13 @@ const lit = (value) => ({ kind: 'literal', value });
 const read = (root, ...path) => ({ kind: 'read', root, path });
 const op = (operator, ...arguments_) => ({ kind: 'operator', operator, arguments: arguments_ });
 
+test('declared URL segments preserve Unicode and escape routing delimiters without accepting objects or malformed strings', () => {
+  assert.equal(evaluatePageExpression(op('encode-uri-component', lit('团队/a?b#c')), {}), '%E5%9B%A2%E9%98%9F%2Fa%3Fb%23c');
+  assert.throws(() => evaluatePageExpression(op('encode-uri-component', lit({ path: 'x' })), {}), /TYPE_STRING/);
+  assert.throws(() => evaluatePageExpression(op('encode-uri-component', lit('\ud800')), {}), /INVALID_UNICODE/);
+  assert.throws(() => compilePageExpression(op('encode-uri-component', lit('a'), lit('b'))), /ARITY/);
+});
+
 test('declarative preview arithmetic has explicit null and type semantics', () => {
   const expression = op('multiply', read('state', 'amount'), read('model', 'rate'));
   assert.equal(evaluatePageExpression(expression, { state: { amount: 12 }, model: { rate: 0.5 } }), 6);

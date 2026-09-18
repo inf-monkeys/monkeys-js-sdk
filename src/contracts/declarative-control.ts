@@ -1880,6 +1880,9 @@ export const QueryBindingSchema = z
       .optional(),
     queryWhen: PageStateActivationSchema.optional(),
     accessFailure: z.literal("render-forbidden").optional(),
+    draftRetention: z.object({
+      identityParameters: z.array(ContractIdentifierSchema).min(1).max(32),
+    }).strict().optional(),
     resultStateBindings: z
       .array(QueryResultStateBindingSchema)
       .max(32)
@@ -1899,6 +1902,12 @@ export const QueryBindingSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    if (value.draftRetention) {
+      const names = value.draftRetention.identityParameters;
+      if (value.execution !== 'server' || new Set(names).size !== names.length || names.some(name => !Object.prototype.hasOwnProperty.call(value.parameters, name))) {
+        context.addIssue({ code: 'custom', path: ['draftRetention'], message: 'Draft retention requires distinct declared Server query identity parameters.' });
+      }
+    }
     if (value.targetProjection) {
       if (value.targetProjection.schemaRevisionRef.kind !== "schema")
         context.addIssue({

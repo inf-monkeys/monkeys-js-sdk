@@ -11,7 +11,7 @@ export const PageOperatorSchema = z.enum([
   'add', 'subtract', 'multiply', 'divide', 'min', 'max', 'round',
   'equals', 'not-equals', 'less-than', 'less-or-equal', 'greater-than', 'greater-or-equal',
   'and', 'or', 'not', 'coalesce', 'concat', 'string', 'number', 'length', 'includes',
-  'get', 'set-path', 'merge', 'entries', 'from-entries', 'array-concat', 'slice', 'trim', 'fixed', 'number-format',
+  'get', 'set-path', 'merge', 'entries', 'from-entries', 'array-concat', 'slice', 'trim', 'fixed', 'number-format', 'encode-uri-component',
 ]);
 export type PageExpression =
   | { kind: 'literal'; value: JsonValue }
