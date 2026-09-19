@@ -64,15 +64,6 @@ export type DeclarativeAuthoringAction = z.infer<
   typeof DeclarativeAuthoringActionSchema
 >;
 
-export const DeclarativeLegacyMigrationKindSchema = z.enum([
-  "page",
-  "page-data-assets",
-  "workbench",
-]);
-export type DeclarativeLegacyMigrationKind = z.infer<
-  typeof DeclarativeLegacyMigrationKindSchema
->;
-
 const encodePath = (value: string): string => encodeURIComponent(value);
 
 export const declarativeControlRoutes = {
@@ -127,26 +118,6 @@ export const declarativeControlRoutes = {
     `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/navigation/placements/${encodePath(placement)}/import`,
   navigationSeedMigration: (placement: string): string =>
     `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/navigation/placements/${encodePath(placement)}/seed-migration`,
-  migrationInspect: (
-    kind: DeclarativeLegacyMigrationKind,
-    legacyResourceId: string,
-  ): string =>
-    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/migrations/${kind}/${encodePath(legacyResourceId)}/inspect`,
-  migrationCreateDraft: (
-    kind: DeclarativeLegacyMigrationKind,
-    legacyResourceId: string,
-  ): string =>
-    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/migrations/${kind}/${encodePath(legacyResourceId)}/draft`,
-  migrationCutover: (
-    kind: DeclarativeLegacyMigrationKind,
-    targetResourceId: string,
-  ): string =>
-    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/resources/${kind === "workbench" ? "workbench" : "page"}/${encodePath(targetResourceId)}/publish`,
-  migrationRollback: (
-    kind: DeclarativeLegacyMigrationKind,
-    targetResourceId: string,
-  ): string =>
-    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/resources/${kind === "workbench" ? "workbench" : "page"}/${encodePath(targetResourceId)}/rollback`,
   publicationPlan: (): string =>
     `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/publication-plans`,
   runtimeResolve: (): string =>
@@ -2266,116 +2237,6 @@ export const DeclarativePublicationResultSchema = z.union([
 ]);
 export type DeclarativePublicationResult = z.infer<
   typeof DeclarativePublicationResultSchema
->;
-
-export const DeclarativeMigrationDiffEntrySchema = z
-  .object({
-    path: z.string().trim().startsWith("/").max(1024),
-    status: z.enum(["added", "changed", "removed", "unchanged"]),
-    legacyValueHash: Sha256Schema.optional(),
-    declarativeValueHash: Sha256Schema.optional(),
-  })
-  .strict();
-
-export const DeclarativeMigrationBlockerSchema = z
-  .object({
-    code: ContractIdentifierSchema,
-    path: z.string().trim().max(1024).optional(),
-    message: z.string().trim().min(1).max(4096),
-  })
-  .strict();
-
-/**
- * Immutable result of inspecting one predeclared legacy source. The fingerprint
- * binds the source, target, diff, blockers and exact route-takeover authority;
- * draft creation must re-read the source and reject any mismatch.
- */
-export const DeclarativeLegacyMigrationInspectionSchema = z
-  .object({
-    contract: z.literal("DeclarativeLegacyMigrationInspection"),
-    schemaVersion: z.literal(1),
-    migrationKind: DeclarativeLegacyMigrationKindSchema,
-    legacyResourceId: ContractIdentifierSchema,
-    sourceRevisionRef: RevisionRefSchema,
-    sourceContentHash: Sha256Schema,
-    legacyAdapterRevisionRef: RevisionRefSchema,
-    targetResourceRef: StableRefSchema,
-    environmentRevisionRef: RevisionRefSchema,
-    routeSpaceRevisionRef: RevisionRefSchema,
-    normalizedPath: z.string().trim().startsWith("/").max(2048),
-    takeoverAuthorization: LegacyRouteTakeoverAuthorizationSchema,
-    diff: z.array(DeclarativeMigrationDiffEntrySchema).max(256),
-    blockers: z.array(DeclarativeMigrationBlockerSchema).max(128),
-    canCreateDraft: z.boolean(),
-    inspectionFingerprint: Sha256Schema,
-  })
-  .strict()
-  .superRefine((value, context) => {
-    const expectedKind =
-      value.migrationKind === "workbench" ? "workbench" : "page";
-    if (value.targetResourceRef.kind !== expectedKind) {
-      context.addIssue({
-        code: "custom",
-        path: ["targetResourceRef", "kind"],
-        message: `A ${value.migrationKind} migration must target ${expectedKind}.`,
-      });
-    }
-    if (
-      value.takeoverAuthorization.inspectedSourceContentHash !==
-        value.sourceContentHash ||
-      value.takeoverAuthorization.normalizedPath !== value.normalizedPath ||
-      value.takeoverAuthorization.targetResourceRef.kind !==
-        value.targetResourceRef.kind ||
-      value.takeoverAuthorization.targetResourceRef.id !==
-        value.targetResourceRef.id ||
-      value.takeoverAuthorization.targetResourceRef.ownerRepo !==
-        value.targetResourceRef.ownerRepo
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["takeoverAuthorization"],
-        message:
-          "The takeover authority must bind the exact inspected source, path and target.",
-      });
-    }
-    if (value.canCreateDraft !== (value.blockers.length === 0)) {
-      context.addIssue({
-        code: "custom",
-        path: ["canCreateDraft"],
-        message:
-          "Draft creation is allowed exactly when inspection has no blockers.",
-      });
-    }
-  });
-export type DeclarativeLegacyMigrationInspection = z.infer<
-  typeof DeclarativeLegacyMigrationInspectionSchema
->;
-
-export const DeclarativeLegacyMigrationCreateDraftIntentSchema = z
-  .object({
-    inspectionFingerprint: Sha256Schema,
-    expectedSourceRevisionRef: RevisionRefSchema,
-    expectedSourceContentHash: Sha256Schema,
-    idempotencyKey: z.string().trim().min(1).max(256),
-  })
-  .strict();
-export type DeclarativeLegacyMigrationCreateDraftIntent = z.infer<
-  typeof DeclarativeLegacyMigrationCreateDraftIntentSchema
->;
-
-export const DeclarativeLegacyMigrationCreateDraftResultSchema = z
-  .object({
-    migrationKind: DeclarativeLegacyMigrationKindSchema,
-    legacyResourceId: ContractIdentifierSchema,
-    inspectionFingerprint: Sha256Schema,
-    sourceRevisionRef: RevisionRefSchema,
-    sourceContentHash: Sha256Schema,
-    takeoverAuthorization: LegacyRouteTakeoverAuthorizationSchema,
-    draft: DeclarativeDraftResultSchema,
-  })
-  .strict();
-export type DeclarativeLegacyMigrationCreateDraftResult = z.infer<
-  typeof DeclarativeLegacyMigrationCreateDraftResultSchema
 >;
 
 export const DECLARATIVE_MIGRATION_ERROR_CODES = {

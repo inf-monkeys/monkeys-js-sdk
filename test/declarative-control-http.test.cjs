@@ -20,12 +20,7 @@ test('declarative control route builder owns canonical encoded URLs', () => {
   assert.equal(sdk.declarativeControlRoutes.runtimeActionExecute('page/slot', 'gallery/favorite'), '/api/declarative-control/runtime/pages/page%2Fslot/actions/gallery%2Ffavorite/execute');
   assert.equal(sdk.declarativeControlRoutes.runtimeNavigationActionExecute('navigation/slot', 'user/rebuild'), '/api/declarative-control/runtime/navigations/navigation%2Fslot/actions/user%2Frebuild/execute');
   assert.equal(sdk.declarativeControlRoutes.navigationSeedMigration('kernel/primary'), '/api/declarative-control/authoring/navigation/placements/kernel%2Fprimary/seed-migration');
-  assert.equal(sdk.declarativeControlRoutes.migrationInspect('page-data-assets', 'kernel.page.data-assets'), '/api/declarative-control/authoring/migrations/page-data-assets/kernel.page.data-assets/inspect');
-  assert.equal(sdk.declarativeControlRoutes.migrationInspect('page', 'kernel.page.data-tags'), '/api/declarative-control/authoring/migrations/page/kernel.page.data-tags/inspect');
-  assert.equal(sdk.declarativeControlRoutes.migrationCreateDraft('workbench', 'studio/main'), '/api/declarative-control/authoring/migrations/workbench/studio%2Fmain/draft');
-  assert.equal(sdk.declarativeControlRoutes.migrationCutover('page-data-assets', 'kernel.page.data-assets'), sdk.declarativeControlRoutes.authoringPrepare('page', 'kernel.page.data-assets', 'publish'));
-  assert.equal(sdk.declarativeControlRoutes.migrationRollback('workbench', 'workbench.main'), sdk.declarativeControlRoutes.authoringPrepare('workbench', 'workbench.main', 'rollback'));
-  assert.equal(sdk.DeclarativeLegacyMigrationKindSchema.safeParse('page').success, true);
+  assert.equal(sdk.declarativeControlRoutes.publicationPlan(), '/api/declarative-control/authoring/publication-plans');
 });
 
 test('navigation seed migration contracts preserve the R3 fail-closed result states', () => {
@@ -45,33 +40,11 @@ test('navigation seed migration contracts preserve the R3 fail-closed result sta
   }).success, false);
 });
 
-test('legacy migration inspection binds source fingerprint, diff and exact route takeover', () => {
+test('retired migration routes and DTOs are absent while historical takeover contracts remain', () => {
+  for (const route of ['migrationInspect', 'migrationCreateDraft', 'migrationCutover', 'migrationRollback']) assert.equal(Object.hasOwn(sdk.declarativeControlRoutes, route), false);
+  for (const name of ['DeclarativeLegacyMigrationInspectionSchema', 'DeclarativeLegacyMigrationCreateDraftIntentSchema', 'DeclarativeLegacyMigrationCreateDraftResultSchema']) assert.equal(Object.hasOwn(sdk, name), false);
   const revision = (kind, id, ownerRepo = 'monkeys') => ({ kind, id, ownerRepo, visibility: 'global', revision: 1, schemaVersion: 1, contentHash: 'a'.repeat(64) });
   const stable = (kind, id, ownerRepo = 'monkeys-server') => ({ kind, id, ownerRepo, visibility: 'global' });
-  const takeoverAuthorization = sdk.compileLegacyRouteTakeoverAuthorization({
-    contract: 'LegacyRouteTakeoverAuthorization', schemaVersion: 1,
-    routeSpaceRevisionRef: revision('route-space', 'kernel', 'monkeys'),
-    normalizedPath: '/data-governance/data',
-    legacyAdapterRevisionRef: revision('legacy-route-adapter', 'kernel.page.data-assets'),
-    sourceRevisionRef: revision('legacy-route-source', 'kernel.page.data-assets'),
-    inspectedSourceContentHash: 'a'.repeat(64),
-    targetResourceRef: stable('page', 'kernel.page.data-assets'),
-  });
-  const inspection = {
-    contract: 'DeclarativeLegacyMigrationInspection', schemaVersion: 1,
-    migrationKind: 'page-data-assets', legacyResourceId: 'kernel.page.data-assets',
-    sourceRevisionRef: revision('legacy-route-source', 'kernel.page.data-assets'),
-    sourceContentHash: 'a'.repeat(64), legacyAdapterRevisionRef: revision('legacy-route-adapter', 'kernel.page.data-assets'),
-    targetResourceRef: stable('page', 'kernel.page.data-assets'), environmentRevisionRef: revision('environment', 'monkeys.environment.production'),
-    routeSpaceRevisionRef: revision('route-space', 'kernel'), normalizedPath: '/data-governance/data', takeoverAuthorization,
-    diff: [{ path: '/route', status: 'changed', legacyValueHash: 'b'.repeat(64), declarativeValueHash: 'c'.repeat(64) }],
-    blockers: [], canCreateDraft: true, inspectionFingerprint: 'd'.repeat(64),
-  };
-  assert.equal(sdk.DeclarativeLegacyMigrationInspectionSchema.safeParse(inspection).success, true);
-  assert.equal(sdk.DeclarativeLegacyMigrationInspectionSchema.safeParse({ ...inspection, sourceContentHash: 'e'.repeat(64) }).success, false);
-  assert.equal(sdk.DeclarativeLegacyMigrationInspectionSchema.safeParse({ ...inspection, blockers: [{ code: 'SOURCE_INVALID', message: 'blocked' }] }).success, false);
-  assert.equal(sdk.DECLARATIVE_MIGRATION_ERROR_CODES.legacyWriteBlocked, 'DECLARATIVE_LEGACY_WRITE_BLOCKED');
-
   const workbenchInput = {
     contract: 'LegacyRouteTakeoverAuthorization', schemaVersion: 1,
     routeSpaceRevisionRef: revision('route-space', 'studio', 'monkeys'), normalizedPath: '/studio/studio-1',
