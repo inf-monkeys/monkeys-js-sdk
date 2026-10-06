@@ -256,6 +256,12 @@ export interface CompileNavigationRuntimeBundleInput {
   release: NavigationRelease;
   releaseRevisionRef: RevisionRef;
   targetRegistry: readonly NavigationTargetRegistration[];
+  /**
+   * Exact Page and PageRelease references independently verified by the
+   * authenticated Kernel catalog. These are the only cross-tenant references
+   * a Kernel Navigation may retain in its immutable runtime bundle.
+   */
+  verifiedKernelPageReferences?: readonly RevisionRef[];
   compilerRevisionRef: RevisionRef;
   generation: number;
   limits: DeclarativeControlCompileLimits;
@@ -3210,6 +3216,33 @@ export const compileNavigationRuntimeBundle = (
     input.compilerRevisionRef,
   );
   const scope = TenantScopeSchema.parse(navigation.tenantScope);
+  const verifiedKernelPageReferences = [...(input.verifiedKernelPageReferences ?? [])].map((reference, index) => {
+    const parsed = RevisionRefSchema.parse(reference);
+    if (
+      release.target.surface !== "kernel" ||
+      parsed.visibility !== "tenant" ||
+      !parsed.tenantScope?.teamRef?.id.startsWith("kernel-page.") ||
+      parsed.ownerRepo !== "monkeys-server" ||
+      !["page", "page-release"].includes(parsed.kind)
+    ) {
+      throw new DeclarativeControlCompilationError(
+        "CROSS_TENANT_REFERENCE",
+        `verifiedKernelPageReferences[${index}]`,
+        "Verified Kernel Page references must be exact tenant-scoped Page and PageRelease revisions from the Kernel page catalog.",
+      );
+    }
+    if (scopeKey(parsed.tenantScope) === scopeKey(scope)) {
+      throw new DeclarativeControlCompilationError(
+        "CROSS_TENANT_REFERENCE",
+        `verifiedKernelPageReferences[${index}]`,
+        "Verified Kernel Page references must belong to a different tenant scope.",
+      );
+    }
+    return parsed;
+  });
+  const verifiedKernelPageReferenceKeys = new Set(
+    verifiedKernelPageReferences.map(revisionRefKey),
+  );
   assertSameTenantScope(release.tenantScope, scope, "release.tenantScope");
   if (navigation.nodes.length > input.limits.maxNavigationNodes)
     throw new DeclarativeControlCompilationError(
@@ -3489,11 +3522,48 @@ export const compileNavigationRuntimeBundle = (
         "Navigation target is active on another surface.",
       );
     }
-    assertTenantCompatible(
-      registration.targetRevisionRef,
-      scope,
-      `nodes[${index}].targetRef`,
-    );
+    const targetIsForeignTenant =
+      registration.targetRevisionRef.visibility === "tenant" &&
+      scopeKey(registration.targetRevisionRef.tenantScope as TenantScope) !==
+        scopeKey(scope);
+    if (targetIsForeignTenant) {
+      const releaseReference =
+        registration.kind === "route"
+          ? registration.releaseRevisionRef
+          : undefined;
+      if (
+        release.target.surface !== "kernel" ||
+        registration.kind !== "route" ||
+        registration.targetRevisionRef.kind !== "page" ||
+        !releaseReference ||
+        !verifiedKernelPageReferenceKeys.has(
+          revisionRefKey(registration.targetRevisionRef),
+        ) ||
+        !verifiedKernelPageReferenceKeys.has(revisionRefKey(releaseReference))
+      ) {
+        throw new DeclarativeControlCompilationError(
+          "CROSS_TENANT_REFERENCE",
+          `nodes[${index}].targetRef`,
+          "Kernel Navigation may retain only Page references independently verified by the authenticated Kernel page catalog.",
+        );
+      }
+      if (
+        scopeKey(releaseReference.tenantScope as TenantScope) !==
+        scopeKey(registration.targetRevisionRef.tenantScope as TenantScope)
+      ) {
+        throw new DeclarativeControlCompilationError(
+          "CROSS_TENANT_REFERENCE",
+          `nodes[${index}].targetRef`,
+          "Verified Kernel Page and PageRelease references must belong to the same tenant scope.",
+        );
+      }
+    } else {
+      assertTenantCompatible(
+        registration.targetRevisionRef,
+        scope,
+        `nodes[${index}].targetRef`,
+      );
+    }
     if (
       !accessPolicyChainImplies(
         [...ancestors, node.audience],
