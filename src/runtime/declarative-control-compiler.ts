@@ -799,14 +799,21 @@ const requireDependencies = (
 const assertDependencyScopes = (
   snapshot: readonly ReleaseDependency[],
   scope: TenantScope,
+  allowedForeignReferences: ReadonlySet<string> = new Set(),
 ) =>
-  snapshot.forEach((dependency, index) =>
+  snapshot.forEach((dependency, index) => {
+    const reference = dependency.revisionRef;
+    const foreign =
+      reference.visibility === "tenant" &&
+      scopeKey(reference.tenantScope as TenantScope) !== scopeKey(scope);
+    if (foreign && allowedForeignReferences.has(revisionRefKey(reference)))
+      return;
     assertTenantCompatible(
-      dependency.revisionRef,
+      reference,
       scope,
       `dependencySnapshot[${index}].revisionRef`,
-    ),
-  );
+    );
+  });
 const requireReleaseReady = (
   release: PageRelease | WorkbenchRelease | NavigationRelease,
 ) => {
@@ -3301,7 +3308,11 @@ export const compileNavigationRuntimeBundle = (
     release.dependencySnapshot,
     navigationDependencies(navigation, release, compilerRevisionRef),
   );
-  assertDependencyScopes(release.dependencySnapshot, scope);
+  assertDependencyScopes(
+    release.dependencySnapshot,
+    scope,
+    verifiedKernelPageReferenceKeys,
+  );
   const targetRegistry = input.targetRegistry.map((registration, index) => {
     const common = {
       stableTargetRef: StableRefSchema.parse(registration.stableTargetRef),
