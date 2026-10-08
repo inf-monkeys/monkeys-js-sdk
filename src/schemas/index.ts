@@ -617,3 +617,10 @@ export {
 } from "../contracts/page-expression";
 
 export * from "../contracts/record-editor-draft";
+export {
+  DeclarativeImportDocumentSchema,
+  DeclarativeDocumentImportRequestSchema,
+  DeclarativeDocumentImportIntentSchema,
+  DeclarativeDocumentImportPlanSchema,
+  DeclarativeDocumentImportResultSchema,
+} from "../contracts/declarative-document-import";

@@ -9,6 +9,7 @@ export * from './continuity';
 export * from './data';
 export * from './declarative-control';
 export * from './declarative-control-http';
+export * from './declarative-document-import';
 export * from './file';
 export * from './legacy-route';
 export * from './menu';
