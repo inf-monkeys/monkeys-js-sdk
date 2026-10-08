@@ -33,7 +33,9 @@ import { resolveThemeTokens } from '@inf-monkeys-tech/monkeys/runtime';
 
 `Page`、`PageRelease`、`Workbench`、`WorkbenchRelease`、`Navigation` 与 `NavigationRelease` 是六个独立的 control Ontology 合同。它们复用显式的 tenant scope、不可变 revision/hash、受限 AccessPolicy、RouteSpace/RouteClaim、PublicationPlan 和发布证据；不保存业务 Records、用户组成员、任意 URL 或可执行代码。
 
-`compilePageRuntimeBundle`、`compileWorkbenchRuntimeBundle` 与 `compileNavigationRuntimeBundle` 只接受精确依赖和调用方批准的规模上限，输出可重建、与用户身份无关的确定性 Bundle。现有 `PageDefinition`、`MenuDefinition` 及其编译器保持不变，消费者可以按独立部署节奏升级 SDK。
+`compilePageRuntimeBundle`, `compileWorkbenchRuntimeBundle`, and `compileNavigationRuntimeBundle` validate dependency evidence and caller-approved size limits, then produce rebuildable bundles before identity filtering. Navigation Page links use stable Page identity and the current published target registry; historical Page references in `NavigationRelease` remain audit evidence. Page upgrades, rollbacks, disappearance, and recovery do not require a Navigation publication. Workbench and action target bindings remain exact.
+
+`projectCurrentNavigationPages` refreshes Page routes and access policies from a complete, tenant-authorized catalog. Consumers hide unavailable or disabled nodes and empty groups, and enforce both Navigation audience and current Page permissions. Catalog failures remain errors. Persisted release and dependency hashes are not rewritten by runtime projection.
 
 ## 发布门禁
 

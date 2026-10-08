@@ -1348,14 +1348,14 @@ test('compiles governed Navigation DomainCommands with exact Schema revisions an
   assert.equal(bundle.nodes[0].tone, 'danger');
 });
 
-test('Navigation compiler rejects unreleased targets, wider audiences, and caller limit overflow', () => {
+test('Navigation compiler hides missing Pages, preserves Workbench policy checks, and rejects caller limit overflow', () => {
   assert.throws(
-    () => runtime.compileNavigationRuntimeBundle(navigationInput({ targetRegistry: navigationTargetRegistry.slice(1) })),
+    () => runtime.compileNavigationRuntimeBundle(navigationInput({ targetRegistry: navigationTargetRegistry.slice(0, 1) })),
     (error) => error.code === 'NAV_TARGET_UNRELEASED',
   );
   const wider = {
     ...navigation,
-    nodes: navigation.nodes.map((node) => node.nodeId === 'gallery'
+    nodes: navigation.nodes.map((node) => node.targetRef?.kind === 'workbench'
       ? { ...node, audience: access() }
       : node),
   };

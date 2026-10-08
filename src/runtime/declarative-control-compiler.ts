@@ -3463,17 +3463,15 @@ export const compileNavigationRuntimeBundle = (
     const unavailable = unavailableByNodeId.get(node.nodeId);
     if (
       !registration &&
-      unavailable &&
       node.targetRef.kind === "page" &&
-      sameStableRef(unavailable.stableTargetRef, node.targetRef)
+      ((unavailable && sameStableRef(unavailable.stableTargetRef, node.targetRef)) ||
+        (released && sameStableRef(released.stableTargetRef, node.targetRef)))
     ) {
-      assertTenantCompatible(
-        node.targetRef,
-        scope,
-        `nodes[${index}].targetRef`,
-      );
+      if (!released || !verifiedKernelPageReferenceKeys.has(revisionRefKey(released.targetRevisionRef))) {
+        assertTenantCompatible(node.targetRef, scope, `nodes[${index}].targetRef`);
+      }
       if (
-        unavailable.accessPolicy &&
+        unavailable?.accessPolicy &&
         !accessPolicyChainImplies(
           [...ancestors, node.audience],
           unavailable.accessPolicy,
@@ -3494,23 +3492,24 @@ export const compileNavigationRuntimeBundle = (
           kind: "unavailable" as const,
           nodeId: node.nodeId,
           stableTargetRef: node.targetRef,
-          accessPolicy: unavailable.accessPolicy,
+          accessPolicy: unavailable?.accessPolicy ?? null,
         },
       };
     }
+    const currentPage = node.targetRef.kind === "page" && registration?.kind === "route";
     if (
       !registration ||
-      !released ||
+      (!released && !(currentPage && unavailable && sameStableRef(unavailable.stableTargetRef, node.targetRef))) ||
       !sameStableRef(
         registration.stableTargetRef,
         stableFromRevision(registration.targetRevisionRef),
       ) ||
-      !sameStableRef(registration.stableTargetRef, released.stableTargetRef) ||
-      !sameRevisionRef(
+      (released && !sameStableRef(registration.stableTargetRef, released.stableTargetRef)) ||
+      (!currentPage && released && !sameRevisionRef(
         registration.targetRevisionRef,
         released.targetRevisionRef,
-      ) ||
-      (registration.kind === "route" &&
+      )) ||
+      (!currentPage && released && registration.kind === "route" &&
         (Boolean(registration.releaseRevisionRef) !==
           Boolean(released.releaseRevisionRef) ||
           (registration.releaseRevisionRef &&
@@ -3523,7 +3522,7 @@ export const compileNavigationRuntimeBundle = (
       throw new DeclarativeControlCompilationError(
         "NAV_TARGET_UNRELEASED",
         `nodes[${index}].targetRef`,
-        "Navigation target is not resolved to the exact active release recorded by NavigationRelease.",
+        "Navigation target must resolve to the same Page identity or the exact non-Page binding recorded by NavigationRelease.",
       );
     }
     if (registration.surface !== release.target.surface) {
@@ -3575,8 +3574,10 @@ export const compileNavigationRuntimeBundle = (
         `nodes[${index}].targetRef`,
       );
     }
+    // Page visibility is the intersection of the Navigation and current Page policies.
+    // A Page permission change must not require republishing its navigation.
     if (
-      !accessPolicyChainImplies(
+      !currentPage && !accessPolicyChainImplies(
         [...ancestors, node.audience],
         registration.accessPolicy,
       )
@@ -3602,7 +3603,10 @@ export const compileNavigationRuntimeBundle = (
     let resolvedTarget: Record<string, unknown>;
     if (registration.kind === "route") {
       resolvedTarget = {
-        ...released,
+        nodeId: node.nodeId,
+        stableTargetRef: registration.stableTargetRef,
+        targetRevisionRef: registration.targetRevisionRef,
+        ...(registration.releaseRevisionRef ? { releaseRevisionRef: registration.releaseRevisionRef } : {}),
         kind: "route",
         accessPolicy: registration.accessPolicy,
         routeClaim: registration.routeClaim,
