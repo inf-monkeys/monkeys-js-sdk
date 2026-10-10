@@ -143,3 +143,44 @@ test("document import routes keep preflight separate from writes", () => {
     "/api/declarative-control/authoring/documents/navigation/import",
   );
 });
+
+test("declarative diagnostics preserve validation ownership and recovery", () => {
+  const legacy = sdk.DeclarativeDiagnosticSchema.parse({
+    code: "SCHEMA_DEFINITION_MISMATCH",
+    blocking: true,
+    path: "body.data[0].query",
+    message: "The query result schema is not available.",
+  });
+  assert.equal(legacy.stage, undefined);
+  assert.equal(legacy.severity, undefined);
+  const parsed = sdk.DeclarativeDiagnosticSchema.parse({
+    code: "SCHEMA_DEFINITION_MISMATCH",
+    stage: "contract",
+    severity: "error",
+    blocking: true,
+    path: "body.data[0].query",
+    message: "The query result schema is not available.",
+    recovery: ["Publish the schema, then prepare the Page again."],
+  });
+  assert.equal(parsed.stage, "contract");
+  assert.equal(parsed.blocking, true);
+  assert.equal(sdk.DeclarativeDiagnosticSchema.safeParse({ code: "BAD", path: "", message: "missing" }).success, false);
+  assert.equal(sdk.DeclarativeDocumentImportPlanSchema.safeParse({
+    contract: "DeclarativeDocumentImportPlan",
+    schemaVersion: 1,
+    resourceKind: "page",
+    resourceId: page.pageId,
+    surface: "studio",
+    sourceContentHash: sdk.canonicalContentHash(page),
+    environmentRevisionRef: { ...fixtures.environmentRef, revision: 1, schemaVersion: 1, contentHash: "e".repeat(64) },
+    document: page,
+    tenantScope: page.tenantScope,
+    requiresInitialization: false,
+    expectedVersion: 0,
+    currentContentHash: null,
+    changed: true,
+    diagnostics: [parsed],
+    dependencyContentHash: "d".repeat(64),
+    planHash: "a".repeat(64),
+  }).success, true);
+});

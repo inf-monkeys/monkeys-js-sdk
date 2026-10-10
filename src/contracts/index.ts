@@ -10,6 +10,8 @@ export * from './data';
 export * from './declarative-control';
 export * from './declarative-control-http';
 export * from './declarative-document-import';
+export * from './declarative-diagnostic';
+export * from './declarative-publication-job';
 export * from './file';
 export * from './legacy-route';
 export * from './menu';

@@ -35,6 +35,7 @@ import {
   collectExternalPageExpressionReads,
 } from "./page-expression";
 import { analyzePageBindingDependencies } from "./page-binding-dependencies";
+import { DeclarativeDiagnosticSchema } from "./declarative-diagnostic";
 export { analyzePageBindingDependencies } from "./page-binding-dependencies";
 export const DECLARATIVE_CONTROL_SCHEMA_VERSION = 1;
 const uniqueArray = <T>(
@@ -4896,14 +4897,7 @@ export const NavigationReleaseSchema = z
       });
     }
   });
-const RuntimeDiagnosticSchema = z
-  .object({
-    code: ContractIdentifierSchema,
-    severity: z.enum(["info", "warning", "error"]),
-    path: z.string().trim().min(1),
-    message: z.string().trim().min(1),
-  })
-  .strict();
+const RuntimeDiagnosticSchema = DeclarativeDiagnosticSchema;
 const RuntimeBundleBaseShape = {
   schemaVersion: z.literal(DECLARATIVE_CONTROL_SCHEMA_VERSION),
   tenantScope: TenantScopeSchema,

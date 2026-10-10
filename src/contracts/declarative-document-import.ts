@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ContractIdentifierSchema, Sha256Schema } from "./common";
+import { DeclarativeDiagnosticSchema } from "./declarative-diagnostic";
 import {
   NavigationSchema,
   PageSchema,
@@ -75,16 +76,7 @@ export const DeclarativeDocumentImportPlanSchema = z
     expectedVersion: z.number().int().nonnegative(),
     currentContentHash: Sha256Schema.nullable(),
     changed: z.boolean(),
-    diagnostics: z.array(
-      z
-        .object({
-          code: z.string().min(1),
-          path: z.string(),
-          message: z.string(),
-          blocking: z.boolean(),
-        })
-        .strict(),
-    ),
+    diagnostics: z.array(DeclarativeDiagnosticSchema),
     dependencyContentHash: Sha256Schema,
     planHash: Sha256Schema,
   })

@@ -28,6 +28,7 @@ import {
   LegacyRouteTakeoverAuthorizationSchema,
   DomainQueryDefinitionSchema,
 } from "./declarative-control";
+import { DeclarativeDiagnosticSchema } from "./declarative-diagnostic";
 import {
   ContractIdentifierSchema,
   JsonObjectSchema,
@@ -124,6 +125,14 @@ export const declarativeControlRoutes = {
     `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/navigation/placements/${encodePath(placement)}/seed-migration`,
   publicationPlan: (): string =>
     `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/publication-plans`,
+  publicationJobs: (): string =>
+    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/publication-jobs`,
+  publicationJob: (jobId: string): string =>
+    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/publication-jobs/${encodePath(jobId)}`,
+  publicationJobResume: (jobId: string): string =>
+    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/publication-jobs/${encodePath(jobId)}/resume`,
+  publicationJobCancel: (jobId: string): string =>
+    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/publication-jobs/${encodePath(jobId)}/cancel`,
   runtimeResolve: (): string =>
     `${DECLARATIVE_CONTROL_API_PREFIX}/runtime/resolve`,
   runtimeNavigationBootstrap: (): string =>
@@ -2023,14 +2032,7 @@ export type DeclarativeAuthoringHistory = z.infer<
   typeof DeclarativeAuthoringHistorySchema
 >;
 
-const DeclarativeRuntimeDiagnosticSchema = z
-  .object({
-    code: ContractIdentifierSchema,
-    severity: z.enum(["info", "warning", "error"]),
-    path: z.string().trim().min(1),
-    message: z.string().trim().min(1),
-  })
-  .strict();
+const DeclarativeRuntimeDiagnosticSchema = DeclarativeDiagnosticSchema;
 
 export const DeclarativeDraftResultSchema = z
   .object({
