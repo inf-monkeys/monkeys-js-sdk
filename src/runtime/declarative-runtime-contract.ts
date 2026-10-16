@@ -101,10 +101,13 @@ export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean
   const before = withoutAnnotations(previous) as Record<string, any>;
   const after = withoutAnnotations(next) as Record<string, any>;
   const { properties: oldProperties, required: oldRequired, additionalProperties: oldAdditional,
-    enum: oldEnum, ...oldFixed } = before;
+    enum: oldEnum, items: oldItems, ...oldFixed } = before;
   const { properties: newProperties, required: newRequired, additionalProperties: newAdditional,
-    enum: newEnum, ...newFixed } = after;
+    enum: newEnum, items: newItems, ...newFixed } = after;
   if (canonicalContentHash(oldFixed) !== canonicalContentHash(newFixed)) return false;
+  // Homogeneous arrays apply the same inclusion rule to every element. Tuple
+  // schemas and other array constraints stay exact unless already identical.
+  if (!acceptsPreviousSchema(oldItems ?? true, newItems ?? true)) return false;
   if (newEnum && (!oldEnum || oldEnum.some((value: unknown) => !newEnum.some((candidate: unknown) =>
     canonicalContentHash(candidate) === canonicalContentHash(value))))) return false;
   if ((newRequired ?? []).some((key: string) => !(oldRequired ?? []).includes(key))) return false;

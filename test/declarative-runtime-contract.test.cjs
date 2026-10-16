@@ -95,6 +95,23 @@ test('compatible output evolution cannot emit values rejected by published consu
   assert.throws(() => assertCompatibleCapabilityUpgrade(entry, broken), /schema integrity/);
 });
 
+test('array elements accept additive optional fields without admitting breaking changes', () => {
+  const { acceptsPreviousSchema } = require('../lib');
+  const previous = { type: 'array', maxItems: 20, items: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: { type: 'string' } } } };
+  const next = structuredClone(previous);
+  next.items.properties.behavior = { enum: ['intent', 'download'] };
+  assert.equal(acceptsPreviousSchema(previous, next), true);
+  assert.equal(acceptsPreviousSchema(next, previous), false);
+  const required = structuredClone(next);
+  required.items.required.push('behavior');
+  assert.equal(acceptsPreviousSchema(previous, required), false);
+  assert.equal(acceptsPreviousSchema({ type: 'array' }, next), false);
+  assert.equal(acceptsPreviousSchema(previous, { ...next, maxItems: 10 }), false);
+  assert.equal(acceptsPreviousSchema({ type: 'array', items: { enum: ['a', 'b'] } }, { type: 'array', items: { enum: ['a'] } }), false);
+  assert.equal(acceptsPreviousSchema({ type: 'array', items: [{ type: 'string' }] }, { type: 'array', items: [{ type: 'number' }] }), false);
+  assert.equal(acceptsPreviousSchema({ type: 'array', items: previous }, { type: 'array', items: next }), true);
+});
+
 test('optional ports extend a contract without changing published ports or permissions', () => {
   const { assertCompatibleCapabilityUpgrade } = require('../lib');
   const entry = fixture(1, 'table/v1');
