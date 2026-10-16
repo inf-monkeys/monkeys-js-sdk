@@ -170,3 +170,19 @@ test('rejects structurally valid but product-incomplete token releases', () => {
     /incomplete/i,
   );
 });
+
+test('optional Bento recipes validate types, levels and non-negative dimensions', () => {
+  const dim = (value) => ({ $type: 'dimension', $value: { value, unit: 'rem' } });
+  const doc = (recipe) => ({ semantic: { bento: recipe } });
+  assert.equal(ThemeTokensSchema.safeParse({}).success, true);
+  assert.equal(ThemeTokensSchema.safeParse(doc({ default: { padding: dim(0) }, levels: { level2: { radius: dim(0.5) } } })).success, true);
+  for (const recipe of [
+    { default: { padding: dim(-1) } },
+    { default: { radius: { $type: 'number', $value: 2 } } },
+    { levels: { level0: { radius: dim(1) } } },
+    { default: { unknownField: dim(1) } },
+    { default: { borderStyle: { $type: 'strokeStyle', $value: { dashArray: [{ value: 2, unit: 'px' }], lineCap: 'round' } } } },
+    { default: { padding: { light: dim(1) } } },
+  ]) assert.equal(ThemeTokensSchema.safeParse(doc(recipe)).success, false, JSON.stringify(recipe));
+  assert.equal(ThemeTokensSchema.safeParse(doc({ default: { padding: { compact: dim(0), default: dim(1) } } })).success, true);
+});
