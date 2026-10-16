@@ -112,6 +112,48 @@ test('array elements accept additive optional fields without admitting breaking 
   assert.equal(acceptsPreviousSchema({ type: 'array', items: previous }, { type: 'array', items: next }), true);
 });
 
+test('a closed legacy input survives a disjoint union extension inside arrays', () => {
+  const previous = {
+    type: 'object', additionalProperties: false, required: ['hasMore', 'nextCursor'],
+    properties: { hasMore: { type: 'boolean' }, nextCursor: { oneOf: [{ type: 'string' }, { type: 'null' }] } },
+    allOf: [{ if: { properties: { hasMore: { const: false } } }, then: { properties: { nextCursor: { type: 'null' } } } }],
+  };
+  const append = { ...previous, properties: { ...previous.properties, mode: { const: 'append' }, total: { type: 'integer' } } };
+  const window = { type: 'object', additionalProperties: false, required: ['mode', 'page'], properties: { mode: { const: 'window' }, page: { type: 'integer' } } };
+  const next = { oneOf: [window, append] };
+  assert.equal(acceptsPreviousSchema(previous, next), true);
+  assert.equal(acceptsPreviousSchema(next, previous), false);
+  assert.equal(acceptsPreviousSchema({ type: 'array', items: previous }, { type: 'array', items: next }), true);
+  const narrowed = structuredClone(next);
+  narrowed.oneOf[1].required.push('mode');
+  assert.equal(acceptsPreviousSchema(previous, narrowed), false);
+  assert.equal(acceptsPreviousSchema(previous, { ...next, not: previous }), false);
+});
+
+test('oneOf inclusion rejects overlapping or unproven branches while anyOf permits overlap', () => {
+  const previous = { type: 'object', additionalProperties: false, properties: { id: { type: 'string' } } };
+  assert.equal(acceptsPreviousSchema(previous, { oneOf: [previous, previous] }), false);
+  assert.equal(acceptsPreviousSchema(previous, { anyOf: [previous, previous] }), true);
+  const optionalTag = { type: 'object', properties: { mode: { const: 'new' } } };
+  assert.equal(acceptsPreviousSchema(previous, { oneOf: [previous, optionalTag] }), false);
+  const requiredTag = { ...optionalTag, required: ['mode'] };
+  assert.equal(acceptsPreviousSchema(previous, { oneOf: [previous, requiredTag] }), true);
+  for (const open of [{ ...previous, additionalProperties: true }, { ...previous, patternProperties: { '^mode$': {} } }]) {
+    assert.equal(acceptsPreviousSchema(open, { oneOf: [open, requiredTag] }), false);
+  }
+  const referenced = { ...requiredTag, $ref: '#/definitions/unknown' };
+  assert.equal(acceptsPreviousSchema(previous, { oneOf: [previous, referenced] }), false);
+});
+
+test('required discriminator values prove union exclusion but optional values do not', () => {
+  const legacy = { type: 'object', required: ['mode'], properties: { mode: { const: 'legacy' } } };
+  const modern = { type: 'object', required: ['mode'], properties: { mode: { enum: ['modern', 'window'] } } };
+  assert.equal(acceptsPreviousSchema(legacy, { oneOf: [legacy, modern] }), true);
+  const optionalLegacy = { ...legacy, required: [] }, optionalModern = { ...modern, required: [] };
+  assert.equal(acceptsPreviousSchema(optionalLegacy, { oneOf: [optionalLegacy, optionalModern] }), false);
+  assert.equal(acceptsPreviousSchema({ oneOf: [legacy, modern] }, { anyOf: [legacy, modern] }), true);
+});
+
 test('optional ports extend a contract without changing published ports or permissions', () => {
   const { assertCompatibleCapabilityUpgrade } = require('../lib');
   const entry = fixture(1, 'table/v1');

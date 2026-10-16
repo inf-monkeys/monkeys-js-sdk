@@ -91,6 +91,25 @@ export const assertDeclarativeCapabilityContract = (
   }
 };
 
+/** Prove exclusion from explicit constraints; unknown relationships may overlap. */
+const schemasCannotOverlap = (left: unknown, right: unknown): boolean => {
+  if (left === false || right === false) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object' ||
+      Array.isArray(left) || Array.isArray(right)) return false;
+  const a = left as Record<string, any>;
+  const b = right as Record<string, any>;
+  if (a.$ref || b.$ref) return false;
+  const values = (schema: typeof a): unknown[] | undefined =>
+    Object.prototype.hasOwnProperty.call(schema, 'const') ? [schema.const] : Array.isArray(schema.enum) ? schema.enum : undefined;
+  const av = values(a), bv = values(b);
+  if (av && bv && av.every(value => !bv.some(other => canonicalContentHash(value) === canonicalContentHash(other)))) return true;
+  if (a.type !== 'object' || b.type !== 'object') return false;
+  const property = (schema: typeof a, key: string): unknown => schema.properties?.[key] ??
+    (schema.patternProperties ? true : schema.additionalProperties ?? true);
+  return [...(a.required ?? []), ...(b.required ?? [])].some(key =>
+    schemasCannotOverlap(property(a, key), property(b, key)));
+};
+
 /** Conservative schema inclusion for compatible inputs; unknown changes fail closed. */
 export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean => {
   if (canonicalContentHash(previous) === canonicalContentHash(next) || next === true) return true;
@@ -100,6 +119,17 @@ export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean
   const withoutAnnotations = (schema: object) => Object.fromEntries(Object.entries(schema).filter(([key]) => !['title', 'description', 'examples', '$comment'].includes(key)));
   const before = withoutAnnotations(previous) as Record<string, any>;
   const after = withoutAnnotations(next) as Record<string, any>;
+  // A union without sibling constraints can be checked branch by branch. For
+  // oneOf, inclusion also needs proof that no accepted old value matches a
+  // second branch; a matching branch alone would silently narrow the input.
+  const branches = (schema: typeof before): unknown[] | undefined => Object.keys(schema).length === 1
+    ? Array.isArray(schema.anyOf) ? schema.anyOf : Array.isArray(schema.oneOf) ? schema.oneOf : undefined
+    : undefined;
+  const oldBranches = branches(before);
+  if (oldBranches) return oldBranches.every(branch => acceptsPreviousSchema(branch, next));
+  const newBranches = branches(after);
+  if (newBranches) return newBranches.some((branch, index) => acceptsPreviousSchema(previous, branch) &&
+    (!after.oneOf || newBranches.every((other, otherIndex) => index === otherIndex || schemasCannotOverlap(previous, other))));
   const { properties: oldProperties, required: oldRequired, additionalProperties: oldAdditional,
     enum: oldEnum, items: oldItems, ...oldFixed } = before;
   const { properties: newProperties, required: newRequired, additionalProperties: newAdditional,
