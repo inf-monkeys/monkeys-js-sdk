@@ -138,6 +138,7 @@ export interface CapabilityPortRegistration {
   schemaRevisionRef: RevisionRef;
 }
 export interface DeclarativeCapabilityRegistration {
+  runtimeContractVersion?: string;
   capabilityRevisionRef: RevisionRef;
   providerRevisionRef: RevisionRef;
   propertySchemaRevisionRef: RevisionRef;
@@ -248,6 +249,7 @@ export interface CompilePageRuntimeBundleInput {
   shellRegistration: DeclarativeProductResourceRegistration;
 }
 export interface CompileWorkbenchRuntimeBundleInput {
+  capabilityRegistry?: readonly DeclarativeCapabilityRegistration[];
   workbench: Workbench;
   workbenchRevisionRef: RevisionRef;
   release: WorkbenchRelease;
@@ -288,6 +290,12 @@ export const sameRevisionRef = (
   left: RevisionRef,
   right: RevisionRef,
 ): boolean => revisionRefKey(left) === revisionRefKey(right);
+
+/** Schema content and authority remain stable across catalog renumbering. */
+export const sameSchemaContract = (left: RevisionRef, right: RevisionRef): boolean =>
+  left.kind === 'schema' && right.kind === 'schema' && sameStableRef(left, right) &&
+  left.schemaVersion === right.schemaVersion && left.contentHash === right.contentHash;
+
 const assertUniqueRegistryKeys = (keys: readonly string[], path: string) => {
   const seen = new Set<string>();
   keys.forEach((key, index) => {
@@ -596,6 +604,7 @@ export const compileDesignCapabilityCatalogArtifact = (input: {
     } = registration;
     const registrationHash = canonicalContentHash(unsignedRegistration);
     if (
+      registration.runtimeContractVersion !== entry.provider.runtimeContractVersion ||
       registration.capabilityRevisionRef.id !== entry.manifest.id ||
       registration.capabilityRevisionRef.ownerRepo !==
         entry.manifest.ownerRepo ||
@@ -1790,6 +1799,7 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
         version: 1,
         ownerRepo: input.pageOwnerRepo,
       },
+      ...(registration.runtimeContractVersion ? { runtimeContractVersion: registration.runtimeContractVersion } : {}),
       capabilityRef: simpleEntityRef(registration.revisionRef),
       providerRef: simpleEntityRef(registration.providerRevisionRef),
       surface: node.surface ?? defaultRenderSurface,
@@ -1806,6 +1816,7 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
         : {}),
     });
     capabilityInstances.push({
+      ...(registration.runtimeContractVersion ? { runtimeContractVersion: registration.runtimeContractVersion } : {}),
       instanceId: node.id,
       nodeId: node.id,
       capabilityRevisionRef: registration.revisionRef,
@@ -2158,6 +2169,7 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
     },
     capabilityInstances,
     ...(stateDefinitions.length ? { stateDefinitions } : {}),
+    ...(page.sharedStateBindings ? { sharedStateBindings: page.sharedStateBindings } : {}),
     ...(page.entryTransitions
       ? {
           entryTransitions: page.entryTransitions.map(
@@ -2546,6 +2558,9 @@ const compilePageRuntimeBundleInternal = (
         "Capability/provider pair has no exact governed Design registration.",
       );
     }
+    if (instance.runtimeContractVersion !== registration.runtimeContractVersion || node.runtimeContractVersion !== instance.runtimeContractVersion) {
+      throw new DeclarativeControlCompilationError("CAPABILITY_BINDING_MISMATCH", `capabilityInstances[${index}].runtimeContractVersion`, "Runtime contract must be issued by the exact governed registration.");
+    }
     if (
       instance.allowedSideEffects.some(
         (sideEffect) => !registration.allowedSideEffects.includes(sideEffect),
@@ -2621,7 +2636,7 @@ const compilePageRuntimeBundleInternal = (
     );
     if (
       !port ||
-      !sameRevisionRef(
+      !sameSchemaContract(
         port.schemaRevisionRef,
         binding.renderModelSchemaRevisionRef,
       )
@@ -2649,7 +2664,7 @@ const compilePageRuntimeBundleInternal = (
       );
       if (
         !pageChangePort ||
-        !sameRevisionRef(
+        !sameSchemaContract(
           pageChangePort.schemaRevisionRef,
           binding.cursorWindow.pageChangeIntentSchemaRevisionRef,
         )
@@ -2677,7 +2692,7 @@ const compilePageRuntimeBundleInternal = (
     );
     if (
       !port ||
-      !sameRevisionRef(
+      !sameSchemaContract(
         port.schemaRevisionRef,
         binding.targetProjection?.schemaRevisionRef ??
           binding.renderModelSchemaRevisionRef,
@@ -2720,7 +2735,7 @@ const compilePageRuntimeBundleInternal = (
       );
       if (
         !pageChangePort ||
-        !sameRevisionRef(
+        !sameSchemaContract(
           pageChangePort.schemaRevisionRef,
           binding.cursorWindow.pageChangeIntentSchemaRevisionRef,
         )
@@ -2778,7 +2793,7 @@ const compilePageRuntimeBundleInternal = (
     );
     if (
       !port ||
-      !sameRevisionRef(
+      !sameSchemaContract(
         port.schemaRevisionRef,
         binding.sourceIntentSchemaRevisionRef,
       )
@@ -2828,7 +2843,7 @@ const compilePageRuntimeBundleInternal = (
       );
       if (
         !port ||
-        !sameRevisionRef(
+        !sameSchemaContract(
           port.schemaRevisionRef,
           binding.sourceIntentSchemaRevisionRef,
         )
@@ -3015,6 +3030,7 @@ const compilePageRuntimeBundleInternal = (
     capabilityInstances: page.capabilityInstances,
     deniedCapabilityInstanceIds: [],
     stateDefinitions: page.stateDefinitions,
+    ...(page.sharedStateBindings ? { sharedStateBindings: page.sharedStateBindings } : {}),
     entryTransitions,
     interactionBindings: page.interactionBindings,
     ontologyBindings: page.ontologyBindings,
@@ -3199,6 +3215,14 @@ export const compileWorkbenchRuntimeBundle = (
   const groupsById = new Map(
     workbench.groups.map((group) => [group.groupId, group]),
   );
+  const contractFor = (capabilityRef: RevisionRef, providerRef: RevisionRef, declared?: string) => {
+    const registration = input.capabilityRegistry?.find(candidate => sameRevisionRef(candidate.capabilityRevisionRef, capabilityRef) && sameRevisionRef(candidate.providerRevisionRef, providerRef));
+    if (declared !== undefined && declared !== registration?.runtimeContractVersion) {
+      throw new DeclarativeControlCompilationError("CAPABILITY_BINDING_MISMATCH", "workbench.runtimeContractVersion", "Runtime contract must be issued by the exact governed registration.");
+    }
+    return registration?.runtimeContractVersion;
+  };
+  const layoutContract = contractFor(workbench.layout.hostCapabilityRevisionRef, workbench.layout.hostProviderRevisionRef, workbench.layout.runtimeContractVersion);
   const appInstances = workbench.appInstances.map((instance, index) => {
     const stableTarget = StableRefSchema.parse({
       kind: instance.targetRevisionRef.kind,
@@ -3245,7 +3269,8 @@ export const compileWorkbenchRuntimeBundle = (
         "Workbench and instance audience is wider than the target audience.",
       );
     }
-    return { ...instance, targetAccessPolicy: registration.accessPolicy };
+    const runtimeContractVersion = contractFor(instance.targetRevisionRef, instance.providerRevisionRef, instance.runtimeContractVersion);
+    return { ...instance, ...(runtimeContractVersion ? { runtimeContractVersion } : {}), targetAccessPolicy: registration.accessPolicy };
   });
   const unsigned = {
     contract: "WorkbenchRuntimeBundle" as const,
@@ -3270,7 +3295,7 @@ export const compileWorkbenchRuntimeBundle = (
     groups: workbench.groups,
     appInstances,
     defaultEntry: workbench.defaultEntry,
-    layout: workbench.layout,
+    layout: { ...workbench.layout, ...(layoutContract ? { runtimeContractVersion: layoutContract } : {}) },
     workbenchAccessPolicy: workbench.workbenchAccessPolicy,
     personalPreferencesPolicy: workbench.personalPreferencesPolicy,
     target: { ...release.target, routeClaim: releaseRoute },

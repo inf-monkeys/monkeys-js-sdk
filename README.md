@@ -33,7 +33,7 @@ import { resolveThemeTokens } from '@inf-monkeys-tech/monkeys/runtime';
 
 `Page`、`PageRelease`、`Workbench`、`WorkbenchRelease`、`Navigation` 与 `NavigationRelease` 是六个独立的 control Ontology 合同。它们复用显式的 tenant scope、不可变 revision/hash、受限 AccessPolicy、RouteSpace/RouteClaim、PublicationPlan 和发布证据；不保存业务 Records、用户组成员、任意 URL 或可执行代码。
 
-`compilePageRuntimeBundle`, `compileWorkbenchRuntimeBundle`, and `compileNavigationRuntimeBundle` validate dependency evidence and caller-approved size limits, then produce rebuildable bundles before identity filtering. Navigation Page links use stable Page identity and the current published target registry; historical Page references in `NavigationRelease` remain audit evidence. Page upgrades, rollbacks, disappearance, and recovery do not require a Navigation publication. Workbench and action target bindings remain exact.
+`compilePageRuntimeBundle`, `compileWorkbenchRuntimeBundle`, and `compileNavigationRuntimeBundle` validate dependency evidence and caller-approved size limits, then produce rebuildable bundles before identity filtering. Navigation Page links use stable Page identity and the current published target registry; historical Page references in `NavigationRelease` remain audit evidence. Page upgrades, rollbacks, disappearance, and recovery do not require a Navigation publication. Workbench target and action dependency snapshots remain exact; runtime provider selection uses the public contract described below.
 
 `projectCurrentNavigationPages` refreshes Page routes and access policies from a complete, tenant-authorized catalog. Consumers hide unavailable or disabled nodes and empty groups, and enforce both Navigation audience and current Page permissions. Catalog failures remain errors. Persisted release and dependency hashes are not rewritten by runtime projection.
 
@@ -58,8 +58,9 @@ The current `OntologyBindingSchema`, `PageRuntimeBundleSchema`, and `compilePage
 
 The additive ActionProgramDefinition and Page programActions contracts describe
 immutable, exact-version workflow programs; existing direct actions are unchanged.
-This candidate is not yet an integrated business runtime. Server activation remains
-blocked until the governed run protocol and Page host are implemented.
+The native browser Worker and Page host implement the runtime program bridge.
+Server publication still retains an explicit activation gate; verify the target
+deployment before using program bindings on published Pages.
 
 Generate schema-based declarations with generateActionProgramTypes. The repository
 authoring command yarn program:build <config.json> requires an entry (.ts or checked
@@ -73,3 +74,18 @@ explicitly. Compiler dependencies are pinned in this repository's dev toolchain.
 Program hash fields use canonicalContentHash of the exact string or definition,
 not engine bytecode. The author tool hashes the sorted local source-file map for
 sourceHash. No generated artifacts authorize registration, publication or calls.
+### Shared Page state bindings
+
+`Page.sharedStateBindings` optionally connects declared root states to a host-registered shared-state provider. Each binding declares `bindingId`, `provider: { id, version }`, `states` (provider slot → state ID), `queries` (provider slot → query binding ID), and `writeInteractions` (deliberate interaction IDs). The resolver and compiler retain this declaration in the immutable runtime bundle. Duplicate owners, dangling references, repeated-instance state and writes to unmapped state are rejected. Existing Pages omit this field and retain their previous compiled identity.
+
+This contract does not expose localStorage keys or execute scripts. The host must resolve exactly one supported provider/version, validate its slot and persistence requirements, enforce identity lifecycle guards, and grant writes only through the declared mappings. Missing providers must fail explicitly. Provider-specific semantics and shared namespaces remain host responsibilities. Deployments must upgrade SDK readers/compilers and the host provider together before publishing Pages using this field.
+
+### Stable runtime contracts
+
+`runtimeContractVersion` is a provider-owned public contract identifier, independent of implementation revisions. `resolvePage` and `compileWorkbenchRuntimeBundle` derive it from exact governed registrations. The Page compiler rejects user-supplied contract labels that disagree with those registrations. A compatible implementation can serve a previously compiled RenderNode without changing the published definition or its dependency hashes.
+
+`assertViewProviderContract` checks provider/capability identity and ownership, then checks the declared contract. Unversioned nodes require exact revisions. `assertDeclarativeCapabilityContract` can prove an unversioned snapshot equivalent by reconstructing and comparing its complete immutable manifest/provider hashes; IDs alone are insufficient. `projectRuntimeContracts` additionally uses governed historical entries to enrich a rebuildable Page or Workbench projection. It preserves definitions, release references and dependency snapshots, and recalculates only the projection content hash.
+
+`assertCompatibleCapabilityUpgrade` guards catalog activation and package publication. Compatible inputs accept every historical value; outputs must remain valid for historical consumers. Optional input properties, optional ports, enum widening and documentation annotations are supported; unknown Schema changes fail closed. Provider identity, lifecycle, effects, placement and access requirements remain protected. Breaking changes require a separate capability/provider identity with the existing implementation retained. Behavioral regression tests remain necessary alongside Schema checks.
+
+`sameSchemaContract` compares stable identity, tenant scope, Schema version and content hash, allowing a different metadata revision for identical Schema content. Raw query results, permissions, command validation and immutable snapshot verification must continue to use their owning validators.

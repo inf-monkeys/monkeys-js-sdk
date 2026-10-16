@@ -838,7 +838,36 @@ const designCapabilityCatalogArtifact =
     ],
   });
 
+const actionProgramDefinition = {
+  contract: 'ActionProgramDefinition',
+  schemaVersion: 1,
+  programId: 'test.program',
+  ownerRepo: 'monkeys-server',
+  tenantScope: declarativeControl.tenantScope,
+  supportedSurface: 'studio',
+  inputSchemaRevisionRef: declarativeControl.revision('schema', 'program.input'),
+  resultSchemaRevisionRef: declarativeControl.revision('schema', 'program.result'),
+  entry: 'main',
+  abi: contracts.ACTION_PROGRAM_ABI,
+  compiler: 'test/1',
+  target: 'browser-worker-es2020',
+  sourceHash: 'a'.repeat(64),
+  compiledHash: 'b'.repeat(64),
+  sourceMapHash: 'c'.repeat(64),
+  dependencies: [],
+  effects: [],
+  refreshAliases: [],
+  stateAliases: [],
+  budgets: contracts.DEFAULT_ACTION_PROGRAM_BUDGETS,
+};
+
 const fixtures = {
+  'action-program-definition': actionProgramDefinition,
+  'action-program-artifact': {
+    definition: actionProgramDefinition,
+    javascript: 'var __actionProgram = { main: async () => ({}) };',
+    sourceMap: '{}',
+  },
   'workflow-column-binding': {
     contract: 'WorkflowColumnBinding', version: 1, enabled: true,
     workflow: { id: 'workflow-1', version: 2, inputSchemaHash: 'a'.repeat(64) },
@@ -2168,7 +2197,7 @@ const fixtures = {
 test("publishes one canonical schema and JSON Schema document for every contract", () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 94);
+  assert.equal(names.length, 96);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, "../lib/json-schema/index.json"), "utf8"),
