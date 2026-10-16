@@ -2086,6 +2086,7 @@ export const QueryBindingSchema = z
   });
 export const CapabilityInstanceSchema = z
   .object({
+    runtimeContractVersion: ContractIdentifierSchema.optional(),
     instanceId: ContractIdentifierSchema,
     nodeId: ContractIdentifierSchema,
     capabilityRevisionRef: RevisionRefSchema,
@@ -4449,6 +4450,7 @@ export const WorkbenchGroupSchema = z
   .strict();
 export const WorkbenchAppInstanceSchema = z
   .object({
+    runtimeContractVersion: ContractIdentifierSchema.optional(),
     instanceId: ContractIdentifierSchema,
     kind: z.enum([
       "built-in-application",
@@ -4503,6 +4505,7 @@ export const WorkbenchSchema = z
       .strict(),
     layout: z
       .object({
+        runtimeContractVersion: ContractIdentifierSchema.optional(),
         hostCapabilityRevisionRef: RevisionRefSchema,
         hostProviderRevisionRef: RevisionRefSchema,
         layoutPolicyRevisionRef: RevisionRefSchema,

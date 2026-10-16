@@ -493,6 +493,7 @@ export function resolveThemeTokens(input: unknown): ResolvedThemeTokens {
   };
 
   for (const path of collected.keys()) resolveToken(path);
+  assertBentoTokens(resolved);
   const resolvedDocument: ThemeTokens = {};
   for (const token of resolved.values()) {
     const segments = token.path.split('.');
@@ -611,4 +612,32 @@ export function assertMonkeysThemeTokensComplete(input: unknown): ThemeTokens {
     throw new ThemeTokenValidationError('The merged design-token release is incomplete.', issues);
   }
   return resolved.document;
+}
+
+/** Optional component semantics; older token documents remain valid. */
+function assertBentoTokens(tokens: ReadonlyMap<string, ResolvedThemeToken>): void {
+  const fields: Record<string, ThemeTokenType> = {
+    background: 'color', borderColor: 'color', borderWidth: 'dimension',
+    borderStyle: 'strokeStyle', radius: 'dimension', shadow: 'shadow',
+    padding: 'dimension', gap: 'dimension',
+  };
+  for (const [path, token] of tokens) {
+    if (!path.startsWith('semantic.bento.')) continue;
+    const match = /^semantic\.bento\.(?:default|levels\.level([1-9]\d*))\.([a-zA-Z]+)(?:\.([a-z]+))?$/.exec(path);
+    const field = match?.[2];
+    const axis = match?.[3];
+    const expected = field && fields[field];
+    const modes = field === 'padding' || field === 'gap'
+      ? ['compact', 'default', 'comfortable'] : ['light', 'dark'];
+    if (!match || !expected || token.type !== expected || (axis && !modes.includes(axis))
+      || (match[1] && !Number.isSafeInteger(Number(match[1])))) {
+      throw new ThemeTokenValidationError('Invalid Bento semantic token.', [{ path, message: 'Expected a supported Bento field, type, level and mode.' }]);
+    }
+    if (field === 'borderStyle' && typeof token.value !== 'string') {
+      throw new ThemeTokenValidationError('Invalid Bento border style.', [{ path, message: 'Bento borders require a CSS stroke keyword.' }]);
+    }
+    if (token.type === 'dimension' && (token.value as ThemeDimensionValue).value < 0) {
+      throw new ThemeTokenValidationError('Invalid Bento dimension.', [{ path, message: 'Bento dimensions must be non-negative.' }]);
+    }
+  }
 }
