@@ -16,6 +16,8 @@ import {
 import { compileRenderTree } from "./render-tree-compiler";
 import { collectPageExpressionReads } from "../contracts/page-expression";
 import {
+  ActionProgramDefinitionSchema,
+  type ActionProgramDefinition,
   AccessPolicySchema,
   CompiledRouteClaimSchema,
   DeclarativeRouteOwnerIndexSchema,
@@ -152,6 +154,10 @@ export interface DeclarativeCapabilityRegistration {
     | "websocket"
   )[];
 }
+export interface ActionProgramRegistration {
+  definitionRevisionRef: RevisionRef;
+  definition: ActionProgramDefinition;
+}
 export interface DomainQueryRegistration {
   definitionRevisionRef: RevisionRef;
   definition: DomainQueryDefinition;
@@ -175,6 +181,7 @@ export interface ResolvePageInput {
   productResources?: readonly DeclarativeProductResourceRegistration[];
   capabilityRegistry: readonly DeclarativeCapabilityRegistration[];
   domainQueryRegistry?: readonly DomainQueryRegistration[];
+  programRegistry?: readonly ActionProgramRegistration[];
   domainCommandRegistry?: readonly DomainCommandRegistration[];
   schemaRegistry?: readonly DeclarativeSchemaDefinitionRegistration[];
   targetRegistry?: readonly NavigationRouteTargetRegistration[];
@@ -236,6 +243,7 @@ export interface CompilePageRuntimeBundleInput {
   limits: DeclarativeControlCompileLimits;
   capabilityRegistry: readonly DeclarativeCapabilityRegistration[];
   domainQueryRegistry?: readonly DomainQueryRegistration[];
+  programRegistry?: readonly ActionProgramRegistration[];
   targetRegistry?: readonly NavigationRouteTargetRegistration[];
   shellRegistration: DeclarativeProductResourceRegistration;
 }
@@ -1471,6 +1479,17 @@ const pageDependencies = (
         ]
       : []),
   ]),
+  ...(page.programBindings ?? []).flatMap((binding) => [
+    {
+      role: "action-program" as const,
+      revisionRef: binding.programRevisionRef,
+    },
+    {
+      role: "schema" as const,
+      revisionRef: binding.sourceIntentSchemaRevisionRef,
+    },
+    ...programDependencies(binding.definition),
+  ]),
   ...page.actionBindings.flatMap((binding) => [
     { role: "action" as const, revisionRef: binding.commandRevisionRef },
     {
@@ -1735,6 +1754,7 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
   const capabilityInstances: ResolvedPage["capabilityInstances"] = [];
   const queryBindings: NonNullable<ResolvedPage["queryBindings"]> = [];
   const actionBindings: ResolvedPage["actionBindings"] = [];
+  const programBindings: NonNullable<ResolvedPage["programBindings"]> = [];
   const interactionBindings: NonNullable<ResolvedPage["interactionBindings"]> =
     [];
   const nodesById = new Map<string, Page["body"]>();
@@ -1973,6 +1993,101 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
         resultSchemaRevisionRef,
       });
     }
+    for (const [index, binding] of (node.programActions ?? []).entries()) {
+      const path = `page.body.${node.id}.programActions[${index}]`;
+      const matches = (input.programRegistry ?? []).filter(
+        (entry) => entry.definition.programId === binding.program,
+      );
+      if (matches.length !== 1)
+        throw new DeclarativeControlCompilationError(
+          "DEPENDENCY_MISSING",
+          path,
+          "Expected one exact program registration.",
+        );
+      const program = matches[0]!;
+      const definition = ActionProgramDefinitionSchema.parse(
+        program.definition,
+      );
+      assertProgramRegistration(program, page.tenantScope, page.surface, path);
+      const port = registration.outputPorts.find(
+        (candidate) => candidate.name === binding.port,
+      );
+      if (!port)
+        throw new DeclarativeControlCompilationError(
+          "PORT_TYPE_MISMATCH",
+          path,
+          "Program source port is not registered.",
+        );
+      if (
+        (node.actions ?? []).some((action) => action.port === binding.port) ||
+        programBindings.some(
+          (action) =>
+            action.source.capabilityInstanceId === node.id &&
+            action.source.port === binding.port,
+        )
+      )
+        throw new DeclarativeControlCompilationError(
+          "CAPABILITY_BINDING_MISMATCH",
+          path,
+          "A program output port must have one exclusive action binding.",
+        );
+      for (const dep of definition.dependencies) {
+        const registrations =
+          dep.kind === "query" ? queryRegistrations : commandRegistrations;
+        const actual = registrations.find((entry) =>
+          sameRevisionRef(entry.revisionRef, dep.revisionRef),
+        );
+        if (
+          !actual ||
+          canonicalContentHash(actual.definition) !==
+            dep.revisionRef.contentHash ||
+          ("sensitiveInputPaths" in actual.definition &&
+            !!actual.definition.sensitiveInputPaths?.length) ||
+          ("sensitiveResultPaths" in actual.definition &&
+            !!actual.definition.sensitiveResultPaths?.length) ||
+          ("queryId" in actual.definition
+            ? !sameRevisionRef(
+                actual.definition.inputSchemaRevisionRef,
+                dep.inputSchemaRevisionRef,
+              ) ||
+              !sameRevisionRef(
+                actual.definition.resultSchemaRevisionRef,
+                dep.resultSchemaRevisionRef,
+              )
+            : actual.definition.inputSchemaRef !==
+                dep.inputSchemaRevisionRef.id ||
+              actual.definition.outputSchemaRef !==
+                dep.resultSchemaRevisionRef.id)
+        )
+          throw new DeclarativeControlCompilationError(
+            "DEPENDENCY_MISSING",
+            path,
+            "Program capability/schema revision is not registered.",
+          );
+      }
+      for (const ref of programDependencies(definition)
+        .filter((dep) => dep.role === "schema")
+        .map((dep) => dep.revisionRef)) {
+        if (
+          !schemaRegistrations.some((entry) =>
+            sameRevisionRef(entry.revisionRef, ref),
+          )
+        )
+          throw new DeclarativeControlCompilationError(
+            "SCHEMA_DEFINITION_MISMATCH",
+            path,
+            "Program requires an exact registered Schema.",
+          );
+      }
+      const { program: _program, port: _port, ...rest } = binding;
+      programBindings.push({
+        ...rest,
+        source: { capabilityInstanceId: node.id, port: binding.port },
+        sourceIntentSchemaRevisionRef: port.schemaRevisionRef,
+        programRevisionRef: program.definitionRevisionRef,
+        definition,
+      });
+    }
     for (const [index, binding] of (node.on ?? []).entries()) {
       const port = registration.outputPorts.find(
         (candidate) => candidate.name === binding.port,
@@ -2068,6 +2183,7 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
     ontologyBindings: [],
     ...(queryBindings.length ? { queryBindings } : {}),
     actionBindings,
+    ...(programBindings.length ? { programBindings } : {}),
     pageAccessPolicy: page.access,
     managementAccess: page.managementAccess,
     tokenRevisionRefs,
@@ -2674,33 +2790,57 @@ const compilePageRuntimeBundleInternal = (
       );
     }
   });
-  page.actionBindings.forEach((binding, index) => {
-    const instance = page.capabilityInstances.find(
-      (candidate) =>
-        candidate.instanceId === binding.source.capabilityInstanceId,
-    );
-    const registration =
-      instance &&
-      registrationsByPair.get(
-        `${revisionRefKey(instance.capabilityRevisionRef)}:${revisionRefKey(instance.providerRevisionRef)}`,
-      );
-    const port = registration?.outputPorts.find(
-      (candidate) => candidate.name === binding.source.port,
+  (page.programBindings ?? []).forEach((binding, index) => {
+    const path = `programBindings[${index}]`;
+    const registration = (input.programRegistry ?? []).find((entry) =>
+      sameRevisionRef(entry.definitionRevisionRef, binding.programRevisionRef),
     );
     if (
-      !port ||
-      !sameRevisionRef(
-        port.schemaRevisionRef,
-        binding.sourceIntentSchemaRevisionRef,
-      )
-    ) {
+      !registration ||
+      canonicalContentHash(registration.definition) !==
+        canonicalContentHash(binding.definition)
+    )
       throw new DeclarativeControlCompilationError(
-        "PORT_TYPE_MISMATCH",
-        `actionBindings[${index}].sourceIntentSchemaRevisionRef`,
-        "Action source intent does not match the registered capability output port.",
+        "DEPENDENCY_MISSING",
+        path,
+        "Exact program registration does not match binding.",
       );
-    }
+    assertProgramRegistration(
+      registration,
+      page.tenantScope,
+      release.target.surface,
+      path,
+    );
   });
+  [...page.actionBindings, ...(page.programBindings ?? [])].forEach(
+    (binding, index) => {
+      const instance = page.capabilityInstances.find(
+        (candidate) =>
+          candidate.instanceId === binding.source.capabilityInstanceId,
+      );
+      const registration =
+        instance &&
+        registrationsByPair.get(
+          `${revisionRefKey(instance.capabilityRevisionRef)}:${revisionRefKey(instance.providerRevisionRef)}`,
+        );
+      const port = registration?.outputPorts.find(
+        (candidate) => candidate.name === binding.source.port,
+      );
+      if (
+        !port ||
+        !sameRevisionRef(
+          port.schemaRevisionRef,
+          binding.sourceIntentSchemaRevisionRef,
+        )
+      ) {
+        throw new DeclarativeControlCompilationError(
+          "PORT_TYPE_MISMATCH",
+          `actionBindings[${index}].sourceIntentSchemaRevisionRef`,
+          "Action source intent does not match the registered capability output port.",
+        );
+      }
+    },
+  );
   const routeClaims = compileRouteClaims({
     claims: page.routeClaims,
     routeSpaces: input.routeSpaces,
@@ -2880,6 +3020,9 @@ const compilePageRuntimeBundleInternal = (
     ontologyBindings: page.ontologyBindings,
     queryBindings: page.queryBindings,
     actionBindings: page.actionBindings,
+    ...(page.programBindings?.length
+      ? { programBindings: page.programBindings }
+      : {}),
     pageAccessPolicy: page.pageAccessPolicy,
     tokenRevisionRefs: page.tokenRevisionRefs,
     performanceBudgetRef: page.performanceBudgetRef,
@@ -3223,7 +3366,9 @@ export const compileNavigationRuntimeBundle = (
     input.compilerRevisionRef,
   );
   const scope = TenantScopeSchema.parse(navigation.tenantScope);
-  const verifiedKernelPageReferences = [...(input.verifiedKernelPageReferences ?? [])].map((reference, index) => {
+  const verifiedKernelPageReferences = [
+    ...(input.verifiedKernelPageReferences ?? []),
+  ].map((reference, index) => {
     const parsed = RevisionRefSchema.parse(reference);
     if (
       release.target.surface !== "kernel" ||
@@ -3467,8 +3612,17 @@ export const compileNavigationRuntimeBundle = (
       ((unavailable && sameStableRef(unavailable.stableTargetRef, node.targetRef)) ||
         (released && sameStableRef(released.stableTargetRef, node.targetRef)))
     ) {
-      if (!released || !verifiedKernelPageReferenceKeys.has(revisionRefKey(released.targetRevisionRef))) {
-        assertTenantCompatible(node.targetRef, scope, `nodes[${index}].targetRef`);
+      if (
+        !released ||
+        !verifiedKernelPageReferenceKeys.has(
+          revisionRefKey(released.targetRevisionRef),
+        )
+      ) {
+        assertTenantCompatible(
+          node.targetRef,
+          scope,
+          `nodes[${index}].targetRef`,
+        );
       }
       if (
         unavailable?.accessPolicy &&
@@ -3504,12 +3658,20 @@ export const compileNavigationRuntimeBundle = (
         registration.stableTargetRef,
         stableFromRevision(registration.targetRevisionRef),
       ) ||
-      (released && !sameStableRef(registration.stableTargetRef, released.stableTargetRef)) ||
-      (!currentPage && released && !sameRevisionRef(
-        registration.targetRevisionRef,
-        released.targetRevisionRef,
-      )) ||
-      (!currentPage && released && registration.kind === "route" &&
+      (released &&
+        !sameStableRef(
+          registration.stableTargetRef,
+          released.stableTargetRef,
+        )) ||
+      (!currentPage &&
+        released &&
+        !sameRevisionRef(
+          registration.targetRevisionRef,
+          released.targetRevisionRef,
+        )) ||
+      (!currentPage &&
+        released &&
+        registration.kind === "route" &&
         (Boolean(registration.releaseRevisionRef) !==
           Boolean(released.releaseRevisionRef) ||
           (registration.releaseRevisionRef &&
@@ -3841,3 +4003,52 @@ export const resolveWorkbenchEntry = (input: {
     };
   return { status: "forbidden", workbenchId: "" };
 };
+
+export const programDependencies = (
+  definition: ActionProgramDefinition,
+): ReleaseDependency[] => [
+  ...[
+    definition.inputSchemaRevisionRef,
+    definition.resultSchemaRevisionRef,
+    ...definition.stateAliases.map((entry) => entry.schemaRevisionRef),
+  ].map((revisionRef) => ({ role: "schema" as const, revisionRef })),
+  ...definition.dependencies.flatMap((dep) => [
+    {
+      role:
+        dep.kind === "query"
+          ? ("query-definition" as const)
+          : ("action" as const),
+      revisionRef: dep.revisionRef,
+    },
+    { role: "schema" as const, revisionRef: dep.inputSchemaRevisionRef },
+    { role: "schema" as const, revisionRef: dep.resultSchemaRevisionRef },
+  ]),
+];
+export function assertProgramRegistration(
+  registration: ActionProgramRegistration,
+  scope: TenantScope,
+  surface: string,
+  path = "program",
+) {
+  const definition = ActionProgramDefinitionSchema.parse(
+    registration.definition,
+  );
+  const ref = RevisionRefSchema.parse(registration.definitionRevisionRef);
+  if (
+    ref.kind !== "action-program" ||
+    ref.id !== definition.programId ||
+    ref.ownerRepo !== definition.ownerRepo ||
+    ref.visibility !== "tenant" ||
+    canonicalContentHash(ref.tenantScope) !== canonicalContentHash(scope) ||
+    canonicalContentHash(definition.tenantScope) !==
+      canonicalContentHash(scope) ||
+    ref.schemaVersion !== definition.schemaVersion ||
+    ref.contentHash !== canonicalContentHash(definition) ||
+    definition.supportedSurface !== surface
+  )
+    throw new DeclarativeControlCompilationError(
+      "CROSS_TENANT_REFERENCE",
+      path,
+      "Program identity, scope, surface or content hash does not match its exact reference.",
+    );
+}

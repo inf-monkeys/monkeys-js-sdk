@@ -572,6 +572,7 @@ export const ReleaseDependencyRoleSchema = z.enum([
   "view",
   "projection",
   "action",
+  "action-program",
   "token",
   "schema",
   "compiler",
@@ -604,6 +605,7 @@ const DependencyKindByRole: Readonly<
   view: "view",
   projection: "projection",
   action: "domain-command",
+  "action-program": "action-program",
   token: "design-token",
   schema: "schema",
   compiler: "compiler",
@@ -1905,8 +1907,20 @@ export const QueryBindingSchema = z
   .superRefine((value, context) => {
     if (value.draftRetention) {
       const names = value.draftRetention.identityParameters;
-      if (value.execution !== 'server' || new Set(names).size !== names.length || names.some(name => !Object.prototype.hasOwnProperty.call(value.parameters, name))) {
-        context.addIssue({ code: 'custom', path: ['draftRetention'], message: 'Draft retention requires distinct declared Server query identity parameters.' });
+      if (
+        value.execution !== "server" ||
+        new Set(names).size !== names.length ||
+        names.some(
+          (name) =>
+            !Object.prototype.hasOwnProperty.call(value.parameters, name),
+        )
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["draftRetention"],
+          message:
+            "Draft retention requires distinct declared Server query identity parameters.",
+        });
       }
     }
     if (value.targetProjection) {
@@ -2785,6 +2799,320 @@ export const PageDataSchema = QueryBindingSchema.omit({
   })
   .strict();
 
+/** Host ABI is explicit: older hosts must reject programs they cannot isolate. */
+export const ACTION_PROGRAM_ABI = "monkeys.action-program/1" as const;
+export const ActionProgramBudgetsSchema = z
+  .object({
+    heapBytes: z.number().int().positive().max(67108864),
+    activationMs: z.number().int().positive().max(500),
+    cpuMs: z.number().int().positive().max(2000),
+    rpcMs: z.number().int().positive().max(30000),
+    concurrentCalls: z.number().int().positive().max(4),
+    calls: z.number().int().positive().max(128),
+    messageBytes: z.number().int().positive().max(1048576),
+    activeMs: z.number().int().positive().max(120000),
+    formMs: z.number().int().positive().max(300000),
+    wallMs: z.number().int().positive().max(600000),
+  })
+  .strict();
+export const DEFAULT_ACTION_PROGRAM_BUDGETS = Object.freeze({
+  heapBytes: 67108864,
+  activationMs: 500,
+  cpuMs: 2000,
+  rpcMs: 30000,
+  concurrentCalls: 4,
+  calls: 128,
+  messageBytes: 1048576,
+  activeMs: 120000,
+  formMs: 300000,
+  wallMs: 600000,
+});
+const ProgramSchemaRefSchema = RevisionRefSchema.refine(
+  (ref) => ref.kind === "schema",
+  "Expected an exact Schema reference.",
+);
+export const ActionProgramDependencySchema = z
+  .object({
+    kind: z.enum(["query", "command"]),
+    revisionRef: RevisionRefSchema,
+    inputSchemaRevisionRef: ProgramSchemaRefSchema,
+    resultSchemaRevisionRef: ProgramSchemaRefSchema,
+    // Fixed/identity arguments are injected by the trusted caller, never by guest code.
+    dynamicInputKeys: z.array(ContractIdentifierSchema).max(128),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const expected =
+      value.kind === "query" ? "domain-query-definition" : "domain-command";
+    if (value.revisionRef.kind !== expected)
+      context.addIssue({
+        code: "custom",
+        path: ["revisionRef", "kind"],
+        message: `Expected ${expected}.`,
+      });
+    if (new Set(value.dynamicInputKeys).size !== value.dynamicInputKeys.length)
+      context.addIssue({
+        code: "custom",
+        path: ["dynamicInputKeys"],
+        message: "Dynamic input keys must be unique.",
+      });
+  });
+export const ActionProgramDefinitionSchema = z
+  .object({
+    contract: z.literal("ActionProgramDefinition"),
+    schemaVersion: z.literal(1),
+    programId: ContractIdentifierSchema,
+    ownerRepo: ContractIdentifierSchema,
+    tenantScope: TenantScopeSchema,
+    supportedSurface: z.literal("studio"),
+    inputSchemaRevisionRef: ProgramSchemaRefSchema,
+    resultSchemaRevisionRef: ProgramSchemaRefSchema,
+    entry: z.literal("main"),
+    abi: z.literal(ACTION_PROGRAM_ABI),
+    compiler: z.string().trim().min(1).max(128),
+    target: z.literal("quickjs-es2020"),
+    sourceHash: Sha256Schema,
+    compiledHash: Sha256Schema,
+    sourceMapHash: Sha256Schema,
+    dependencies: z.array(ActionProgramDependencySchema).max(128),
+    effects: z
+      .array(
+        z.enum([
+          "form",
+          "toast",
+          "refresh",
+          "download",
+          "state.get",
+          "state.set",
+        ]),
+      )
+      .max(6),
+    refreshAliases: z.array(ContractIdentifierSchema).max(128),
+    stateAliases: z
+      .array(
+        z
+          .object({
+            alias: ContractIdentifierSchema,
+            schemaRevisionRef: ProgramSchemaRefSchema,
+          })
+          .strict(),
+      )
+      .max(128),
+    budgets: ActionProgramBudgetsSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    for (const [name, keys] of [
+      [
+        "dependencies",
+        value.dependencies.map((dep) => `${dep.kind}:${dep.revisionRef.id}`),
+      ],
+      ["effects", value.effects],
+      ["refreshAliases", value.refreshAliases],
+      ["stateAliases", value.stateAliases.map((entry) => entry.alias)],
+    ] as const)
+      if (new Set(keys).size !== keys.length)
+        context.addIssue({
+          code: "custom",
+          path: [name],
+          message: "Program declarations must be unique.",
+        });
+    const refs = [
+      value.inputSchemaRevisionRef,
+      value.resultSchemaRevisionRef,
+      ...value.dependencies.flatMap((dep) => [
+        dep.revisionRef,
+        dep.inputSchemaRevisionRef,
+        dep.resultSchemaRevisionRef,
+      ]),
+      ...value.stateAliases.map((entry) => entry.schemaRevisionRef),
+    ];
+    refs.forEach((ref, index) => {
+      if (
+        ref.visibility === "tenant" &&
+        ref.tenantScope &&
+        tenantScopeKey(ref.tenantScope) !== tenantScopeKey(value.tenantScope)
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["dependencies"],
+          message: `Cross-tenant program reference ${index}.`,
+        });
+    });
+  });
+export type ActionProgramDefinition = z.infer<
+  typeof ActionProgramDefinitionSchema
+>;
+export type ActionProgramDependency = z.infer<
+  typeof ActionProgramDependencySchema
+>;
+export const ActionProgramArtifactSchema = z
+  .object({
+    definition: ActionProgramDefinitionSchema,
+    // Hashes use canonicalContentHash of the exact UTF-8 string, not engine bytecode.
+    javascript: z
+      .string()
+      .min(1)
+      .max(262144)
+      .refine(
+        (value) => new TextEncoder().encode(value).length <= 262144,
+        "Program exceeds 256 KiB.",
+      ),
+    sourceMap: z
+      .string()
+      .min(1)
+      .max(524288)
+      .refine(
+        (value) => new TextEncoder().encode(value).length <= 524288,
+        "Source map exceeds 512 KiB.",
+      ),
+  })
+  .strict();
+export type ActionProgramArtifact = z.infer<typeof ActionProgramArtifactSchema>;
+const ProgramInputSourceSchema = z.discriminatedUnion("kind", [
+  ...BindingSourceSchema.options,
+  ExpressionBindingSourceSchema,
+]);
+const ProgramBindingShape = {
+  bindingId: ContractIdentifierSchema,
+  inputMapping: z.record(ContractIdentifierSchema, ProgramInputSourceSchema),
+  dependencyInputs: z.record(
+    ContractIdentifierSchema,
+    z.record(ContractIdentifierSchema, ProgramInputSourceSchema),
+  ),
+  accessPolicy: AccessPolicySchema,
+  confirmation: I18nTextSchema.optional(),
+  when: PageExpressionSchema.optional(),
+  concurrencyKeyPath: PageValuePathSchema.min(1),
+  refreshAliases: z.record(
+    ContractIdentifierSchema,
+    z.array(ContractIdentifierSchema).min(1).max(128),
+  ),
+  stateAliases: z.record(ContractIdentifierSchema, ContractIdentifierSchema),
+};
+export const PageProgramActionSchema = z
+  .object({
+    ...ProgramBindingShape,
+    program: ContractIdentifierSchema,
+    port: ContractIdentifierSchema,
+  })
+  .strict();
+export const ProgramBindingSchema = z
+  .object({
+    ...ProgramBindingShape,
+    source: z
+      .object({
+        capabilityInstanceId: ContractIdentifierSchema,
+        port: ContractIdentifierSchema,
+      })
+      .strict(),
+    sourceIntentSchemaRevisionRef: ProgramSchemaRefSchema,
+    programRevisionRef: RevisionRefSchema.refine(
+      (ref) => ref.kind === "action-program",
+      "Expected action-program reference.",
+    ),
+    definition: ActionProgramDefinitionSchema,
+  })
+  .strict();
+export type ProgramBinding = z.infer<typeof ProgramBindingSchema>;
+
+function validateProgramBindingTargets(
+  page: {
+    programBindings?: ProgramBinding[];
+    actionBindings: z.infer<typeof ActionBindingSchema>[];
+    queryBindings?: { bindingId: string }[];
+    ontologyBindings: { bindingId: string }[];
+    capabilityInstances: { instanceId: string }[];
+    stateDefinitions?: {
+      stateId: string;
+      schemaRevisionRef: z.infer<typeof RevisionRefSchema>;
+    }[];
+  },
+  context: z.RefinementCtx,
+) {
+  const ids = new Set(page.actionBindings.map((binding) => binding.bindingId));
+  const ports = new Set(
+    page.actionBindings.map(
+      (binding) =>
+        `${binding.source.capabilityInstanceId}:${binding.source.port}`,
+    ),
+  );
+  const dataIds = new Set(
+    [...page.ontologyBindings, ...(page.queryBindings ?? [])].map(
+      (binding) => binding.bindingId,
+    ),
+  );
+  for (const [index, binding] of (page.programBindings ?? []).entries()) {
+    const issue = (message: string) =>
+      context.addIssue({
+        code: "custom",
+        path: ["programBindings", index],
+        message,
+      });
+    const port = `${binding.source.capabilityInstanceId}:${binding.source.port}`;
+    if (ids.has(binding.bindingId) || ports.has(port))
+      issue("Program binding id and event must be exclusive.");
+    ids.add(binding.bindingId);
+    ports.add(port);
+    if (
+      !page.capabilityInstances.some(
+        (instance) =>
+          instance.instanceId === binding.source.capabilityInstanceId,
+      )
+    )
+      issue("Program source instance is missing.");
+    const exactKeys = (keys: string[], expected: string[]) =>
+      keys.length === expected.length &&
+      keys.every((key) => expected.includes(key));
+    if (
+      !exactKeys(
+        Object.keys(binding.refreshAliases),
+        binding.definition.refreshAliases,
+      ) ||
+      Object.values(binding.refreshAliases).some((targets) =>
+        targets.some((target) => !dataIds.has(target)),
+      )
+    )
+      issue(
+        "Program refresh aliases must resolve exactly to declared data bindings.",
+      );
+    if (
+      !exactKeys(
+        Object.keys(binding.stateAliases),
+        binding.definition.stateAliases.map((entry) => entry.alias),
+      )
+    )
+      issue("Program state aliases must match its manifest.");
+    for (const entry of binding.definition.stateAliases) {
+      const state = page.stateDefinitions?.find(
+        (state) => state.stateId === binding.stateAliases[entry.alias],
+      );
+      if (
+        !state ||
+        !exactRevisionRef(state.schemaRevisionRef, entry.schemaRevisionRef)
+      )
+        issue("Program state alias has an incompatible Schema.");
+    }
+    const dependencyIds = binding.definition.dependencies.map(
+      (dep) => dep.revisionRef.id,
+    );
+    if (
+      !Object.keys(binding.dependencyInputs).every((key) =>
+        dependencyIds.includes(key),
+      )
+    )
+      issue("Unknown program dependency input mapping.");
+    for (const dep of binding.definition.dependencies) {
+      if (
+        Object.keys(binding.dependencyInputs[dep.revisionRef.id] ?? {}).some(
+          (key) => dep.dynamicInputKeys.includes(key),
+        )
+      )
+        issue("Fixed dependency arguments cannot also be guest-writable.");
+    }
+  }
+}
+
 export const PageActionSchema = ActionBindingSchema.omit({
   commandRevisionRef: true,
   source: true,
@@ -2832,6 +3160,7 @@ export interface PageNode {
   };
   data?: z.infer<typeof PageDataSchema>[];
   actions?: z.infer<typeof PageActionSchema>[];
+  programActions?: z.infer<typeof PageProgramActionSchema>[];
   on?: z.infer<typeof PageInteractionSchema>[];
   effects?: z.infer<typeof PageEventEffectSchema>[];
   eventPayloads?: Array<{
@@ -2871,6 +3200,7 @@ export const PageNodeSchema: z.ZodType<PageNode> = z.lazy(() =>
         .optional(),
       data: z.array(PageDataSchema).optional(),
       actions: z.array(PageActionSchema).optional(),
+      programActions: z.array(PageProgramActionSchema).max(128).optional(),
       on: z.array(PageInteractionSchema).optional(),
       effects: z.array(PageEventEffectSchema).optional(),
       eventPayloads: z
@@ -2933,6 +3263,7 @@ export const PageSchema = z
       for (const [field, values, target] of [
         ["data", node.data ?? [], dataIds],
         ["actions", node.actions ?? [], actionIds],
+        ["programActions", node.programActions ?? [], actionIds],
         ["on", node.on ?? [], interactionIds],
       ] as const)
         for (const [index, value] of values.entries()) {
@@ -2990,6 +3321,7 @@ export const ResolvedPageSchema = z
     ontologyBindings: z.array(PersistedOntologyBindingSchema),
     queryBindings: z.array(QueryBindingSchema).optional(),
     actionBindings: z.array(ActionBindingSchema),
+    programBindings: z.array(ProgramBindingSchema).max(128).optional(),
     pageAccessPolicy: AccessPolicySchema,
     managementAccess: ManagementAccessSchema,
     tokenRevisionRefs: z.array(RevisionRefSchema).min(1),
@@ -3004,6 +3336,7 @@ export const ResolvedPageSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    validateProgramBindingTargets(value, context);
     validateDeclaredRouteSurfaces(
       value.supportedSurfaces,
       value.routeClaims,
@@ -3463,6 +3796,37 @@ export const ResolvedPageSchema = z
         ),
       );
     }
+    (value.programBindings ?? []).forEach((binding, index) => {
+      const scopes = scopesForNode(
+        instanceNodes.get(binding.source.capabilityInstanceId),
+      );
+      checkScopedSources(binding.inputMapping, scopes, [
+        "programBindings",
+        index,
+        "inputMapping",
+      ]);
+      for (const [id, mapping] of Object.entries(binding.dependencyInputs))
+        checkScopedSources(mapping, scopes, [
+          "programBindings",
+          index,
+          "dependencyInputs",
+          id,
+        ]);
+      if (binding.when) {
+        const reads = collectPageExpressionReads(binding.when);
+        checkScopedReads(reads, scopes, ["programBindings", index, "when"]);
+        if (
+          reads.some(
+            (read) => read.root === "state" && !stateIds.has(read.path[0]!),
+          )
+        )
+          context.addIssue({
+            code: "custom",
+            path: ["programBindings", index, "when"],
+            message: "Program condition references an unknown Page state.",
+          });
+      }
+    });
     value.actionBindings.forEach((binding, index) => {
       const scopes = scopesForNode(
         instanceNodes.get(binding.source.capabilityInstanceId),
@@ -4148,7 +4512,10 @@ export const ResolvedPageSchema = z
           candidate.source.capabilityInstanceId === sourceId &&
           candidate.source.port === binding.cursorWindow!.pageChangePort,
       );
-      const conflictingAction = value.actionBindings.some(
+      const conflictingAction = [
+        ...value.actionBindings,
+        ...(value.programBindings ?? []),
+      ].some(
         (candidate) =>
           candidate.source.capabilityInstanceId === sourceId &&
           candidate.source.port === binding.cursorWindow!.pageChangePort,
@@ -4161,6 +4528,20 @@ export const ResolvedPageSchema = z
             "Cursor-window page-change ports cannot also drive Page state or Domain Actions.",
         });
       }
+    });
+    (value.programBindings ?? []).forEach((binding, index) => {
+      validatePageStateSources(binding.inputMapping, [
+        "programBindings",
+        index,
+        "inputMapping",
+      ]);
+      for (const [id, mapping] of Object.entries(binding.dependencyInputs))
+        validatePageStateSources(mapping, [
+          "programBindings",
+          index,
+          "dependencyInputs",
+          id,
+        ]);
     });
     value.actionBindings.forEach((binding, index) => {
       if (!instanceIds.has(binding.source.capabilityInstanceId)) {
@@ -5168,6 +5549,7 @@ const CompatiblePageRuntimeBundleSchema = z
     ontologyBindings: z.array(PersistedOntologyBindingSchema),
     queryBindings: z.array(QueryBindingSchema).default([]),
     actionBindings: z.array(ActionBindingSchema),
+    programBindings: z.array(ProgramBindingSchema).max(128).optional(),
     pageAccessPolicy: AccessPolicySchema,
     tokenRevisionRefs: z.array(RevisionRefSchema),
     performanceBudgetRef: RevisionRefSchema,
@@ -5196,6 +5578,7 @@ const CompatiblePageRuntimeBundleSchema = z
           "Denied capability identities must be unique declared instances.",
       });
     }
+    validateProgramBindingTargets(value, context);
     validateRuntimeBundleBase(value, "page-release", context);
     value.routeClaims.forEach((claim, index) => {
       if (claim.surface !== value.surface) {

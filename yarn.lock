@@ -354,7 +354,7 @@ debug@^4.4.0:
   dependencies:
     ms "^2.1.3"
 
-esbuild@^0.27.0:
+esbuild@0.27.7, esbuild@^0.27.0:
   version "0.27.7"
   resolved "https://mirrors.cloud.tencent.com/npm/esbuild/-/esbuild-0.27.7.tgz#bcadce22b2f3fd76f257e3a64f83a64986fea11f"
   integrity sha512-IxpibTjyVnmrIQo5aqNpCgoACA/dTKLTlhMHihVHhdkxKyPO1uBBthumT0rdHmcsk9uMonIWS0m4FljWzILh3w==

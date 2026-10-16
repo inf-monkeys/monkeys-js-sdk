@@ -1,6 +1,6 @@
 {
   "name": "@inf-monkeys-tech/monkeys",
-  "version": "1.1.12",
+  "version": "1.1.13-action-program.1",
   "description": "Monkeys JS SDK",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -53,12 +53,14 @@
     "test": "yarn build && node --test test/*.test.cjs",
     "prepack": "yarn build",
     "prepublishOnly": "yarn typecheck && yarn test",
-    "pack:check": "npm pack --dry-run"
+    "pack:check": "npm pack --dry-run",
+    "program:build": "node scripts/build-action-program.cjs"
   },
   "publishConfig": {
     "access": "public"
   },
   "devDependencies": {
+    "esbuild": "0.27.7",
     "tsup": "^8.5.0",
     "typescript": "^5.4.5"
   },

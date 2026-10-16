@@ -1,3 +1,7 @@
+import {
+  ActionProgramDefinitionSchema,
+  ActionProgramArtifactSchema,
+} from "../contracts/declarative-control";
 export {
   AggregateAssetDeleteSchema,
   AggregateAssetRelationObjectSchema,
@@ -113,6 +117,8 @@ export {
 export { LegacyRoutePolicySchema } from "../contracts/legacy-route";
 export {
   AccessPolicySchema,
+  ActionProgramDefinitionSchema,
+  ActionProgramArtifactSchema,
   ActionBindingSchema,
   ActionResultClipboardEffectSchema,
   ActionResultBindingEffectSchema,
@@ -537,6 +543,8 @@ export const canonicalContractSchemas = {
   "domain-event": DomainEventSchema,
   "domain-command": DomainCommandSchema,
   "domain-command-definition": DomainCommandDefinitionSchema,
+  "action-program-definition": ActionProgramDefinitionSchema,
+  "action-program-artifact": ActionProgramArtifactSchema,
   "data-continuity-envelope": DataContinuityEnvelopeSchema,
   "domain-query-definition": DomainQueryDefinitionSchema,
   "declarative-control-ontology-definition":

@@ -25,3 +25,5 @@ export * from './record-editor-draft';
 export * from './target-render-model';
 
 export * from './page-stream';
+
+export * from './action-program-author';

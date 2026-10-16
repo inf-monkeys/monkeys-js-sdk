@@ -53,3 +53,23 @@ yarn pack:check
 `compileLegacyPageRuntimeBundle` and `LegacyPageRuntimeBundleSchema` are explicit compatibility boundaries for pre-canonical resolved Page releases. They retain exact historical View or projection references, dependency checks, and content identities without inventing canonical View references or Shell descriptors. Legacy compilation rejects canonical bindings and Domain Query bindings; use `resolvePage` and `compilePageRuntimeBundle` for current declarations.
 
 The current `OntologyBindingSchema`, `PageRuntimeBundleSchema`, and `compilePageRuntimeBundle` keep their canonical View and Shell requirements. Do not choose the legacy compiler as a fallback after a current contract fails validation. Server migrations must select the compatibility boundary for the existing legacy API, not expose that choice as an untrusted request option.
+
+## Action program authoring (candidate)
+
+The additive ActionProgramDefinition and Page programActions contracts describe
+immutable, exact-version workflow programs; existing direct actions are unchanged.
+This candidate is not yet an integrated business runtime. Server activation remains
+blocked until the governed run protocol and Page host are implemented.
+
+Generate schema-based declarations with generateActionProgramTypes. The repository
+authoring command yarn program:build <config.json> requires an entry (.ts or checked
+.js), outputDirectory, a definition and exact schemas (definitionRevisionRef plus
+Schema definition). The entry exports main with the generated Context/Input/Result
+types. The command checks TypeScript/checkJs, bundles static imports into an IIFE
+named __actionProgram, and emits program-artifact.json with JS/source-map hashes.
+Unsupported schema keywords, invalid types, dynamic imports and require calls fail
+explicitly. Compiler dependencies are pinned in this repository's dev toolchain.
+
+Program hash fields use canonicalContentHash of the exact string or definition,
+not engine bytecode. The author tool hashes the sorted local source-file map for
+sourceHash. No generated artifacts authorize registration, publication or calls.
