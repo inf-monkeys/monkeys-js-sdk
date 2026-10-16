@@ -139,7 +139,6 @@ export const assertCompatibleCapabilityUpgrade = (
   }
   const manifestContract = (entry: DesignCapabilityCatalogEntry) => ({
     kind: entry.manifest.kind,
-    ports: entry.manifest.ports,
     runtime: { ...entry.manifest.runtime, providerBindings: entry.manifest.runtime.providerBindings.map(binding => ({ ...binding, providerRef: { ...binding.providerRef, version: undefined } })) },
     placement: entry.manifest.placement,
     accessibility: entry.manifest.accessibility,
@@ -165,7 +164,16 @@ export const assertCompatibleCapabilityUpgrade = (
   for (const direction of ['inputPorts', 'outputPorts'] as const) {
     const oldPorts = oldRegistration[direction];
     const newPorts = newRegistration[direction];
-    if (oldPorts.length !== newPorts.length) throw new TypeError('Public runtime ports cannot be removed or replaced.');
+    const oldManifestPorts = previous.manifest.ports?.[direction === 'inputPorts' ? 'inputs' : 'outputs'] ?? [];
+    const newManifestPorts = next.manifest.ports?.[direction === 'inputPorts' ? 'inputs' : 'outputs'] ?? [];
+    for (const port of oldManifestPorts) {
+      const replacement = newManifestPorts.find(candidate => candidate.name === port.name);
+      if (!replacement || canonicalContentHash(port) !== canonicalContentHash(replacement)) throw new TypeError('Published runtime port semantics changed.');
+    }
+    if (newManifestPorts.some(port => port.required && !oldManifestPorts.some(previousPort => previousPort.name === port.name)) ||
+        newPorts.some(port => port.required && !oldPorts.some(previousPort => previousPort.name === port.name))) {
+      throw new TypeError('New runtime ports must be optional for published declarations.');
+    }
     for (const port of oldPorts) {
       const replacement = newPorts.find(candidate => candidate.name === port.name);
       if (!replacement || port.required !== replacement.required || port.multiple !== replacement.multiple) throw new TypeError('Public runtime port cardinality changed.');
@@ -179,7 +187,12 @@ export const assertCompatibleCapabilityUpgrade = (
   if (canonicalContentHash(requirements(oldRegistration)) !== canonicalContentHash(requirements(newRegistration))) {
     throw new TypeError('Runtime Ontology access requirements changed.');
   }
-  for (const key of ['allowedSideEffects', 'actionRequirements', 'allowedSlots', 'supportedSurfaces', 'allowedParentCapabilityRefs', 'allowedChildCapabilityRefs'] as const) {
+  const existingOutputs = new Set(oldRegistration.outputPorts.map(port => port.name));
+  const existingActions = newRegistration.actionRequirements.filter(requirement => existingOutputs.has(requirement.outputPort));
+  if (canonicalContentHash(oldRegistration.actionRequirements) !== canonicalContentHash(existingActions)) {
+    throw new TypeError('Published output action and permission requirements changed.');
+  }
+  for (const key of ['allowedSideEffects', 'allowedSlots', 'supportedSurfaces', 'allowedParentCapabilityRefs', 'allowedChildCapabilityRefs'] as const) {
     if (canonicalContentHash(oldRegistration[key]) !== canonicalContentHash(newRegistration[key])) throw new TypeError(`Runtime contract ${key} changed.`);
   }
 };
