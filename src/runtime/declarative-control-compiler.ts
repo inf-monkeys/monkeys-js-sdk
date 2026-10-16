@@ -2043,6 +2043,7 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
     },
     capabilityInstances,
     ...(stateDefinitions.length ? { stateDefinitions } : {}),
+    ...(page.sharedStateBindings ? { sharedStateBindings: page.sharedStateBindings } : {}),
     ...(page.entryTransitions
       ? {
           entryTransitions: page.entryTransitions.map(
@@ -2875,6 +2876,7 @@ const compilePageRuntimeBundleInternal = (
     capabilityInstances: page.capabilityInstances,
     deniedCapabilityInstanceIds: [],
     stateDefinitions: page.stateDefinitions,
+    ...(page.sharedStateBindings ? { sharedStateBindings: page.sharedStateBindings } : {}),
     entryTransitions,
     interactionBindings: page.interactionBindings,
     ontologyBindings: page.ontologyBindings,

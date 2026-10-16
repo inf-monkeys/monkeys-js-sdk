@@ -2888,6 +2888,44 @@ export const PageNodeSchema: z.ZodType<PageNode> = z.lazy(() =>
     .strict(),
 );
 
+/** Host-registered, versioned shared state; no executable code or storage keys in Page. */
+export const PageSharedStateBindingSchema = z.object({
+  bindingId: ContractIdentifierSchema,
+  provider: z.object({ id: ContractIdentifierSchema, version: z.number().int().positive() }).strict(),
+  states: z.record(ContractIdentifierSchema, ContractIdentifierSchema).refine(value => Object.keys(value).length > 0 && Object.keys(value).length <= 32, "Map 1–32 state slots."),
+  queries: z.record(ContractIdentifierSchema, ContractIdentifierSchema).refine(value => Object.keys(value).length <= 16, "Map at most 16 query slots."),
+  writeInteractions: z.array(ContractIdentifierSchema).max(32),
+}).strict();
+export type PageSharedStateBinding = z.infer<typeof PageSharedStateBindingSchema>;
+
+const validateSharedStateBindings = (
+  bindings: PageSharedStateBinding[] | undefined,
+  states: readonly { stateId: string; scopeNodeId?: string }[],
+  queryIds: ReadonlySet<string>,
+  interactions: readonly { bindingId: string; targetStateId: string }[],
+  context: z.RefinementCtx,
+) => {
+  const ids = new Set<string>();
+  const owned = new Set<string>();
+  for (const [index, binding] of (bindings ?? []).entries()) {
+    const issue = (message: string) => context.addIssue({ code: "custom", path: ["sharedStateBindings", index], message });
+    if (ids.has(binding.bindingId)) issue("Shared state binding ids must be unique.");
+    ids.add(binding.bindingId);
+    const mapped = Object.values(binding.states);
+    for (const id of mapped) {
+      if (owned.has(id)) issue("Shared state mappings must have one owner and distinct slots.");
+      owned.add(id);
+      if (!states.some(state => state.stateId === id && !state.scopeNodeId)) issue(`Shared state ${id} must reference a declared root state.`);
+    }
+    for (const id of Object.values(binding.queries)) if (!queryIds.has(id)) issue(`Unknown shared state query ${id}.`);
+    if (new Set(binding.writeInteractions).size !== binding.writeInteractions.length) issue("Shared state write interactions must be unique.");
+    for (const id of binding.writeInteractions) {
+      const interaction = interactions.find(entry => entry.bindingId === id);
+      if (!interaction || !mapped.includes(interaction.targetStateId)) issue(`Shared state write ${id} must target a mapped state.`);
+    }
+  }
+};
+
 export const PageSchema = z
   .object({
     contract: z.literal("Page"),
@@ -2906,6 +2944,7 @@ export const PageSchema = z
     shell: ContractIdentifierSchema.optional(),
     body: PageNodeSchema,
     state: z.array(PageStateSchema).optional(),
+    sharedStateBindings: z.array(PageSharedStateBindingSchema).max(16).optional(),
     entryTransitions: z.array(PageEntrySchema).optional(),
     access: AccessPolicySchema,
     managementAccess: ManagementAccessSchema,
@@ -2922,6 +2961,7 @@ export const PageSchema = z
     const dataIds = new Set<string>();
     const actionIds = new Set<string>();
     const interactionIds = new Set<string>();
+    const sharedInteractions: { bindingId: string; targetStateId: string }[] = [];
     const visit = (node: PageNode, path: Array<string | number>) => {
       if (ids.has(node.id))
         context.addIssue({
@@ -2944,11 +2984,13 @@ export const PageSchema = z
             });
           target.add(value.bindingId);
         }
+      sharedInteractions.push(...(node.on ?? []));
       (node.children ?? []).forEach((child, index) =>
         visit(child, [...path, "children", index]),
       );
     };
     visit(page.body, ["body"]);
+    validateSharedStateBindings(page.sharedStateBindings, page.state ?? [], dataIds, sharedInteractions, context);
     const stateIds = (page.state ?? []).map((entry) => entry.stateId);
     if (new Set(stateIds).size !== stateIds.length)
       context.addIssue({
@@ -2985,6 +3027,7 @@ export const ResolvedPageSchema = z
     renderTree: RenderTreeSchema,
     capabilityInstances: z.array(CapabilityInstanceSchema).min(1),
     stateDefinitions: z.array(PageStateDefinitionSchema).optional(),
+    sharedStateBindings: z.array(PageSharedStateBindingSchema).max(16).optional(),
     entryTransitions: z.array(PageEntryTransitionSchema).optional(),
     interactionBindings: z.array(InteractionBindingSchema).optional(),
     ontologyBindings: z.array(PersistedOntologyBindingSchema),
@@ -3033,6 +3076,7 @@ export const ResolvedPageSchema = z
         });
       }
     });
+    validateSharedStateBindings(value.sharedStateBindings, value.stateDefinitions ?? [], new Set([...(value.queryBindings ?? []), ...value.ontologyBindings].map(binding => binding.bindingId)), value.interactionBindings ?? [], context);
     const stateDefinitions = value.stateDefinitions ?? [];
     const entryTransitions = value.entryTransitions ?? [];
     const interactionBindings = value.interactionBindings ?? [];
@@ -5163,6 +5207,7 @@ const CompatiblePageRuntimeBundleSchema = z
     deniedCapabilityInstanceIds: z.array(ContractIdentifierSchema).default([]),
     capabilityAccessEvaluated: z.literal(true).optional(),
     stateDefinitions: z.array(PageStateDefinitionSchema).default([]),
+    sharedStateBindings: z.array(PageSharedStateBindingSchema).max(16).optional(),
     entryTransitions: z.array(ResolvedPageEntryTransitionSchema).default([]),
     interactionBindings: z.array(InteractionBindingSchema).default([]),
     ontologyBindings: z.array(PersistedOntologyBindingSchema),
@@ -5181,6 +5226,7 @@ const CompatiblePageRuntimeBundleSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    validateSharedStateBindings(value.sharedStateBindings, value.stateDefinitions, new Set([...value.queryBindings, ...value.ontologyBindings].map(binding => binding.bindingId)), value.interactionBindings, context);
     const instanceIds = new Set(
       value.capabilityInstances.map((instance) => instance.instanceId),
     );
