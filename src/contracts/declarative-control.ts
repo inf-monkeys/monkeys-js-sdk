@@ -2799,13 +2799,10 @@ export const PageDataSchema = QueryBindingSchema.omit({
   })
   .strict();
 
-/** Host ABI is explicit: older hosts must reject programs they cannot isolate. */
-export const ACTION_PROGRAM_ABI = "monkeys.action-program/1" as const;
+/** Host ABI is explicit: the trusted browser Worker executor does not accept sandbox artifacts. */
+export const ACTION_PROGRAM_ABI = "monkeys.action-program/2" as const;
 export const ActionProgramBudgetsSchema = z
   .object({
-    heapBytes: z.number().int().positive().max(67108864),
-    activationMs: z.number().int().positive().max(500),
-    cpuMs: z.number().int().positive().max(2000),
     rpcMs: z.number().int().positive().max(30000),
     concurrentCalls: z.number().int().positive().max(4),
     calls: z.number().int().positive().max(128),
@@ -2816,9 +2813,6 @@ export const ActionProgramBudgetsSchema = z
   })
   .strict();
 export const DEFAULT_ACTION_PROGRAM_BUDGETS = Object.freeze({
-  heapBytes: 67108864,
-  activationMs: 500,
-  cpuMs: 2000,
   rpcMs: 30000,
   concurrentCalls: 4,
   calls: 128,
@@ -2871,7 +2865,7 @@ export const ActionProgramDefinitionSchema = z
     entry: z.literal("main"),
     abi: z.literal(ACTION_PROGRAM_ABI),
     compiler: z.string().trim().min(1).max(128),
-    target: z.literal("quickjs-es2020"),
+    target: z.literal("browser-worker-es2020"),
     sourceHash: Sha256Schema,
     compiledHash: Sha256Schema,
     sourceMapHash: Sha256Schema,

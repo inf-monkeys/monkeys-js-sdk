@@ -55,7 +55,7 @@ const definition = {
   entry: "main",
   abi: sdk.ACTION_PROGRAM_ABI,
   compiler: "test/1",
-  target: "quickjs-es2020",
+  target: "browser-worker-es2020",
   sourceHash: "a".repeat(64),
   compiledHash: "b".repeat(64),
   sourceMapHash: "c".repeat(64),
@@ -345,5 +345,17 @@ test("author build emits a hashed static bundle and rejects unchecked or dynamic
       if (fs.existsSync(file)) fs.unlinkSync(file);
     }
     fs.rmdirSync(dir);
+  }
+});
+
+
+test("native Worker ABI rejects sandbox targets and unsupported resource promises", () => {
+  assert.equal(sdk.ACTION_PROGRAM_ABI, "monkeys.action-program/2");
+  assert.equal(definition.target, "browser-worker-es2020");
+  assert.equal(sdk.ActionProgramDefinitionSchema.safeParse({ ...definition, abi: "monkeys.action-program/1" }).success, false);
+  assert.equal(sdk.ActionProgramDefinitionSchema.safeParse({ ...definition, target: "quickjs-es2020" }).success, false);
+  for (const key of ["heapBytes", "activationMs", "cpuMs"]) {
+    assert.equal(key in sdk.DEFAULT_ACTION_PROGRAM_BUDGETS, false);
+    assert.equal(sdk.ActionProgramBudgetsSchema.safeParse({ ...sdk.DEFAULT_ACTION_PROGRAM_BUDGETS, [key]: 1 }).success, false);
   }
 });
