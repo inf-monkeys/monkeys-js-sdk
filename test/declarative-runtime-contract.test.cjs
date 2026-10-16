@@ -94,3 +94,32 @@ test('compatible output evolution cannot emit values rejected by published consu
   broken.declarativeRegistration.schemaDocuments[1].document.enum = ['forged'];
   assert.throws(() => assertCompatibleCapabilityUpgrade(entry, broken), /schema integrity/);
 });
+
+test('optional ports extend a contract without changing published ports or permissions', () => {
+  const { assertCompatibleCapabilityUpgrade } = require('../lib');
+  const entry = fixture(1, 'table/v1');
+  const model = { type: 'object' };
+  const schemaRef = ref('schema', 'example.model', 1, model);
+  const port = { name: 'model', schemaRevisionRef: schemaRef, required: true, multiple: false };
+  entry.manifest.ports = { inputs: [{ name: 'model', schemaRef: 'example.model', required: true, multiple: false }], outputs: [] };
+  entry.declarativeRegistration = { ...entry.declarativeRegistration, propertySchemaRevisionRef: schemaRef,
+    inputPorts: [port], outputPorts: [], schemaDocuments: [{ schemaRevisionRef: schemaRef, document: model }],
+    ontologyRequirements: [], actionRequirements: [], allowedSideEffects: [], allowedSlots: [], supportedSurfaces: ['kernel'], allowedParentCapabilityRefs: [], allowedChildCapabilityRefs: [],
+  };
+  for (const direction of ['inputPorts', 'outputPorts']) {
+    const next = structuredClone(entry);
+    const manifestDirection = direction === 'inputPorts' ? 'inputs' : 'outputs';
+    next.declarativeRegistration[direction].push({ ...port, name: 'optional', required: false });
+    next.manifest.ports[manifestDirection].push({ name: 'optional', schemaRef: 'example.model', required: false, multiple: false });
+    if (direction === 'outputPorts') next.declarativeRegistration.actionRequirements.push({ outputPort: 'optional', allowedCommandKinds: ['domain-command'], requiredPermissionCodes: ['new-action'] });
+    assert.doesNotThrow(() => assertCompatibleCapabilityUpgrade(entry, next));
+    next.declarativeRegistration[direction].at(-1).required = true;
+    assert.throws(() => assertCompatibleCapabilityUpgrade(entry, next), /must be optional/);
+  }
+  const removed = structuredClone(entry);
+  removed.declarativeRegistration.inputPorts = [];
+  assert.throws(() => assertCompatibleCapabilityUpgrade(entry, removed), /cardinality/);
+  const widened = structuredClone(entry);
+  widened.manifest.ports.inputs[0].multiple = true;
+  assert.throws(() => assertCompatibleCapabilityUpgrade(entry, widened), /semantics changed/);
+});
