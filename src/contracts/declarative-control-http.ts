@@ -696,6 +696,7 @@ export type DeclarativeCapabilitySchemaDocument = z.infer<
 
 export const DeclarativeCapabilityAuthoringRegistrationSchema = z
   .object({
+    runtimeContractVersion: ContractIdentifierSchema.optional(),
     registrationRevisionRef: RevisionRefSchema,
     capabilityRevisionRef: RevisionRefSchema,
     providerRevisionRef: RevisionRefSchema,
@@ -865,6 +866,9 @@ export const ProductDeclarativeCapabilityRegistrationSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    if (value.provider.runtimeContractVersion !== value.declarativeRegistration.runtimeContractVersion) {
+      context.addIssue({ code: 'custom', path: ['declarativeRegistration', 'runtimeContractVersion'], message: 'The authoring contract must match its runtime provider.' });
+    }
     const ownerRepo = value.manifest.ownerRepo;
     const registration = value.declarativeRegistration;
 
@@ -1562,6 +1566,7 @@ export const DeclarativeBindingAuthoringChoiceSchema =
 
 export const DeclarativeWorkbenchTargetChoiceSchema = z
   .object({
+    runtimeContractVersion: ContractIdentifierSchema.optional(),
     stableTargetRef: StableRefSchema,
     targetRevisionRef: RevisionRefSchema,
     providerRevisionRef: RevisionRefSchema,
