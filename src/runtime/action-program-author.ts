@@ -1,3 +1,4 @@
+import Ajv2020 from "ajv/dist/2020";
 import type {
   ActionProgramDefinition,
   RevisionRef,
@@ -248,4 +249,12 @@ export function generateActionProgramTypes(
       .map((effect) => JSON.stringify(effect.slice(6)))
       .join(" | ") || "never"
   }>};\nexport type Program = (context: Context, input: Input) => Promise<Result>;\n`;
+}
+
+/** Validates JSON values without imposing a component render-model object shape. */
+export function compileProgramValueValidator(schema: Record<string, unknown>, documents: readonly Record<string, unknown>[] = []) {
+  const ajv = new Ajv2020({ strict: false, allErrors: false, coerceTypes: false, removeAdditional: false, useDefaults: false });
+  const ids = new Set<string>();
+  for (const document of documents) if (typeof document.$id === "string" && document.$id !== schema.$id && !ids.has(document.$id)) { ajv.addSchema(document); ids.add(document.$id); }
+  return ajv.compile(schema);
 }

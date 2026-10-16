@@ -30,6 +30,19 @@ const ref = (kind, id, body) => ({
   contentHash: sdk.canonicalContentHash(body),
 });
 const schemaRef = ref("schema", schema.schemaId, schema);
+test('runtime calls reject untrusted overrides and download artifacts stay bounded', () => {
+  const context = { activeReleaseRevisionRef: ref('page-release','slot',{}),pageRevisionRef:ref('page','page',{}),intent:{},pageState:{},idempotencyKey:'click' };
+  const call = { context,kind:'command',dependencyId:'save',args:{},stepKey:'save' };
+  assert.equal(sdk.RuntimeProgramCallRequestSchema.safeParse(call).success,true);
+  for (const extra of [{endpoint:'https://invalid.test'},{definition:{}},{stepKey:''},{recoveryOnly:false}]) assert.equal(sdk.RuntimeProgramCallRequestSchema.safeParse({...call,...extra}).success,false);
+  assert.equal(sdk.RuntimeProgramDownloadResultSchema.safeParse({kind:'text-artifact',fileName:'a.txt',mimeType:'text/html',content:'x'}).success,false);
+});
+test('program value validators support scalar state without coercion', () => {
+  const { compileProgramValueValidator } = require('../lib/runtime');
+  const validate = compileProgramValueValidator({type:'integer'});
+  assert.equal(validate(3),true);
+  assert.equal(validate('3'),false);
+});
 const definition = {
   contract: "ActionProgramDefinition",
   schemaVersion: 1,

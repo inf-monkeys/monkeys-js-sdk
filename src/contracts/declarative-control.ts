@@ -2837,6 +2837,7 @@ export const ActionProgramDependencySchema = z
     revisionRef: RevisionRefSchema,
     inputSchemaRevisionRef: ProgramSchemaRefSchema,
     resultSchemaRevisionRef: ProgramSchemaRefSchema,
+    download: ActionBindingSchema.shape.success.shape.download,
     // Fixed/identity arguments are injected by the trusted caller, never by guest code.
     dynamicInputKeys: z.array(ContractIdentifierSchema).max(128),
   })
