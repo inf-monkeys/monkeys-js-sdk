@@ -73,6 +73,27 @@ const workbenchTargetRegistry = [{
   accessPolicy: access({ permissionAllOf: ['workflow.run'] }),
 }];
 
+test('Page bundles preserve the registry-issued runtime contract and reject forged declarations', () => {
+  const input = pageInput();
+  input.page = structuredClone(input.page);
+  input.capabilityRegistry[0].runtimeContractVersion = '1';
+  input.page.capabilityInstances[0].runtimeContractVersion = '1';
+  input.page.renderTree.nodes.find(node => node.nodeId === input.page.capabilityInstances[0].nodeId).runtimeContractVersion = '1';
+  const bundle = runtime.compilePageRuntimeBundle(input);
+  assert.equal(bundle.capabilityInstances[0].runtimeContractVersion, '1');
+  assert.equal(bundle.renderTree.nodes.find(node => node.nodeId === input.page.capabilityInstances[0].nodeId).runtimeContractVersion, '1');
+  input.capabilityRegistry[0].runtimeContractVersion = '2';
+  assert.throws(() => runtime.compilePageRuntimeBundle(input), /Runtime contract must be issued/);
+});
+
+test('renumbering identical input schema content does not require an identity projection', () => {
+  const input = pageInput();
+  input.capabilityRegistry[0].inputPorts[0].schemaRevisionRef.revision += 10;
+  assert.doesNotThrow(() => runtime.compilePageRuntimeBundle(input));
+  input.capabilityRegistry[0].inputPorts[0].schemaRevisionRef.contentHash = 'f'.repeat(64);
+  assert.throws(() => runtime.compilePageRuntimeBundle(input), /PORT_TYPE_MISMATCH/);
+});
+
 const workbenchInput = (overrides = {}) => ({
   workbench: overrides.workbench ?? workbench,
   workbenchRevisionRef: overrides.workbenchRevisionRef ?? workbenchRevisionRef,
@@ -1443,4 +1464,14 @@ test('legacy compilation cannot bypass the canonical binding authority of modern
   assert.equal(sdk.ReadablePageRuntimeBundleSchema.safeParse(bundle).success, true);
   assert.equal(sdk.LegacyPageRuntimeBundleSchema.safeParse(bundle).success, false);
   assert.throws(() => runtime.compileLegacyPageRuntimeBundle(pageInput()));
+});
+
+test('Workbench compilation derives host and instance contracts from exact governed registrations', () => {
+  const input = workbenchInput();
+  input.capabilityRegistry = [{ capabilityRevisionRef: input.workbench.layout.hostCapabilityRevisionRef, providerRevisionRef: input.workbench.layout.hostProviderRevisionRef, runtimeContractVersion: 'layout/v1' }];
+  const bundle = runtime.compileWorkbenchRuntimeBundle(input);
+  assert.equal(bundle.layout.runtimeContractVersion, 'layout/v1');
+  const forged = structuredClone(input);
+  forged.workbench.layout.runtimeContractVersion = 'layout/v2';
+  assert.throws(() => runtime.compileWorkbenchRuntimeBundle(forged), /Runtime contract must be issued/);
 });

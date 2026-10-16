@@ -11,6 +11,7 @@ export * from './tenant-config';
 export * from './tenant-runtime-bindings';
 export * from './theme-tokens';
 export * from './view-provider-registry';
+export * from './declarative-runtime-contract';
 export * from './view-render-model';
 export * from './workflow-compiler';
 export * from './workflow-column';
