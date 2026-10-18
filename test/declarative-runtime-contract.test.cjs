@@ -182,3 +182,35 @@ test('optional ports extend a contract without changing published ports or permi
   widened.manifest.ports.inputs[0].multiple = true;
   assert.throws(() => assertCompatibleCapabilityUpgrade(entry, widened), /semantics changed/);
 });
+
+test('optional composition slots extend a contract while preserving existing slots and placement', () => {
+  const { assertCompatibleCapabilityUpgrade } = require('../lib');
+  const entry = fixture(1, 'table/v1');
+  const model = { type: 'object' };
+  const schemaRef = ref('schema', 'example.model', 1, model);
+  entry.manifest.placement = { slots: ['media'], surfaces: ['studio'], variants: [], tokenRefs: [] };
+  entry.manifest.accessibility = { keyboardModel: 'native', focusModel: 'native', labelContract: 'host' };
+  entry.declarativeRegistration = { ...entry.declarativeRegistration, propertySchemaRevisionRef: schemaRef,
+    inputPorts: [], outputPorts: [], schemaDocuments: [{ schemaRevisionRef: schemaRef, document: model }],
+    ontologyRequirements: [], actionRequirements: [], allowedSideEffects: [], allowedSlots: ['media'], supportedSurfaces: ['studio'], allowedParentCapabilityRefs: [], allowedChildCapabilityRefs: [],
+  };
+  const next = structuredClone(entry);
+  next.manifest.placement.slots = ['children', 'media'];
+  next.declarativeRegistration.allowedSlots = ['children', 'media'];
+  assert.doesNotThrow(() => assertCompatibleCapabilityUpgrade(entry, next));
+  for (const remove of [e => e.manifest.placement.slots.splice(1), e => e.declarativeRegistration.allowedSlots.splice(1)]) {
+    const broken = structuredClone(next);
+    remove(broken);
+    assert.throws(() => assertCompatibleCapabilityUpgrade(entry, broken), /slots cannot be removed/);
+  }
+  for (const mutate of [
+    e => e.manifest.placement.surfaces.push('kernel'),
+    e => e.manifest.placement.variants.push('new'),
+    e => e.manifest.accessibility.focusModel = 'trapped',
+    e => e.declarativeRegistration.allowedSideEffects.push('network'),
+  ]) {
+    const broken = structuredClone(next);
+    mutate(broken);
+    assert.throws(() => assertCompatibleCapabilityUpgrade(entry, broken));
+  }
+});

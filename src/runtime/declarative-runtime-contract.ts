@@ -173,7 +173,7 @@ export const assertCompatibleCapabilityUpgrade = (
   const manifestContract = (entry: DesignCapabilityCatalogEntry) => ({
     kind: entry.manifest.kind,
     runtime: { ...entry.manifest.runtime, providerBindings: entry.manifest.runtime.providerBindings.map(binding => ({ ...binding, providerRef: { ...binding.providerRef, version: undefined } })) },
-    placement: entry.manifest.placement,
+    placement: entry.manifest.placement && { ...entry.manifest.placement, slots: undefined },
     accessibility: entry.manifest.accessibility,
   });
   if (canonicalContentHash(manifestContract(previous)) !== canonicalContentHash(manifestContract(next))) {
@@ -181,6 +181,16 @@ export const assertCompatibleCapabilityUpgrade = (
   }
   const oldRegistration = previous.declarativeRegistration;
   const newRegistration = next.declarativeRegistration;
+  // Slots name optional composition points. Adding one cannot invalidate a
+  // saved tree, while removing an existing point would orphan its children.
+  for (const [oldSlots, newSlots] of [
+    [previous.manifest.placement?.slots ?? [], next.manifest.placement?.slots ?? []],
+    [oldRegistration.allowedSlots, newRegistration.allowedSlots],
+  ]) {
+    if (oldSlots.some(slot => !newSlots.includes(slot))) {
+      throw new TypeError('Published runtime slots cannot be removed.');
+    }
+  }
   const schema = (entry: typeof oldRegistration, reference: RevisionRef) => {
     const document = entry.schemaDocuments.find(candidate => sameSchemaContract(candidate.schemaRevisionRef, reference));
     if (!document || canonicalContentHash(document.document) !== reference.contentHash) throw new TypeError('Runtime contract schema integrity failed.');
@@ -225,7 +235,7 @@ export const assertCompatibleCapabilityUpgrade = (
   if (canonicalContentHash(oldRegistration.actionRequirements) !== canonicalContentHash(existingActions)) {
     throw new TypeError('Published output action and permission requirements changed.');
   }
-  for (const key of ['allowedSideEffects', 'allowedSlots', 'supportedSurfaces', 'allowedParentCapabilityRefs', 'allowedChildCapabilityRefs'] as const) {
+  for (const key of ['allowedSideEffects', 'supportedSurfaces', 'allowedParentCapabilityRefs', 'allowedChildCapabilityRefs'] as const) {
     if (canonicalContentHash(oldRegistration[key]) !== canonicalContentHash(newRegistration[key])) throw new TypeError(`Runtime contract ${key} changed.`);
   }
 };
