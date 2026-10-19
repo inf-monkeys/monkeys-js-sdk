@@ -1475,3 +1475,31 @@ test('Workbench compilation derives host and instance contracts from exact gover
   forged.workbench.layout.runtimeContractVersion = 'layout/v2';
   assert.throws(() => runtime.compileWorkbenchRuntimeBundle(forged), /Runtime contract must be issued/);
 });
+
+test('Page entries retain only independently verified shared Studio Page and Release identities', () => {
+  const sharedScope = { ...tenantScope, tenantRef: { ...tenantScope.tenantRef, id: '0' }, teamRef: { ...tenantScope.teamRef, id: '0' } };
+  const options = { ownerRepo: 'monkeys-server', tenantScope: sharedScope };
+  const target = {
+    ...navigationTargetRegistry[0],
+    stableTargetRef: stable('page', 'shared.record-detail', options),
+    targetRevisionRef: revision('page', 'shared.record-detail', options),
+    releaseRevisionRef: revision('page-release', 'shared.record-detail.release', options),
+  };
+  const stateSchema = revision("schema", "shared-entry.state", { visibility: "global" });
+  const input = pageInput({
+    page: { ...page, stateDefinitions: [{ stateId: 'entry', schemaRevisionRef: stateSchema, persistence: 'none' }], entryTransitions: [{ transitionId: 'open-shared', activation: { operator: 'all', conditions: [{ stateId: 'entry', predicate: 'truthy' }] }, targetRef: target.stableTargetRef, pathParameters: {}, query: { preserve: false, remove: [], set: {} } }] },
+    targetRegistry: [target],
+    release: { ...pageRelease, dependencySnapshot: [...pageRelease.dependencySnapshot, { role: "schema", revisionRef: stateSchema }, { role: 'page', revisionRef: target.targetRevisionRef }, { role: 'page-release', revisionRef: target.releaseRevisionRef }] },
+  });
+  const verified = [target.targetRevisionRef, target.releaseRevisionRef];
+  assert.throws(() => runtime.compilePageRuntimeBundle(input), error => error.code === 'CROSS_TENANT_REFERENCE');
+  const bundle = runtime.compilePageRuntimeBundle({ ...input, verifiedSharedPageReferences: verified });
+  assert.deepEqual(bundle.entryTransitions[0].targetRevisionRef, target.targetRevisionRef);
+  assert.deepEqual(bundle.entryTransitions[0].targetAccessPolicy, target.accessPolicy);
+  for (const references of [verified.slice(0, 1), [...verified, revision('domain-query-definition', 'foreign', options)], [{ ...verified[0], contentHash: 'c'.repeat(64) }, verified[1]]]) {
+    assert.throws(() => runtime.compilePageRuntimeBundle({ ...input, verifiedSharedPageReferences: references }), error => error.code === 'CROSS_TENANT_REFERENCE');
+  }
+  const unrelatedScope = { ...sharedScope, teamRef: { ...sharedScope.teamRef, id: 'other-team' } };
+  const unrelated = verified.map(ref => ({ ...ref, tenantScope: unrelatedScope }));
+  assert.throws(() => runtime.compilePageRuntimeBundle({ ...input, verifiedSharedPageReferences: unrelated }), error => error.code === 'CROSS_TENANT_REFERENCE');
+});

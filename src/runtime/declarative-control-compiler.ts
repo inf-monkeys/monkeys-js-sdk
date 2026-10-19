@@ -247,6 +247,8 @@ export interface CompilePageRuntimeBundleInput {
   programRegistry?: readonly ActionProgramRegistration[];
   targetRegistry?: readonly NavigationRouteTargetRegistration[];
   shellRegistration: DeclarativeProductResourceRegistration;
+  /** Exact shared Studio Page references independently verified by the authenticated catalog. */
+  verifiedSharedPageReferences?: readonly RevisionRef[];
 }
 export interface CompileWorkbenchRuntimeBundleInput {
   capabilityRegistry?: readonly DeclarativeCapabilityRegistration[];
@@ -2310,7 +2312,27 @@ const compilePageRuntimeBundleInternal = (
     release.dependencySnapshot,
     pageDependencies(page, compilerRevisionRef),
   );
-  assertDependencyScopes(release.dependencySnapshot, scope);
+  const verifiedSharedPageReferences = (input.verifiedSharedPageReferences ?? []).map((value, index) => {
+    const reference = RevisionRefSchema.parse(value);
+    const target = (input.targetRegistry ?? []).find((candidate) =>
+      page.entryTransitions.some((entry) => sameStableRef(entry.targetRef, candidate.stableTargetRef)) &&
+      [candidate.targetRevisionRef, candidate.releaseRevisionRef].some((ref) => ref && sameRevisionRef(ref, reference)),
+    );
+    if (
+      release.target.surface !== "studio" || reference.visibility !== "tenant" ||
+      reference.ownerRepo !== "monkeys-server" || !["page", "page-release"].includes(reference.kind) ||
+      reference.tenantScope?.tenantRef.id !== "0" || reference.tenantScope?.teamRef?.id !== "0" ||
+      !target || target.surface !== "studio" || target.targetRevisionRef.kind !== "page" ||
+      !target.releaseRevisionRef || target.releaseRevisionRef.kind !== "page-release" ||
+      scopeKey(target.targetRevisionRef.tenantScope as TenantScope) !== scopeKey(reference.tenantScope) ||
+      scopeKey(target.releaseRevisionRef.tenantScope as TenantScope) !== scopeKey(reference.tenantScope)
+    ) throw new DeclarativeControlCompilationError(
+      "CROSS_TENANT_REFERENCE", `verifiedSharedPageReferences[${index}]`,
+      "Shared Studio Page references must pin an authenticated catalog target and its Release in the shared scope.",
+    );
+    return revisionRefKey(reference);
+  });
+  assertDependencyScopes(release.dependencySnapshot, scope, new Set(verifiedSharedPageReferences));
   const queryRegistrations = (input.domainQueryRegistry ?? []).map(
     (registration, index) => {
       const definitionRevisionRef = RevisionRefSchema.parse(
