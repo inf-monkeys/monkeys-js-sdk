@@ -2323,12 +2323,13 @@ const compilePageRuntimeBundleInternal = (
       reference.ownerRepo !== "monkeys-server" || !["page", "page-release"].includes(reference.kind) ||
       reference.tenantScope?.tenantRef.id !== "0" || reference.tenantScope?.teamRef?.id !== "0" ||
       !target || target.surface !== "studio" || target.targetRevisionRef.kind !== "page" ||
-      !target.releaseRevisionRef || target.releaseRevisionRef.kind !== "page-release" ||
       scopeKey(target.targetRevisionRef.tenantScope as TenantScope) !== scopeKey(reference.tenantScope) ||
-      scopeKey(target.releaseRevisionRef.tenantScope as TenantScope) !== scopeKey(reference.tenantScope)
+      (target.releaseRevisionRef && (target.releaseRevisionRef.kind !== "page-release" ||
+        !target.releaseRevisionRef.tenantScope ||
+        scopeKey(target.releaseRevisionRef.tenantScope) !== scopeKey(reference.tenantScope)))
     ) throw new DeclarativeControlCompilationError(
       "CROSS_TENANT_REFERENCE", `verifiedSharedPageReferences[${index}]`,
-      "Shared Studio Page references must pin an authenticated catalog target and its Release in the shared scope.",
+      "Shared Studio Page references must pin an authenticated catalog route target in the shared scope.",
     );
     return revisionRefKey(reference);
   });

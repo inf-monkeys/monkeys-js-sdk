@@ -1496,6 +1496,13 @@ test('Page entries retain only independently verified shared Studio Page and Rel
   const bundle = runtime.compilePageRuntimeBundle({ ...input, verifiedSharedPageReferences: verified });
   assert.deepEqual(bundle.entryTransitions[0].targetRevisionRef, target.targetRevisionRef);
   assert.deepEqual(bundle.entryTransitions[0].targetAccessPolicy, target.accessPolicy);
+  const routeOnly = structuredClone(input);
+  delete routeOnly.targetRegistry[0].releaseRevisionRef;
+  routeOnly.release.dependencySnapshot = routeOnly.release.dependencySnapshot.filter(dep => dep.role !== 'page-release');
+  const routeBundle = runtime.compilePageRuntimeBundle({ ...routeOnly, verifiedSharedPageReferences: [target.targetRevisionRef] });
+  assert.deepEqual(routeBundle.entryTransitions[0].targetRevisionRef, target.targetRevisionRef);
+  assert.equal(routeBundle.entryTransitions[0].targetReleaseRevisionRef, undefined);
+  assert.throws(() => runtime.compilePageRuntimeBundle({ ...routeOnly, verifiedSharedPageReferences: verified }), error => error.code === 'CROSS_TENANT_REFERENCE');
   for (const references of [verified.slice(0, 1), [...verified, revision('domain-query-definition', 'foreign', options)], [{ ...verified[0], contentHash: 'c'.repeat(64) }, verified[1]]]) {
     assert.throws(() => runtime.compilePageRuntimeBundle({ ...input, verifiedSharedPageReferences: references }), error => error.code === 'CROSS_TENANT_REFERENCE');
   }
