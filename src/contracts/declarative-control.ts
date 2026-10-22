@@ -3549,7 +3549,7 @@ export const ResolvedPageSchema = z
             read.root === "actions" ||
             read.root === "result" ||
             (read.root === "state" && !stateIds.has(read.path[0] ?? "")) ||
-            (read.root === "bindings" &&
+            ((read.root === "bindings" || read.root === "queries") &&
               ![...value.ontologyBindings, ...queryBindings].some(
                 (candidate) => candidate.bindingId === read.path[0],
               ))
@@ -3673,7 +3673,7 @@ export const ResolvedPageSchema = z
           read.root === "result" ||
           read.root === "model" ||
           (read.root === "state" && !stateIds.has(read.path[0] ?? "")) ||
-          (read.root === "bindings" &&
+          ((read.root === "bindings" || read.root === "queries") &&
             ![...value.ontologyBindings, ...queryBindings].some(
               (binding) => binding.bindingId === read.path[0],
             ))
@@ -3741,15 +3741,32 @@ export const ResolvedPageSchema = z
       path: (string | number)[],
     ) => {
       for (const read of reads) {
+        if (
+          read.root === "queries" &&
+          (!read.path[0] ||
+            ![...value.ontologyBindings, ...queryBindings].some(
+              (binding) => binding.bindingId === read.path[0],
+            ) ||
+            read.path.length !== 2 ||
+            !["status", "hasData", "errorCode"].includes(read.path[1] ?? ""))
+        )
+          context.addIssue({
+            code: "custom",
+            path,
+            message:
+              "Query lifecycle expressions require a declared binding and may read only status, hasData, or errorCode.",
+          });
         const owner =
           read.root === "state"
             ? stateDefinitions.find((state) => state.stateId === read.path[0])
                 ?.scopeNodeId
             : read.root === "bindings"
               ? queryOwners.get(read.path[0])
-              : read.root === "actions"
-                ? actionOwners.get(read.path[0])
-                : undefined;
+              : read.root === "queries"
+                ? queryOwners.get(read.path[0])
+                : read.root === "actions"
+                  ? actionOwners.get(read.path[0])
+                  : undefined;
         // A parent may observe only aggregate pending for its descendant action scopes.
         // Error codes and individual row state remain scoped; unrelated repeat branches cannot aggregate.
         const pendingAggregate =
@@ -4198,7 +4215,7 @@ export const ResolvedPageSchema = z
             });
           }
           if (
-            expression.root === "bindings" &&
+            (expression.root === "bindings" || expression.root === "queries") &&
             ![...value.ontologyBindings, ...queryBindings].some(
               (candidate) => candidate.bindingId === expression.path[0],
             )

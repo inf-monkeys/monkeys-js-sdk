@@ -44,6 +44,14 @@ test('missing values are null; conditionals and coalesce evaluate only the chose
   assert.equal(evaluatePageExpression(read('model', 'rows', '0', 'id'), { model: { rows: [{ id: 'x' }] } }), 'x');
 });
 
+test('query status expressions expose lifecycle metadata without query models', () => {
+  const expression = read('queries', 'report', 'status');
+  assert.equal(evaluatePageExpression(expression, { queries: { report: { status: 'pending' } } }), 'pending');
+  assert.equal(evaluatePageExpression(expression, { queries: { report: { status: 'ready' } } }), 'ready');
+  assert.equal(evaluatePageExpression(read('queries', 'report', 'errorCode'), { queries: { report: { status: 'error', errorCode: 'QUERY_FAILED' } } }), 'QUERY_FAILED');
+  assert.equal(evaluatePageExpression(read('queries', 'report', 'model'), { queries: { report: { status: 'ready' } } }), null);
+});
+
 test('forbidden access, expression size, depth, collection and operation budgets fail closed', () => {
   for (const key of ['__proto__', 'constructor', 'prototype']) assert.throws(() => compilePageExpression(read('model', key)));
   assert.throws(() => compilePageExpression({ kind: 'script', source: 'fetch(1)' }));
@@ -64,11 +72,21 @@ test('Page validation rejects unknown state references, event-only roots and dup
     assert.equal(ResolvedPageSchema.safeParse(input).success, false);
   }
   const input = structuredClone(page);
-  input.capabilityInstances[0].propertyBindings = [
+  input.capabilityInstances[0].propertyBindings = [{ targetPath: ['props', 'status'], expression: read('queries', 'inspiration-list', 'status') }];
+  assert.equal(ResolvedPageSchema.safeParse(input).success, true);
+  input.capabilityInstances[0].propertyBindings[0].expression = read('queries', 'missing', 'status');
+  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
+  input.capabilityInstances[0].propertyBindings[0].expression = read('queries', 'inspiration-list', 'model');
+  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
+  const propertyInput = structuredClone(page);
+  propertyInput.capabilityInstances[0].propertyBindings = [{ targetPath: ['props', 'value'], expression: read('state', 'missing') }];
+  assert.equal(ResolvedPageSchema.safeParse(propertyInput).success, false);
+  const eventInput = structuredClone(page);
+  eventInput.capabilityInstances[0].propertyBindings = [
     { targetPath: ['props'], expression: lit({}) },
     { targetPath: ['props', 'value'], expression: lit('x') },
   ];
-  assert.equal(ResolvedPageSchema.safeParse(input).success, false);
+  assert.equal(ResolvedPageSchema.safeParse(eventInput).success, false);
 });
 
 test('direct expression schema parsing rejects cyclic and oversized AST inputs', () => {

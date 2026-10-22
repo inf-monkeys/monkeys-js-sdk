@@ -6,7 +6,7 @@ export const PageMemberSchema = z.string().min(1).max(256).refine(
   'Unsafe Page member.',
 );
 export const PageValuePathSchema = z.array(PageMemberSchema).max(16);
-export const PageExpressionRootSchema = z.enum(['state', 'model', 'bindings', 'scope', 'intent', 'result', 'actions']);
+export const PageExpressionRootSchema = z.enum(['state', 'model', 'bindings', 'queries', 'scope', 'intent', 'result', 'actions']);
 export const PageOperatorSchema = z.enum([
   'add', 'subtract', 'multiply', 'divide', 'min', 'max', 'round',
   'equals', 'not-equals', 'less-than', 'less-or-equal', 'greater-than', 'greater-or-equal',

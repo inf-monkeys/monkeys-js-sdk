@@ -4,7 +4,7 @@ import {
   type PageExpression, type PagePropertyBinding,
 } from '../contracts/page-expression';
 
-export type PageExpressionContext = Partial<Record<'state' | 'model' | 'bindings' | 'scope' | 'intent' | 'result' | 'actions', JsonValue>>;
+export type PageExpressionContext = Partial<Record<'state' | 'model' | 'bindings' | 'queries' | 'scope' | 'intent' | 'result' | 'actions', JsonValue>>;
 const unsafe = new Set(['__proto__', 'prototype', 'constructor']);
 const fail = (code: string): never => { throw Object.assign(new Error(code), { code }); };
 const assertBudget = assertPageValueBudget;
