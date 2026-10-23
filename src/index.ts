@@ -17,3 +17,5 @@ export {
   validateDomainCommand,
 } from './runtime/declaration-compiler';
 export { compileProductAccessDeclaration } from './runtime/access-compiler';
+export * from './runtime/runtime-definition-wire';
+export * from './runtime/page-composition';
