@@ -1883,8 +1883,17 @@ export const QueryBindingSchema = z
       .optional(),
     queryWhen: PageStateActivationSchema.optional(),
     accessFailure: z.literal("render-forbidden").optional(),
-    draftRetention: z.object({
-      identityParameters: z.array(ContractIdentifierSchema).min(1).max(32),
+    draftRetention: z
+      .object({
+        identityParameters: z
+          .array(ContractIdentifierSchema)
+          .min(1)
+          .max(32),
+      })
+      .strict()
+      .optional(),
+    queryRetention: z.object({
+      identityParameters: z.array(ContractIdentifierSchema).max(32),
     }).strict().optional(),
     resultStateBindings: z
       .array(QueryResultStateBindingSchema)
@@ -1920,6 +1929,24 @@ export const QueryBindingSchema = z
           path: ["draftRetention"],
           message:
             "Draft retention requires distinct declared Server query identity parameters.",
+        });
+      }
+    }
+    if (value.queryRetention) {
+      const names = value.queryRetention.identityParameters;
+      if (
+        value.execution !== "server" ||
+        new Set(names).size !== names.length ||
+        names.some(
+          (name) =>
+            !Object.prototype.hasOwnProperty.call(value.parameters, name),
+        )
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["queryRetention"],
+          message:
+            "Query retention requires distinct declared Server query identity parameters.",
         });
       }
     }
