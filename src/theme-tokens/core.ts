@@ -102,15 +102,22 @@ export class ThemeTokenValidationError extends TypeError {
   }
 }
 
-const schema = dtcgFormatSchema as Record<string, unknown>;
-const ajv = new Ajv({
-  allErrors: true,
-  strict: false,
-  strictNumbers: true,
-  validateFormats: false,
-});
+let dtcgValidator: ValidateFunction | undefined;
 
-const validateDtcgDocument = ajv.compile(schema) as ValidateFunction;
+function getDtcgValidator(): ValidateFunction {
+  // Importing an SDK entry point must not compile an unused theme validator.
+  // Keep the same synchronous validation and reuse it on subsequent calls.
+  if (!dtcgValidator) {
+    const ajv = new Ajv({
+      allErrors: true,
+      strict: false,
+      strictNumbers: true,
+      validateFormats: false,
+    });
+    dtcgValidator = ajv.compile(dtcgFormatSchema as Record<string, unknown>);
+  }
+  return dtcgValidator;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -144,6 +151,7 @@ function formatAjvIssues(errors: ErrorObject[] | null | undefined): ThemeTokenVa
 }
 
 export function validateThemeTokensDocumentStructure(input: unknown): ThemeTokenValidationIssue[] {
+  const validateDtcgDocument = getDtcgValidator();
   if (validateDtcgDocument(input)) return [];
   return formatAjvIssues(validateDtcgDocument.errors);
 }

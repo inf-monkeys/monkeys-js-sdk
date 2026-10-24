@@ -14,5 +14,6 @@ export default defineConfig({
   dts: false,
   noExternal: ['ajv'],
   sourcemap: true,
-  splitting: false,
+  // Share schemas, validators and runtime caches across public ESM entry points.
+  splitting: true,
 });

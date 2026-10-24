@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
-const { resolve } = require('node:path');
+const { dirname, resolve } = require('node:path');
 const test = require('node:test');
 const Ajv2020 = require('ajv/dist/2020');
 
@@ -195,8 +195,35 @@ test('unavailable navigation target schema is consistent across public CJS and E
 });
 
 test('browser ESM runtime does not expose the CommonJS Ajv boundary', () => {
-  const runtimeBundle = readFileSync('lib/esm/runtime/index.mjs', 'utf8');
+  const visited = new Set();
+  const readGraph = (file) => {
+    if (visited.has(file)) return '';
+    visited.add(file);
+    const source = readFileSync(file, 'utf8');
+    const dependencies = [...source.matchAll(/(?:from\s*|import\s*)['"](\.[^'"]+)['"]/g)];
+    return source + '\n' + dependencies.map(([, name]) => readGraph(resolve(dirname(file), name))).join('\n');
+  };
+  const runtimeBundle = readGraph(resolve('lib/esm/runtime/index.mjs'));
 
   assert.match(runtimeBundle, /node_modules\/ajv\//);
   assert.doesNotMatch(runtimeBundle, /^import\s+.*?(['"])ajv(?:\/[^'"]*)?\1;?$/m);
+});
+
+test('public ESM entry points share schema, function and error class identity', async () => {
+  const entries = await Promise.all(['', '/runtime', '/contracts', '/schemas'].map((suffix) => import(PACKAGE_NAME + suffix)));
+  const [root, runtime, contracts, schemas] = entries;
+  let shared = 0;
+  for (const entry of entries.slice(1)) {
+    for (const key of Object.keys(entry)) {
+      if (key in root) {
+        assert.equal(entry[key], root[key], `Duplicated public export: ${key}`);
+        shared++;
+      }
+    }
+  }
+  assert.ok(shared > 100);
+  assert.equal(root.PageSchema, contracts.PageSchema);
+  assert.equal(root.PageSchema, schemas.PageSchema);
+  assert.equal(root.canonicalContentHash, runtime.canonicalContentHash);
+  assert.throws(() => runtime.assertThemeTokensDocumentStructure(null), root.ThemeTokenValidationError);
 });
