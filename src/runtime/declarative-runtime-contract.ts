@@ -110,7 +110,47 @@ const schemasCannotOverlap = (left: unknown, right: unknown): boolean => {
     schemasCannotOverlap(property(a, key), property(b, key)));
 };
 
-/** Conservative schema inclusion for compatible inputs; unknown changes fail closed. */
+type NumericBound = { value: number; inclusive: boolean };
+
+const numericBound = (schema: Record<string, unknown>, direction: 'lower' | 'upper'): NumericBound | undefined | null => {
+  const inclusiveKey = direction === 'lower' ? 'minimum' : 'maximum';
+  const exclusiveKey = direction === 'lower' ? 'exclusiveMinimum' : 'exclusiveMaximum';
+  const inclusiveValue = schema[inclusiveKey];
+  const exclusiveValue = schema[exclusiveKey];
+  const candidates: NumericBound[] = [];
+  if (inclusiveValue !== undefined) {
+    if (typeof inclusiveValue !== 'number' || !Number.isFinite(inclusiveValue)) return null;
+    candidates.push({ value: inclusiveValue, inclusive: true });
+  }
+  if (typeof exclusiveValue === 'number') {
+    if (!Number.isFinite(exclusiveValue)) return null;
+    candidates.push({ value: exclusiveValue, inclusive: false });
+  } else if (exclusiveValue === true) {
+    if (typeof inclusiveValue !== 'number' || !Number.isFinite(inclusiveValue)) return null;
+    candidates.push({ value: inclusiveValue, inclusive: false });
+  } else if (exclusiveValue !== undefined && exclusiveValue !== false) {
+    return null;
+  }
+  if (!candidates.length) return undefined;
+  const compare = direction === 'lower' ? Math.max : Math.min;
+  const value = compare(...candidates.map(candidate => candidate.value));
+  return { value, inclusive: candidates.filter(candidate => candidate.value === value).every(candidate => candidate.inclusive) };
+};
+
+const boundAcceptsPrevious = (previous: NumericBound | undefined | null, next: NumericBound | undefined | null, direction: 'lower' | 'upper'): boolean => {
+  if (previous === null || next === null) return false;
+  if (!next) return true;
+  if (!previous) return false;
+  if (direction === 'lower' && previous.value < next.value) return false;
+  if (direction === 'upper' && previous.value > next.value) return false;
+  return previous.value !== next.value || !previous.inclusive || next.inclusive;
+};
+
+const numericRangesAcceptPrevious = (previous: Record<string, unknown>, next: Record<string, unknown>): boolean =>
+  boundAcceptsPrevious(numericBound(previous, 'lower'), numericBound(next, 'lower'), 'lower') &&
+  boundAcceptsPrevious(numericBound(previous, 'upper'), numericBound(next, 'upper'), 'upper');
+
+/** Conservative schema inclusion; unknown relationships fail closed. */
 export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean => {
   if (canonicalContentHash(previous) === canonicalContentHash(next) || next === true) return true;
   if (previous === false) return true;
@@ -131,10 +171,13 @@ export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean
   if (newBranches) return newBranches.some((branch, index) => acceptsPreviousSchema(previous, branch) &&
     (!after.oneOf || newBranches.every((other, otherIndex) => index === otherIndex || schemasCannotOverlap(previous, other))));
   const { properties: oldProperties, required: oldRequired, additionalProperties: oldAdditional,
-    enum: oldEnum, items: oldItems, ...oldFixed } = before;
+    enum: oldEnum, items: oldItems, minimum: _oldMinimum, maximum: _oldMaximum,
+    exclusiveMinimum: _oldExclusiveMinimum, exclusiveMaximum: _oldExclusiveMaximum, ...oldFixed } = before;
   const { properties: newProperties, required: newRequired, additionalProperties: newAdditional,
-    enum: newEnum, items: newItems, ...newFixed } = after;
+    enum: newEnum, items: newItems, minimum: _newMinimum, maximum: _newMaximum,
+    exclusiveMinimum: _newExclusiveMinimum, exclusiveMaximum: _newExclusiveMaximum, ...newFixed } = after;
   if (canonicalContentHash(oldFixed) !== canonicalContentHash(newFixed)) return false;
+  if (!numericRangesAcceptPrevious(before, after)) return false;
   // Homogeneous arrays apply the same inclusion rule to every element. Tuple
   // schemas and other array constraints stay exact unless already identical.
   if (!acceptsPreviousSchema(oldItems ?? true, newItems ?? true)) return false;
