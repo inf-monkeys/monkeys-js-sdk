@@ -23,9 +23,7 @@ export const readPageValue = (value: JsonValue | undefined, path: readonly strin
 const unary = new Set(['not', 'string', 'number', 'length', 'round', 'entries', 'from-entries', 'trim', 'encode-uri-component']);
 const binary = new Set(['subtract', 'divide', 'equals', 'not-equals', 'less-than', 'less-or-equal', 'greater-than', 'greater-or-equal', 'includes', 'get', 'fixed']);
 
-export const compilePageExpression = (input: unknown): PageExpression => {
-  assertBudget(input);
-  const expression = PageExpressionSchema.parse(input);
+const assertExpressionArity = (expression: PageExpression): void => {
   const check = (node: PageExpression): void => {
     if (node.kind === 'operator') {
       if ((unary.has(node.operator) && node.arguments.length !== 1) || (binary.has(node.operator) && node.arguments.length !== 2) || (['set-path', 'slice'].includes(node.operator) && node.arguments.length !== 3) || (node.operator === 'number-format' && node.arguments.length !== 5)) fail('PAGE_EXPRESSION_ARITY');
@@ -37,6 +35,12 @@ export const compilePageExpression = (input: unknown): PageExpression => {
     else if (node.kind === 'map' || node.kind === 'filter' || node.kind === 'sum') { check(node.source); check(node.value); }
   };
   check(expression);
+};
+
+export const compilePageExpression = (input: unknown): PageExpression => {
+  assertBudget(input);
+  const expression = PageExpressionSchema.parse(input);
+  assertExpressionArity(expression);
   return expression;
 };
 
@@ -68,10 +72,18 @@ const same = (a: JsonValue, b: JsonValue): boolean => {
   return keys.length === Object.keys(b).length && keys.every((key) => Object.prototype.hasOwnProperty.call(b, key) && same((a as JsonObject)[key]!, (b as JsonObject)[key]!));
 };
 
-const evaluateCompiled = (expression: PageExpression, context: PageExpressionContext, budget: { operations: number }): JsonValue => {
+type EvaluationBudget = { operations: number; literals?: Map<PageExpression, JsonValue> };
+
+const evaluateCompiled = (expression: PageExpression, context: PageExpressionContext, budget: EvaluationBudget): JsonValue => {
   const run = (node: PageExpression, current: PageExpressionContext): JsonValue => {
     if (++budget.operations > PAGE_EXPRESSION_LIMITS.operations) fail('PAGE_EXPRESSION_BUDGET');
-    if (node.kind === 'literal') return node.value;
+    if (node.kind === 'literal') {
+      // Prepared declarations are private snapshots. Never expose their mutable
+      // literal objects to a renderer (or retain a renderer's edits next time).
+      if (!budget.literals || node.value === null || typeof node.value !== 'object') return node.value;
+      if (!budget.literals.has(node)) budget.literals.set(node, structuredClone(node.value));
+      return budget.literals.get(node)!;
+    }
     if (node.kind === 'read') {
       const value = readPageValue(current[node.root], node.path) ?? null;
       assertBudget(value);
@@ -196,7 +208,7 @@ const write = (input: JsonObject, path: readonly string[], value: JsonValue): Js
   return { ...input, [key]: write((child ?? {}) as JsonObject, rest, value) };
 };
 
-export const projectPageProperties = (base: JsonObject, bindings: readonly PagePropertyBinding[], context: PageExpressionContext): JsonObject => {
+const parsePropertyBindings = (bindings: readonly PagePropertyBinding[]): PagePropertyBinding[] => {
   assertBudget(bindings);
   const parsed = bindings.map((binding) => PagePropertyBindingSchema.parse(binding));
   const paths: string[][] = [];
@@ -204,11 +216,46 @@ export const projectPageProperties = (base: JsonObject, bindings: readonly PageP
     if (paths.some((path) => path.slice(0, Math.min(path.length, binding.targetPath.length)).every((key, i) => key === binding.targetPath[i]))) fail('PAGE_PROPERTY_OVERLAP');
     paths.push(binding.targetPath);
   }
-  const budget = { operations: 0 };
-  return parsed.reduce((model, binding) => {
-    const value = evaluateCompiled(compilePageExpression(binding.expression), context, budget);
+  return parsed;
+};
+
+type PropertyWriter = (input: JsonObject, value: JsonValue) => JsonObject;
+const preparePropertyWriter = (path: readonly string[], index = 0): PropertyWriter => {
+  // The private path was validated by PagePropertyBindingSchema. Only the
+  // destination model's shape can change between evaluations.
+  const key = path[index]!;
+  if (index === path.length - 1) return (input, value) => ({ ...input, [key]: value });
+  const childWriter = preparePropertyWriter(path, index + 1);
+  return (input, value) => {
+    const child = input[key];
+    if (child !== undefined && (child === null || typeof child !== 'object' || Array.isArray(child))) fail('PAGE_PROPERTY_PATH_TYPE');
+    return { ...input, [key]: childWriter((child ?? {}) as JsonObject, value) };
+  };
+};
+
+const projectParsedProperties = (base: JsonObject, parsed: readonly PagePropertyBinding[], context: PageExpressionContext, writers?: readonly PropertyWriter[]): JsonObject => {
+  const budget: EvaluationBudget = { operations: 0, ...(writers ? { literals: new Map<PageExpression, JsonValue>() } : {}) };
+  return parsed.reduce((model, binding, index) => {
+    // PagePropertyBindingSchema has already parsed and budget-checked the AST.
+    // Legacy calls retain evaluation-order arity errors; prepared plans do this once.
+    if (!writers) assertExpressionArity(binding.expression);
+    const value = evaluateCompiled(binding.expression, context, budget);
     const type = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
     if (binding.valueType && type !== binding.valueType) fail('PAGE_PROPERTY_TYPE');
-    return write(model, binding.targetPath, value);
+    return writers ? writers[index]!(model, value) : write(model, binding.targetPath, value);
   }, base);
 };
+
+/** Validate and snapshot declarations once; each call evaluates fresh dynamic inputs.
+ * Keeps one operation budget across all bindings and all dynamic value/type guards.
+ * The returned closure owns its snapshot and can be shared by repeated row instances.
+ */
+export const preparePagePropertyProjection = (bindings: readonly PagePropertyBinding[]): ((base: JsonObject, context: PageExpressionContext) => JsonObject) => {
+  const parsed = parsePropertyBindings(bindings);
+  parsed.forEach(binding => assertExpressionArity(binding.expression));
+  const writers = parsed.map(binding => preparePropertyWriter(binding.targetPath));
+  return (base, context) => projectParsedProperties(base, parsed, context, writers);
+};
+
+export const projectPageProperties = (base: JsonObject, bindings: readonly PagePropertyBinding[], context: PageExpressionContext): JsonObject =>
+  projectParsedProperties(base, parsePropertyBindings(bindings), context);

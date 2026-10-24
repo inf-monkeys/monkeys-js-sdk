@@ -35,6 +35,12 @@ const RecursivePageExpressionSchema: z.ZodType<PageExpression> = z.lazy(() => z.
 export const PAGE_EXPRESSION_LIMITS = Object.freeze({ depth: 32, nodes: 4096, operations: 20000, collection: 1000, bytes: 1048576 });
 
 export const assertPageValueBudget = (value: unknown): void => {
+  // Scalar values cannot exceed node/depth limits. Avoid allocating a traversal
+  // stack for every scalar expression read/result; strings still have a byte cap.
+  if (value === null || typeof value !== 'object') {
+    if (typeof value === 'string' && value.length * 2 > PAGE_EXPRESSION_LIMITS.bytes) throw new Error('PAGE_EXPRESSION_BUDGET');
+    return;
+  }
   const queue: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
   let nodes = 0;
   let bytes = 0;

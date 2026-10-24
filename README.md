@@ -105,6 +105,12 @@ sourceHash. No generated artifacts authorize registration, publication or calls.
 
 This contract does not expose localStorage keys or execute scripts. The host must resolve exactly one supported provider/version, validate its slot and persistence requirements, enforce identity lifecycle guards, and grant writes only through the declared mappings. Missing providers must fail explicitly. Provider-specific semantics and shared namespaces remain host responsibilities. Deployments must upgrade SDK readers/compilers and the host provider together before publishing Pages using this field.
 
+### Prepared property projections
+
+`preparePagePropertyProjection(bindings)` from `@inf-monkeys-tech/monkeys/runtime` validates and snapshots a binding list once, returning `(base, context) => projectedModel`. Share this function across repeated rows with the same declaration; pass each row's current context on every call. Declaration shape, target-path overlap and expression arity are checked at preparation. Dynamic property types, destination shapes, value limits and the shared operation budget are still checked during every evaluation.
+
+The plan retains no row contexts or results. Source declaration edits do not change an existing plan: prepare a new one when the Page revision changes. Literal objects in returned models are isolated from the private snapshot. `projectPageProperties(base, bindings, context)` remains available for one-shot calls and observes declaration edits on each invocation. Hosts using older SDK releases can keep that path until the prepared API is installed.
+
 ### Stable runtime contracts
 
 `runtimeContractVersion` is a provider-owned public contract identifier, independent of implementation revisions. `resolvePage` and `compileWorkbenchRuntimeBundle` derive it from exact governed registrations. The Page compiler rejects user-supplied contract labels that disagree with those registrations. A compatible implementation can serve a previously compiled RenderNode without changing the published definition or its dependency hashes.
