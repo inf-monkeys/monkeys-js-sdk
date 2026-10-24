@@ -199,6 +199,15 @@ const evaluateCompiled = (expression: PageExpression, context: PageExpressionCon
 export const evaluatePageExpression = (expression: unknown, context: PageExpressionContext): JsonValue =>
   evaluateCompiled(compilePageExpression(expression), context, { operations: 0 });
 
+/** Snapshot and validate an immutable expression once, then evaluate fresh inputs.
+ * Dynamic value limits and the operation budget apply independently to every call.
+ * Mutable literal outputs are isolated from the private compiled declaration.
+ */
+export const preparePageExpression = (input: unknown): ((context: PageExpressionContext) => JsonValue) => {
+  const expression = compilePageExpression(input);
+  return context => evaluateCompiled(expression, context, { operations: 0, literals: new Map() });
+};
+
 const write = (input: JsonObject, path: readonly string[], value: JsonValue): JsonObject => {
   const [key, ...rest] = path;
   if (!key || unsafe.has(key)) return fail('PAGE_EXPRESSION_UNSAFE_PATH');

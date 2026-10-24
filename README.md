@@ -109,6 +109,8 @@ This contract does not expose localStorage keys or execute scripts. The host mus
 
 `preparePagePropertyProjection(bindings)` from `@inf-monkeys-tech/monkeys/runtime` validates and snapshots a binding list once, returning `(base, context) => projectedModel`. Share this function across repeated rows with the same declaration; pass each row's current context on every call. Declaration shape, target-path overlap and expression arity are checked at preparation. Dynamic property types, destination shapes, value limits and the shared operation budget are still checked during every evaluation.
 
+`preparePageExpression(expression)` similarly returns `(context) => value` for an immutable standalone expression, such as a repeated collection source. Preparation snapshots the declaration and checks its shape and arity once. Each evaluation reads the supplied context and resets its operation budget, while retaining dynamic value/type guards. Mutable literal outputs cannot alter the private snapshot. Replace the prepared function when the declaration changes; use `evaluatePageExpression` when intentionally editing a declaration in place between calls.
+
 The plan retains no row contexts or results. Source declaration edits do not change an existing plan: prepare a new one when the Page revision changes. Literal objects in returned models are isolated from the private snapshot. `projectPageProperties(base, bindings, context)` remains available for one-shot calls and observes declaration edits on each invocation. Hosts using older SDK releases can keep that path until the prepared API is installed.
 
 ### Stable runtime contracts
