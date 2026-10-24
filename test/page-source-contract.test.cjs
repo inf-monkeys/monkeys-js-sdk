@@ -106,15 +106,17 @@ test("Page style accepts tokens and bounded CSS values but rejects CSS injection
   }
 });
 
-test("resolvePage pins active dependencies before runtime compilation", () => {
+for (const initialQueryPolicy of [undefined, 'auto', 'explicit', 'disabled']) test(`resolvePage preserves optional startup policy ${initialQueryPolicy} through runtime compilation`, () => {
   const resolved = resolvePage({
-    page,
+    page: { ...page, ...(initialQueryPolicy ? { initialQueryPolicy } : {}) },
     pageOwnerRepo: "monkeys-js-sdk",
     defaults,
     routeSpaces: [{ revisionRef: routeSpaceRevisionRef, routeSpace }],
     capabilityRegistry,
   });
   assert.equal(ResolvedPageSchema.safeParse(resolved).success, true);
+  assert.equal(resolved.initialQueryPolicy, initialQueryPolicy);
+  assert.equal(Object.hasOwn(resolved, 'initialQueryPolicy'), initialQueryPolicy !== undefined);
   assert.equal(
     resolved.renderTree.nodes[0].style.padding,
     "$semantic.spacing.lg",
@@ -144,6 +146,17 @@ test("resolvePage pins active dependencies before runtime compilation", () => {
   });
   assert.equal(bundle.renderTree.nodes[0].style.borderRadius, "12px");
   assert.equal(bundle.contentHash.length, 64);
+  assert.equal(bundle.initialQueryPolicy, initialQueryPolicy);
+  assert.equal(Object.hasOwn(bundle, 'initialQueryPolicy'), initialQueryPolicy !== undefined);
+  const { PageRuntimeBundleSchema } = require('@inf-monkeys-tech/monkeys');
+  assert.equal(PageRuntimeBundleSchema.parse(bundle).initialQueryPolicy, initialQueryPolicy);
+});
+
+test('startup policy rejects unsupported values at authoring, resolved and runtime boundaries', () => {
+  assert.equal(PageSchema.safeParse({ ...page, initialQueryPolicy: 'off' }).success, false);
+  assert.equal(Object.hasOwn(PageSchema.parse(page), 'initialQueryPolicy'), false);
+  const resolved = resolvePage({ page, pageOwnerRepo: 'monkeys-js-sdk', defaults, capabilityRegistry });
+  assert.equal(ResolvedPageSchema.safeParse({ ...resolved, initialQueryPolicy: false }).success, false);
 });
 
 test("resolvePage rejects unknown stable component identities", () => {
@@ -179,7 +192,7 @@ test("cursor event sources resolve before or after the query node and in descend
   const queryNode = {
     id: "items",
     component: capabilityRevisionRef.id,
-    data: [{ bindingId: "items-query", query: queryId, port: "items", parameters: {}, pagination: "cursor", cache: "identity-scoped", cancelOnChange: true, cursorWindow: { sourceCapabilityInstanceId: "pager", pageChangePort: "page-change" } }],
+    data: [{ bindingId: "items-query", query: queryId, port: "items", loadTiming: "page-start", parameters: {}, pagination: "cursor", cache: "identity-scoped", cancelOnChange: true, cursorWindow: { sourceCapabilityInstanceId: "pager", pageChangePort: "page-change" } }],
   };
   const pager = { id: "pager", component: capabilityRevisionRef.id };
   const registry = [{ ...capabilityRegistry[0], inputPorts: [{ name: "items", schemaRevisionRef: propertySchemaRevisionRef }], outputPorts: [{ name: "page-change", schemaRevisionRef: propertySchemaRevisionRef }] }];
@@ -195,6 +208,7 @@ test("cursor event sources resolve before or after the query node and in descend
     { ...queryNode, children: [pager] },
   ]) {
     const resolved = resolvePage({ ...input, page: { ...page, body } });
+    assert.equal(resolved.queryBindings[0].loadTiming, 'page-start');
     assert.equal(resolved.queryBindings[0].cursorWindow.sourceCapabilityInstanceId, "pager");
     assert.deepEqual(resolved.queryBindings[0].cursorWindow.pageChangeIntentSchemaRevisionRef, propertySchemaRevisionRef);
   }

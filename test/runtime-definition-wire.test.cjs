@@ -4,6 +4,8 @@ const { encodeRuntimeDefinition, expandRuntimeDefinition, runtimeDefinitionEtag 
 
 const reference = { kind: 'capability', id: 'example', revision: 1, contentHash: 'a'.repeat(64) };
 const fixture = () => ({ outcome: 'declarative', resolved: { page: {
+  initialQueryPolicy: 'explicit',
+  queryBindings: [{ bindingId: 'list', loadTiming: 'page-start' }, { bindingId: 'details', loadTiming: 'component-mount' }],
   capabilityInstances: Array.from({ length: 20 }, (_, id) => ({ id, capabilityRevisionRef: { ...reference }, properties: { definition: 0, capabilityRevisionRef: { ...reference } } })),
   programBindings: [1, 2].map(id => ({ id, definition: { script: 'example', dependencies: [reference] }, programRevisionRef: reference, dependencyInputs: { definition: 0 } })),
   renderTree: { nodes: [1, 2].map(id => ({ id, pageRef: reference, lifecycle: { mountPolicy: 'always' }, renderModel: { definition: 0 } })) },

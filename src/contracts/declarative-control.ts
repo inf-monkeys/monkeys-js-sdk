@@ -1882,6 +1882,8 @@ export const QueryBindingSchema = z
       .max(32)
       .optional(),
     queryWhen: PageStateActivationSchema.optional(),
+    // Omission follows the Page's initialQueryPolicy; this never overrides lifecycle or access.
+    loadTiming: z.enum(["page-start", "component-mount"]).optional(),
     accessFailure: z.literal("render-forbidden").optional(),
     draftRetention: z.object({
       identityParameters: z.array(ContractIdentifierSchema).min(1).max(32),
@@ -3252,6 +3254,8 @@ const validateSharedStateBindings = (
   }
 };
 
+const InitialQueryPolicySchema = z.enum(["auto", "explicit", "disabled"]);
+
 export const PageSchema = z
   .object({
     contract: z.literal("Page"),
@@ -3269,6 +3273,7 @@ export const PageSchema = z
       .optional(),
     shell: ContractIdentifierSchema.optional(),
     body: PageNodeSchema,
+    initialQueryPolicy: InitialQueryPolicySchema.optional(),
     state: z.array(PageStateSchema).optional(),
     sharedStateBindings: z.array(PageSharedStateBindingSchema).max(16).optional(),
     entryTransitions: z.array(PageEntrySchema).optional(),
@@ -3359,6 +3364,7 @@ export const ResolvedPageSchema = z
     interactionBindings: z.array(InteractionBindingSchema).optional(),
     ontologyBindings: z.array(PersistedOntologyBindingSchema),
     queryBindings: z.array(QueryBindingSchema).optional(),
+    initialQueryPolicy: InitialQueryPolicySchema.optional(),
     actionBindings: z.array(ActionBindingSchema),
     programBindings: z.array(ProgramBindingSchema).max(128).optional(),
     pageAccessPolicy: AccessPolicySchema,
@@ -5608,6 +5614,7 @@ const CompatiblePageRuntimeBundleSchema = z
     interactionBindings: z.array(InteractionBindingSchema).default([]),
     ontologyBindings: z.array(PersistedOntologyBindingSchema),
     queryBindings: z.array(QueryBindingSchema).default([]),
+    initialQueryPolicy: InitialQueryPolicySchema.optional(),
     actionBindings: z.array(ActionBindingSchema),
     programBindings: z.array(ProgramBindingSchema).max(128).optional(),
     pageAccessPolicy: AccessPolicySchema,

@@ -37,6 +37,31 @@ import { resolveThemeTokens } from '@inf-monkeys-tech/monkeys/runtime';
 
 `projectCurrentNavigationPages` refreshes Page routes and access policies from a complete, tenant-authorized catalog. Consumers hide unavailable or disabled nodes and empty groups, and enforce both Navigation audience and current Page permissions. Catalog failures remain errors. Persisted release and dependency hashes are not rewritten by runtime projection.
 
+### 首屏查询时机（候选）
+
+`Page.initialQueryPolicy` 控制组件代码准备期间的提前请求：省略或 `"auto"` 自动推导可提前执行的查询；`"explicit"` 只考虑显式标记的查询；`"disabled"` 关闭本页所有提前请求，包括显式标记。关闭提前请求不影响组件挂载后的正常查询。
+
+在节点 `data`（编译后为 `queryBindings`）中设置 `loadTiming: "page-start"` 可标记提前请求；`loadTiming: "component-mount"` 将该条查询排除，即使页面启用自动推导。省略 `loadTiming` 跟随页面策略。例如，仅提前获取列表：
+
+```js
+const page = {
+  // ...其余 Page 必填字段
+  initialQueryPolicy: 'explicit',
+  body: {
+    // ...已注册组件和端口
+    data: [{
+      // ...query、parameters、port、pagination 等必填字段
+      bindingId: 'list',
+      loadTiming: 'page-start',
+    }],
+  },
+};
+```
+
+这些字段是调度提示，不绕过权限、`queryWhen`、节点及祖先的生命周期或参数依赖。当前 Studio 宿主仅提前执行已授权、可解析参数、`execution: "server"` 且 `cache: "identity-scoped"` 的 Design 组件查询，每次准备最多 8 条；未满足条件的仍走原查询流程。已有 `queryPolicy: "manual"` 等触发方式保持不变。同一请求结果仅向挂载后的组件交接一次，不增加业务数据持久缓存。
+
+两个字段均不注入 schema 默认值，旧声明和编译身份保持不变。发布含新字段的 Page 前，需要先更新 SDK、服务端编译器和 Studio 宿主；当前仅为本地候选。
+
 ## 发布门禁
 
 ```bash

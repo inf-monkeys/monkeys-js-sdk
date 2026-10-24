@@ -5,6 +5,14 @@ const { analyzePageBindingDependencies } = require('../lib/contracts/page-bindin
 const ref = (kind, id) => ({ kind, id, ownerRepo: 'monkeys-server', visibility: 'global', revision: 1, schemaVersion: 1, contentHash: 'a'.repeat(64) });
 const read = (root, ...path) => ({ kind: 'read', root, path });
 const binding = () => ({ bindingId: 'report', queryDefinitionRevisionRef: ref('domain-query-definition', 'report'), parameters: {}, target: { capabilityInstanceId: 'filters', port: 'model' }, renderModelSchemaRevisionRef: ref('schema', 'raw-report'), targetProjection: { expression: read('model', 'filters'), schemaRevisionRef: ref('schema', 'editor') }, execution: 'server', pagination: 'none', cache: 'none', cancelOnChange: true });
+
+test('query load timing is optional and accepts only supported scheduling hints', () => {
+  assert.equal(Object.hasOwn(QueryBindingSchema.parse(binding()), 'loadTiming'), false);
+  for (const loadTiming of ['page-start', 'component-mount']) {
+    assert.equal(QueryBindingSchema.parse({ ...binding(), loadTiming }).loadTiming, loadTiming);
+  }
+  assert.equal(QueryBindingSchema.safeParse({ ...binding(), loadTiming: 'manual' }).success, false);
+});
 test('query projection pins an independent target schema and only reads the validated raw model', () => {
   const value = binding();
   assert.equal(QueryBindingSchema.parse(value).targetProjection.schemaRevisionRef.id, 'editor');

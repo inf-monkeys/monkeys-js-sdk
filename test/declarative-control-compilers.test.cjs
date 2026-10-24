@@ -201,6 +201,7 @@ test('Page compiler projects typed state/interactions and exact governed Domain 
       inputMapping: { recordId: { kind: 'intent-field', path: 'recordId' } },
     }],
     queryBindings: [{
+      loadTiming: 'page-start',
       bindingId: 'inspiration-query',
       queryDefinitionRevisionRef,
       parameters: {

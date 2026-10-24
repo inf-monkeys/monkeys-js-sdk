@@ -2196,6 +2196,7 @@ export const resolvePage = (input: ResolvePageInput): ResolvedPage => {
     ...(interactionBindings.length ? { interactionBindings } : {}),
     ontologyBindings: [],
     ...(queryBindings.length ? { queryBindings } : {}),
+    ...(page.initialQueryPolicy ? { initialQueryPolicy: page.initialQueryPolicy } : {}),
     actionBindings,
     ...(programBindings.length ? { programBindings } : {}),
     pageAccessPolicy: page.access,
@@ -3058,6 +3059,7 @@ const compilePageRuntimeBundleInternal = (
     interactionBindings: page.interactionBindings,
     ontologyBindings: page.ontologyBindings,
     queryBindings: page.queryBindings,
+    ...(page.initialQueryPolicy ? { initialQueryPolicy: page.initialQueryPolicy } : {}),
     actionBindings: page.actionBindings,
     ...(page.programBindings?.length
       ? { programBindings: page.programBindings }
