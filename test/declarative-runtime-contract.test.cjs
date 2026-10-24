@@ -40,6 +40,18 @@ test('input schema evolution permits optional additions and rejects narrowed his
   assert.equal(acceptsPreviousSchema({ enum: ['a', 'b'] }, { enum: ['a'] }), false);
 });
 
+test('numeric schema bounds accept only provable range expansions', () => {
+  const narrow = { type: 'number', minimum: 0.5, maximum: 3 };
+  const wide = { type: 'number', minimum: 0.000001, maximum: 64 };
+  assert.equal(acceptsPreviousSchema(narrow, wide), true);
+  assert.equal(acceptsPreviousSchema(wide, narrow), false);
+  assert.equal(acceptsPreviousSchema({ type: 'number', exclusiveMinimum: 0, maximum: 5 }, { type: 'number', minimum: 0, maximum: 5 }), true);
+  assert.equal(acceptsPreviousSchema({ type: 'number', minimum: 0, maximum: 5 }, { type: 'number', exclusiveMinimum: 0, maximum: 5 }), false);
+  assert.equal(acceptsPreviousSchema({ type: 'number', exclusiveMinimum: 0, maximum: 5 }, { type: 'number', exclusiveMinimum: -1, maximum: 5 }), true);
+  assert.equal(acceptsPreviousSchema({ type: 'number', minimum: 0 }, { type: 'number', minimum: 1 }), false);
+  assert.equal(acceptsPreviousSchema({ type: 'number', maximum: 0 }, { type: 'number', maximum: -1 }), false);
+});
+
 test('contract matching never permits a different provider, owner or public contract', () => {
   const published = fixture(7, 'table/v1');
   const upgraded = fixture(19, 'table/v1');
@@ -93,6 +105,31 @@ test('compatible output evolution cannot emit values rejected by published consu
   const broken = replaceOutput(['selected']);
   broken.declarativeRegistration.schemaDocuments[1].document.enum = ['forged'];
   assert.throws(() => assertCompatibleCapabilityUpgrade(entry, broken), /schema integrity/);
+});
+
+test('numeric output ranges may narrow for existing consumers but may not widen', () => {
+  const { assertCompatibleCapabilityUpgrade } = require('../lib');
+  const entry = fixture(1, 'table/v1');
+  const input = { type: 'object', additionalProperties: false, properties: {} };
+  const inputRef = ref('schema', 'example.input', 1, input);
+  const makeEntry = (minimum, maximum) => {
+    const next = structuredClone(entry);
+    const output = { type: 'number', minimum, maximum };
+    const outputRef = ref('schema', 'example.output', 1, output);
+    next.declarativeRegistration = {
+      ...next.declarativeRegistration,
+      propertySchemaRevisionRef: inputRef,
+      inputPorts: [{ name: 'model', schemaRevisionRef: inputRef, required: true, multiple: false }],
+      outputPorts: [{ name: 'change', schemaRevisionRef: outputRef, required: false, multiple: false }],
+      schemaDocuments: [{ schemaRevisionRef: inputRef, document: input }, { schemaRevisionRef: outputRef, document: output }],
+      ontologyRequirements: [], actionRequirements: [], allowedSideEffects: [], allowedSlots: [], supportedSurfaces: ['kernel'], allowedParentCapabilityRefs: [], allowedChildCapabilityRefs: [],
+    };
+    return next;
+  };
+  const uat = makeEntry(0.000001, 64);
+  const narrowed = makeEntry(0.5, 3);
+  assert.doesNotThrow(() => assertCompatibleCapabilityUpgrade(uat, narrowed));
+  assert.throws(() => assertCompatibleCapabilityUpgrade(narrowed, uat), /breaks the published runtime contract/);
 });
 
 test('array elements accept additive optional fields without admitting breaking changes', () => {
