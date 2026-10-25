@@ -52,6 +52,16 @@ export const AgentWorkCheckpointRefSchema = z
   })
   .passthrough();
 
+/**
+ * Where a session reports its lease, events and checkpoint. A Worker serves any
+ * number of tenants and is never configured with one, so the owning Core states
+ * its control plane per session.
+ */
+export const AgentWorkControlPlaneSchema = z.object({
+  url: z.string().min(1),
+  headers: z.record(z.string(), z.string()).default({}),
+});
+
 export const AgentWorkSessionSchema = z.object({
   sessionId: z.string().min(1),
   teamId: z.string().min(1),
@@ -66,6 +76,7 @@ export const AgentWorkSessionSchema = z.object({
   cliAuthorization: z.string().optional(),
   fileCapability: z.string().optional(),
   fileControlPlaneUrl: z.string().optional(),
+  controlPlane: AgentWorkControlPlaneSchema.optional(),
   nativeThreadId: z.string().nullish(),
   checkpoint: AgentWorkCheckpointRefSchema.nullish(),
   requireExisting: z.boolean().optional(),
@@ -111,6 +122,7 @@ export type AgentWorkSkillRef = z.infer<typeof AgentWorkSkillRefSchema>;
 export type AgentWorkCliPackage = z.infer<typeof AgentWorkCliPackageSchema>;
 export type AgentWorkInputFile = z.infer<typeof AgentWorkInputFileSchema>;
 export type AgentWorkCheckpointRef = z.infer<typeof AgentWorkCheckpointRefSchema>;
+export type AgentWorkControlPlane = z.infer<typeof AgentWorkControlPlaneSchema>;
 export type AgentWorkSession = z.infer<typeof AgentWorkSessionSchema>;
 export type AgentWorkTurnCommand = z.infer<typeof AgentWorkTurnCommandSchema>;
 export type AgentWorkDispatch = z.infer<typeof AgentWorkDispatchSchema>;
