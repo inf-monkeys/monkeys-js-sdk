@@ -2,6 +2,7 @@ export * from "./access";
 export * from "./artifact";
 export * from "./agent";
 export * from "./agent-native-runtime";
+export * from "./agent-work";
 export * from "./aggregate-commit";
 export * from "./capability";
 export * from "./common";

@@ -6,6 +6,7 @@ export default defineConfig({
     'contracts/index': 'src/contracts/index.ts',
     'schemas/index': 'src/schemas/index.ts',
     'runtime/index': 'src/runtime/index.ts',
+    'codex-app-server/index': 'src/codex-app-server/index.ts',
   },
   format: ['esm'],
   outDir: 'lib/esm',

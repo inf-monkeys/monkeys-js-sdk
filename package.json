@@ -1,6 +1,6 @@
 {
   "name": "@inf-monkeys-tech/monkeys",
-  "version": "1.1.26",
+  "version": "1.1.27",
   "description": "Monkeys JS SDK",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -16,6 +16,12 @@
       "import": "./lib/esm/contracts/index.mjs",
       "require": "./lib/contracts/index.js",
       "default": "./lib/contracts/index.js"
+    },
+    "./codex-app-server": {
+      "types": "./lib/codex-app-server/index.d.ts",
+      "import": "./lib/esm/codex-app-server/index.mjs",
+      "require": "./lib/codex-app-server/index.js",
+      "default": "./lib/codex-app-server/index.js"
     },
     "./schemas": {
       "types": "./lib/schemas/index.d.ts",
@@ -54,8 +60,10 @@
     "prepack": "yarn build",
     "prepublishOnly": "yarn typecheck && yarn test",
     "pack:check": "npm pack --dry-run",
-    "program:build": "node scripts/build-action-program.cjs"
+    "program:build": "node scripts/build-action-program.cjs",
+    "codex:generate": "node scripts/generate-codex-app-server.cjs"
   },
+  "codexAppServerCliVersion": "0.160.1",
   "publishConfig": {
     "access": "public"
   },
