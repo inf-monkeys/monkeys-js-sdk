@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WorkflowCanvasSchema } from './workflow-canvas';
 import { ContractPortSchema } from './capability';
 import {
   ContractIdentifierSchema,
@@ -401,7 +402,7 @@ export const WorkflowDefinitionSchema = z.object({
   }).strict().superRefine((revision, context) => {
     if (revision.kind === 'backup' && revision.sourceVersion === undefined) context.addIssue({ code: 'custom', path: ['sourceVersion'], message: 'Backup revisions require a sourceVersion.' });
   }),
-  presentation: z.object({ iconUrl: z.string().optional(), thumbnail: z.string().optional() }).strict(),
+  presentation: z.object({ iconUrl: z.string().optional(), thumbnail: z.string().optional(), canvas: WorkflowCanvasSchema.optional() }).strict(),
   ports: z.object({ inputs: z.array(ContractPortSchema).default([]), outputs: z.array(ContractPortSchema).default([]) }).strict(),
   parameters: z.object({ variables: z.array(WorkflowParameterSchema).default([]), outputs: z.array(WorkflowOutputBindingSchema).default([]) }).strict(),
   graph: z.object({ nodes: z.array(WorkflowNodeSchema), edges: z.array(WorkflowEdgeSchema).default([]) }).strict(),
@@ -439,6 +440,19 @@ export const WorkflowDefinitionSchema = z.object({
   if (definition.revision.kind === 'release' && definition.metadata.version !== definition.revision.recordVersion) context.addIssue({ code: 'custom', path: ['revision', 'recordVersion'], message: 'Release recordVersion must equal metadata.version.' });
 });
 
+export const WorkflowEditorCommandSchema = z.object({
+  expectedRecordVersion: z.number().int().positive(),
+  requestId: z.string().min(1).max(128),
+  definition: WorkflowDefinitionSchema,
+}).strict();
+
+export const WorkflowEditorDocumentSchema = z.object({
+  recordVersion: z.number().int().positive(),
+  definition: WorkflowDefinitionSchema,
+}).strict();
+
+export type WorkflowEditorCommand = z.infer<typeof WorkflowEditorCommandSchema>;
+export type WorkflowEditorDocument = z.infer<typeof WorkflowEditorDocumentSchema>;
 export type ConductorTaskType = z.infer<typeof ConductorTaskTypeSchema>;
 export type ConductorWorkflowDefinition = z.infer<typeof ConductorWorkflowDefinitionSchema>;
 export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>;
