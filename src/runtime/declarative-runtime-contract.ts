@@ -164,6 +164,42 @@ const numericRangesAcceptPrevious = (previous: Record<string, unknown>, next: Re
   boundAcceptsPrevious(numericBound(previous, 'lower'), numericBound(next, 'lower'), 'lower') &&
   boundAcceptsPrevious(numericBound(previous, 'upper'), numericBound(next, 'upper'), 'upper');
 
+const containsSchemaReference = (value: unknown): boolean => !!value && typeof value === 'object' &&
+  Object.entries(value).some(([key, child]) => ['$ref', '$dynamicRef', '$recursiveRef'].includes(key) || containsSchemaReference(child));
+
+/** Definitions may expand together only when all references occur positively.
+ * In particular, oneOf, negation and conditional tests are not monotone. */
+const hasPositiveLocalReferences = (schema: unknown, names: ReadonlySet<string>, root = true): boolean => {
+  if (typeof schema === 'boolean') return true;
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return false;
+  return Object.entries(schema).every(([key, value]) => {
+    if (key === '$ref') return typeof value === 'string' && [...names].some(name => value === `#/$defs/${name.replace(/~/g, '~0').replace(/\//g, '~1')}`);
+    if (['$dynamicRef', '$recursiveRef', '$dynamicAnchor', '$recursiveAnchor', '$anchor'].includes(key)) return false;
+    if (key === '$id') return root;
+    if (key === '$defs' || key === 'properties') {
+      if (key === '$defs' && !root) return false;
+      return !!value && typeof value === 'object' && !Array.isArray(value) && Object.values(value).every(child => hasPositiveLocalReferences(child, names, false));
+    }
+    if (['items', 'additionalProperties'].includes(key)) return hasPositiveLocalReferences(value, names, false);
+    if (['anyOf', 'allOf'].includes(key)) return Array.isArray(value) && value.every(child => hasPositiveLocalReferences(child, names, false));
+    return !containsSchemaReference(value);
+  });
+};
+
+/** A newly introduced conditional must be unreachable for every old object,
+ * including objects omitting the discriminant. Unknown predicates stay exact. */
+const isUnreachableConditional = (previous: Record<string, any>, branch: unknown): boolean => {
+  if (previous.type !== 'object' || !branch || typeof branch !== 'object' || Array.isArray(branch)) return false;
+  const rule = branch as Record<string, any>;
+  if (!rule.if || Object.keys(rule).some(key => !['if', 'then'].includes(key))) return false;
+  const condition = rule.if;
+  if (typeof condition !== 'object' || Array.isArray(condition) ||
+      Object.keys(condition).some(key => !['type', 'properties', 'required'].includes(key)) ||
+      (condition.type !== undefined && condition.type !== 'object') || !Array.isArray(condition.required)) return false;
+  return condition.required.some((key: unknown) => typeof key === 'string' &&
+    schemasCannotOverlap(previous.properties?.[key] ?? (previous.patternProperties ? true : previous.additionalProperties ?? true), condition.properties?.[key] ?? true));
+};
+
 /** Conservative schema inclusion; unknown relationships fail closed. */
 export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean => {
   if (canonicalContentHash(previous) === canonicalContentHash(next) || next === true) return true;
@@ -173,9 +209,8 @@ export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean
   const withoutAnnotations = (schema: object) => Object.fromEntries(Object.entries(schema).filter(([key]) => !['title', 'description', 'examples', '$comment'].includes(key)));
   const before = withoutAnnotations(previous) as Record<string, any>;
   const after = withoutAnnotations(next) as Record<string, any>;
-  // A union without sibling constraints can be checked branch by branch. For
-  // oneOf, inclusion also needs proof that no accepted old value matches a
-  // second branch; a matching branch alone would silently narrow the input.
+  // Resolve standalone unions before inspecting sibling constraints. An old
+  // allOf may be preserved inside a new union branch rather than at its root.
   const branches = (schema: typeof before): unknown[] | undefined => Object.keys(schema).length === 1
     ? Array.isArray(schema.anyOf) ? schema.anyOf : Array.isArray(schema.oneOf) ? schema.oneOf : undefined
     : undefined;
@@ -184,6 +219,27 @@ export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean
   const newBranches = branches(after);
   if (newBranches) return newBranches.some((branch, index) => acceptsPreviousSchema(previous, branch) &&
     (!after.oneOf || newBranches.every((other, otherIndex) => index === otherIndex || schemasCannotOverlap(previous, other))));
+  if (canonicalContentHash(before.$defs ?? null) !== canonicalContentHash(after.$defs ?? null)) {
+    const oldDefinitions = before.$defs, newDefinitions = after.$defs;
+    if (!oldDefinitions || !newDefinitions || typeof oldDefinitions !== 'object' || typeof newDefinitions !== 'object' ||
+        Array.isArray(oldDefinitions) || Array.isArray(newDefinitions)) return false;
+    const names = new Set(Object.keys(oldDefinitions));
+    if (names.size !== Object.keys(newDefinitions).length || [...names].some(name => !Object.prototype.hasOwnProperty.call(newDefinitions, name)) ||
+        !hasPositiveLocalReferences(before, names) || !hasPositiveLocalReferences(after, names) ||
+        [...names].some(name => !acceptsPreviousSchema(oldDefinitions[name], newDefinitions[name]))) return false;
+    // The positive recursive graph is monotone; every referenced definition
+    // accepts its previous values. Compare the remaining root constraints.
+    delete before.$defs;
+    delete after.$defs;
+  }
+  if (canonicalContentHash(before.allOf ?? null) !== canonicalContentHash(after.allOf ?? null)) {
+    if ((before.allOf !== undefined && !Array.isArray(before.allOf)) || !Array.isArray(after.allOf)) return false;
+    const previousBranches: unknown[] = before.allOf ?? [];
+    if (previousBranches.some(branch => !after.allOf.some((candidate: unknown) => canonicalContentHash(branch) === canonicalContentHash(candidate))) ||
+        after.allOf.some((branch: unknown) => !previousBranches.some(candidate => canonicalContentHash(branch) === canonicalContentHash(candidate)) && !isUnreachableConditional(before, branch))) return false;
+    if (before.allOf === undefined) delete after.allOf;
+    else after.allOf = before.allOf;
+  }
   const { properties: oldProperties, required: oldRequired, additionalProperties: oldAdditional,
     enum: oldEnum, items: oldItems, minimum: _oldMinimum, maximum: _oldMaximum,
     exclusiveMinimum: _oldExclusiveMinimum, exclusiveMaximum: _oldExclusiveMaximum, ...oldFixed } = before;

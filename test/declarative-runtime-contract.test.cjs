@@ -64,6 +64,63 @@ test('auto or integer gallery columns accepts widening without treating overlapp
   assert.equal(acceptsPreviousSchema({ type: 'string' }, { oneOf: [{ type: 'string' }, {}] }), false);
 });
 
+test('recursive local definitions may add optional fields while preserving every old tree', () => {
+  const tree = {
+    $defs: { node: { type: 'object', additionalProperties: false, required: ['id'], properties: {
+      id: { type: 'string' }, children: { type: 'array', items: { $ref: '#/$defs/node' } },
+    } } },
+    type: 'object', additionalProperties: false, properties: { nodes: { type: 'array', items: { $ref: '#/$defs/node' } } },
+  };
+  const expanded = structuredClone(tree);
+  expanded.$defs.node.properties.selectable = { type: 'boolean' };
+  assert.equal(acceptsPreviousSchema(tree, expanded), true);
+  assert.equal(acceptsPreviousSchema(expanded, tree), false);
+  const required = structuredClone(expanded);
+  required.$defs.node.required.push('selectable');
+  assert.equal(acceptsPreviousSchema(tree, required), false);
+  const rebound = structuredClone(expanded);
+  rebound.properties.nodes.items.$ref = 'https://example.test/node';
+  assert.equal(acceptsPreviousSchema(tree, rebound), false);
+  const scoped = structuredClone(expanded);
+  scoped.$defs.node.$id = 'https://example.test/nested';
+  assert.equal(acceptsPreviousSchema(tree, scoped), false);
+  const narrower = structuredClone(expanded);
+  narrower.$defs.node.properties.id.minLength = 1;
+  assert.equal(acceptsPreviousSchema(tree, narrower), false);
+});
+
+test('definition widening cannot silently narrow negations, oneOf or conditional predicates', () => {
+  for (const dependent of [
+    { not: { $ref: '#/$defs/value' } },
+    { oneOf: [{ $ref: '#/$defs/value' }, { const: 'b' }] },
+    { if: { $ref: '#/$defs/value' }, then: false },
+    { dependentSchemas: { value: { $ref: '#/$defs/value' } } },
+  ]) {
+    const old = { $defs: { value: { enum: ['a'] } }, ...dependent };
+    const next = { ...old, $defs: { value: { enum: ['a', 'b'] } } };
+    assert.equal(acceptsPreviousSchema(old, next), false);
+  }
+});
+
+test('a conditional for a new layout variant leaves old variants and omitted variants valid', () => {
+  const previous = { type: 'object', additionalProperties: false, properties: { variant: { enum: ['default', 'stack'] } } };
+  const condition = { if: { required: ['variant'], properties: { variant: { const: 'regions' } } }, then: { required: ['regionLayout'] } };
+  const next = { ...previous, properties: { variant: { enum: ['default', 'stack', 'regions'] }, regionLayout: { type: 'object' } }, allOf: [condition] };
+  assert.equal(acceptsPreviousSchema(previous, next), true);
+  assert.equal(acceptsPreviousSchema(next, previous), false);
+  const missingDiscriminant = structuredClone(next);
+  delete missingDiscriminant.allOf[0].if.required;
+  assert.equal(acceptsPreviousSchema(previous, missingDiscriminant), false);
+  const existingVariant = structuredClone(next);
+  existingVariant.allOf[0].if.properties.variant.const = 'default';
+  assert.equal(acceptsPreviousSchema(previous, existingVariant), false);
+  const withElse = structuredClone(next);
+  withElse.allOf[0].else = false;
+  assert.equal(acceptsPreviousSchema(previous, withElse), false);
+  assert.equal(acceptsPreviousSchema({ ...previous, properties: { variant: { type: 'string' } } }, next), false);
+  assert.equal(acceptsPreviousSchema({ ...previous, allOf: [{ minProperties: 1 }] }, next), false);
+});
+
 test('contract matching never permits a different provider, owner or public contract', () => {
   const published = fixture(7, 'table/v1');
   const upgraded = fixture(19, 'table/v1');
