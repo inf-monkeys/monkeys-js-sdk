@@ -1,12 +1,21 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["./src/"],
-  "exclude": ["./test/"],
+  "include": [
+    "./src/"
+  ],
+  "exclude": [
+    "./test/"
+  ],
   "compilerOptions": {
     "outDir": "./lib",
     "allowJs": false,
     "resolveJsonModule": true,
     "module": "CommonJS",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "paths": {
+      "#canonical-sha256": [
+        "./src/runtime/sha256.browser.ts"
+      ]
+    }
   }
 }

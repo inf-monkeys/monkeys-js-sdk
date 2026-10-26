@@ -3,6 +3,8 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
+    'runtime/sha256.node': 'src/runtime/sha256.node.ts',
+    'runtime/sha256.browser': 'src/runtime/sha256.browser.ts',
     'contracts/index': 'src/contracts/index.ts',
     'schemas/index': 'src/schemas/index.ts',
     'runtime/index': 'src/runtime/index.ts',
@@ -14,6 +16,7 @@ export default defineConfig({
   clean: false,
   dts: false,
   noExternal: ['ajv'],
+  external: ['#canonical-sha256'],
   sourcemap: true,
   // Share schemas, validators and runtime caches across public ESM entry points.
   splitting: true,
