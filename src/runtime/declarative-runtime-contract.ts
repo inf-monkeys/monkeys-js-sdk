@@ -99,6 +99,12 @@ const schemasCannotOverlap = (left: unknown, right: unknown): boolean => {
   const a = left as Record<string, any>;
   const b = right as Record<string, any>;
   if (a.$ref || b.$ref) return false;
+  // A union cannot overlap a schema when none of its branches can overlap it.
+  // Sibling constraints can only reduce this union's accepted values.
+  for (const key of ['anyOf', 'oneOf']) {
+    if (Array.isArray(a[key]) && a[key].every((branch: unknown) => schemasCannotOverlap(branch, b))) return true;
+    if (Array.isArray(b[key]) && b[key].every((branch: unknown) => schemasCannotOverlap(a, branch))) return true;
+  }
   const values = (schema: typeof a): unknown[] | undefined =>
     Object.prototype.hasOwnProperty.call(schema, 'const') ? [schema.const] : Array.isArray(schema.enum) ? schema.enum : undefined;
   const av = values(a), bv = values(b);
@@ -209,6 +215,20 @@ export const acceptsPreviousSchema = (previous: unknown, next: unknown): boolean
   const withoutAnnotations = (schema: object) => Object.fromEntries(Object.entries(schema).filter(([key]) => !['title', 'description', 'examples', '$comment'].includes(key)));
   const before = withoutAnnotations(previous) as Record<string, any>;
   const after = withoutAnnotations(next) as Record<string, any>;
+  // Keep all sibling constraints exact while comparing branches of a tagged
+  // union. oneOf additionally requires proof that no other target branch matches.
+  const union = (schema: typeof before) => {
+    const key = Array.isArray(schema.oneOf) && !schema.anyOf ? 'oneOf' : Array.isArray(schema.anyOf) && !schema.oneOf ? 'anyOf' : undefined;
+    if (!key) return undefined;
+    const { [key]: alternatives, ...siblings } = schema;
+    return { key, alternatives: alternatives as unknown[], siblings };
+  };
+  const oldUnion = union(before), newUnion = union(after);
+  if (oldUnion && newUnion && canonicalContentHash(oldUnion.siblings) === canonicalContentHash(newUnion.siblings)) {
+    return oldUnion.alternatives.every(branch => newUnion.alternatives.some((candidate, index) =>
+      acceptsPreviousSchema(branch, candidate) && (newUnion.key !== 'oneOf' || newUnion.alternatives.every((other, otherIndex) =>
+        index === otherIndex || schemasCannotOverlap(branch, other)))));
+  }
   // Resolve standalone unions before inspecting sibling constraints. An old
   // allOf may be preserved inside a new union branch rather than at its root.
   const branches = (schema: typeof before): unknown[] | undefined => Object.keys(schema).length === 1

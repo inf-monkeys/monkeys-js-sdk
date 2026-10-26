@@ -89,6 +89,20 @@ test('recursive local definitions may add optional fields while preserving every
   assert.equal(acceptsPreviousSchema(tree, narrower), false);
 });
 
+test('tagged nested unions retain exact siblings and prove branch exclusion', () => {
+  const branch = (key, value) => ({ type: 'object', additionalProperties: false, required: ['settingId', 'value'], properties: { settingId: { const: key }, value } });
+  const schema = maximum => ({ $id: 'test://settings', type: 'object', oneOf: [
+    { oneOf: [branch('columns', { oneOf: [{ const: 'auto' }, { type: 'integer', minimum: 1, maximum }] }), branch('layout', { enum: ['fixed', 'masonry'] })] },
+    branch('visible', { type: 'boolean' }),
+  ] });
+  assert.equal(acceptsPreviousSchema(schema(4), schema(5)), true);
+  assert.equal(acceptsPreviousSchema(schema(5), schema(4)), false);
+  const overlapping = schema(5); overlapping.oneOf.push(branch('columns', {}));
+  assert.equal(acceptsPreviousSchema(schema(4), overlapping), false);
+  assert.equal(acceptsPreviousSchema(schema(4), { ...schema(5), maxProperties: 1 }), false);
+  assert.equal(acceptsPreviousSchema(schema(4), { ...schema(5), $id: 'test://other' }), false);
+});
+
 test('definition widening cannot silently narrow negations, oneOf or conditional predicates', () => {
   for (const dependent of [
     { not: { $ref: '#/$defs/value' } },
