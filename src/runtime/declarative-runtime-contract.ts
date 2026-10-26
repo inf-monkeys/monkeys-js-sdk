@@ -103,6 +103,20 @@ const schemasCannotOverlap = (left: unknown, right: unknown): boolean => {
     Object.prototype.hasOwnProperty.call(schema, 'const') ? [schema.const] : Array.isArray(schema.enum) ? schema.enum : undefined;
   const av = values(a), bv = values(b);
   if (av && bv && av.every(value => !bv.some(other => canonicalContentHash(value) === canonicalContentHash(other)))) return true;
+  // JSON primitive types can prove union branches disjoint even when only one
+  // branch has const/enum (for example "auto" versus an integer column count).
+  // Keep integer and number together: their value sets overlap.
+  const declaredTypes = (schema: typeof a): string[] | undefined => {
+    const types = typeof schema.type === 'string' ? [schema.type] : schema.type;
+    if (!Array.isArray(types) || !types.length || types.some(type => !['null', 'boolean', 'object', 'array', 'number', 'integer', 'string'].includes(type))) return undefined;
+    return types.map(type => type === 'integer' ? 'number' : type);
+  };
+  const valueTypes = (entries: unknown[] | undefined): string[] | undefined => entries?.map(value =>
+    value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value);
+  const disjoint = (leftTypes: string[] | undefined, rightTypes: string[] | undefined): boolean =>
+    !!leftTypes && !!rightTypes && leftTypes.every(type => !rightTypes.includes(type));
+  const at = declaredTypes(a), bt = declaredTypes(b);
+  if (disjoint(at, bt) || disjoint(valueTypes(av), bt) || disjoint(at, valueTypes(bv))) return true;
   if (a.type !== 'object' || b.type !== 'object') return false;
   const property = (schema: typeof a, key: string): unknown => schema.properties?.[key] ??
     (schema.patternProperties ? true : schema.additionalProperties ?? true);

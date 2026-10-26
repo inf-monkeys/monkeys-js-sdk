@@ -52,6 +52,18 @@ test('numeric schema bounds accept only provable range expansions', () => {
   assert.equal(acceptsPreviousSchema({ type: 'number', maximum: 0 }, { type: 'number', maximum: -1 }), false);
 });
 
+test('auto or integer gallery columns accepts widening without treating overlapping unions as compatible', () => {
+  const columns = maximum => ({ oneOf: [{ const: 'auto' }, { type: 'integer', minimum: 1, maximum }] });
+  assert.equal(acceptsPreviousSchema(columns(4), columns(5)), true);
+  assert.equal(acceptsPreviousSchema(columns(5), columns(4)), false);
+  assert.equal(acceptsPreviousSchema({ type: 'string' }, { oneOf: [{ type: 'string' }, { type: 'integer' }] }), true);
+  assert.equal(acceptsPreviousSchema({ type: 'number' }, { oneOf: [{ type: 'number' }, { type: 'integer' }] }), false);
+  assert.equal(acceptsPreviousSchema({ const: 1 }, { oneOf: [{ const: 1 }, { type: 'number' }] }), false);
+  assert.equal(acceptsPreviousSchema({ enum: ['auto', 1] }, { oneOf: [{ enum: ['auto', 1] }, { type: 'integer' }] }), false);
+  assert.equal(acceptsPreviousSchema({ type: ['string', 'null'] }, { oneOf: [{ type: ['string', 'null'] }, { type: 'boolean' }] }), true);
+  assert.equal(acceptsPreviousSchema({ type: 'string' }, { oneOf: [{ type: 'string' }, {}] }), false);
+});
+
 test('contract matching never permits a different provider, owner or public contract', () => {
   const published = fixture(7, 'table/v1');
   const upgraded = fixture(19, 'table/v1');
