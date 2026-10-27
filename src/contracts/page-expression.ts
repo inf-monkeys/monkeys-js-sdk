@@ -33,12 +33,17 @@ const RecursivePageExpressionSchema: z.ZodType<PageExpression> = z.lazy(() => z.
 ]));
 
 export const PAGE_EXPRESSION_LIMITS = Object.freeze({ depth: 32, nodes: 4096, operations: 20000, collection: 1000, bytes: 1048576 });
+// Query models contain record payloads, not expression syntax. Bound them separately.
+export const PAGE_EXPRESSION_VALUE_LIMITS = Object.freeze({ depth: 32, nodes: 262144, collection: 1000, bytes: 16777216 });
 
-export const assertPageValueBudget = (value: unknown): void => {
+const assertValueBudget = (
+  value: unknown,
+  limits: typeof PAGE_EXPRESSION_LIMITS | typeof PAGE_EXPRESSION_VALUE_LIMITS,
+): void => {
   // Scalar values cannot exceed node/depth limits. Avoid allocating a traversal
   // stack for every scalar expression read/result; strings still have a byte cap.
   if (value === null || typeof value !== 'object') {
-    if (typeof value === 'string' && value.length * 2 > PAGE_EXPRESSION_LIMITS.bytes) throw new Error('PAGE_EXPRESSION_BUDGET');
+    if (typeof value === 'string' && value.length * 2 > limits.bytes) throw new Error('PAGE_EXPRESSION_BUDGET');
     return;
   }
   const queue: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
@@ -46,19 +51,23 @@ export const assertPageValueBudget = (value: unknown): void => {
   let bytes = 0;
   while (queue.length) {
     const item = queue.pop()!;
-    if (++nodes > PAGE_EXPRESSION_LIMITS.nodes || item.depth > PAGE_EXPRESSION_LIMITS.depth) throw new Error('PAGE_EXPRESSION_BUDGET');
+    if (++nodes > limits.nodes || item.depth > limits.depth) throw new Error('PAGE_EXPRESSION_BUDGET');
+    if (limits === PAGE_EXPRESSION_VALUE_LIMITS && Array.isArray(item.value) && item.value.length > limits.collection) throw new Error('PAGE_EXPRESSION_BUDGET');
     if (typeof item.value === 'string') bytes += item.value.length * 2;
     if (item.value && typeof item.value === 'object') {
       for (const [key, child] of Object.entries(item.value)) {
         bytes += key.length * 2;
         if (['__proto__', 'prototype', 'constructor'].includes(key)) throw new Error('PAGE_EXPRESSION_UNSAFE_PATH');
-        if (queue.length >= PAGE_EXPRESSION_LIMITS.nodes) throw new Error('PAGE_EXPRESSION_BUDGET');
+        if (queue.length >= limits.nodes) throw new Error('PAGE_EXPRESSION_BUDGET');
         queue.push({ value: child, depth: item.depth + 1 });
       }
     }
-    if (bytes > PAGE_EXPRESSION_LIMITS.bytes) throw new Error('PAGE_EXPRESSION_BUDGET');
+    if (bytes > limits.bytes) throw new Error('PAGE_EXPRESSION_BUDGET');
   }
 };
+
+export const assertPageValueBudget = (value: unknown): void => assertValueBudget(value, PAGE_EXPRESSION_LIMITS);
+export const assertPageExpressionValueBudget = (value: unknown): void => assertValueBudget(value, PAGE_EXPRESSION_VALUE_LIMITS);
 
 /** The input guard runs before recursive schema parsing, including direct Page parsing. */
 export const PageExpressionSchema = z.unknown().superRefine((value, context) => {

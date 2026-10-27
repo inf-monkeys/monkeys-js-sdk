@@ -1,6 +1,7 @@
 import type { JsonObject, JsonValue } from '../contracts/common';
 import {
-  PageExpressionSchema, PagePropertyBindingSchema, PAGE_EXPRESSION_LIMITS, assertPageValueBudget,
+  PageExpressionSchema, PagePropertyBindingSchema, PAGE_EXPRESSION_LIMITS, PAGE_EXPRESSION_VALUE_LIMITS,
+  assertPageExpressionValueBudget, assertPageValueBudget,
   type PageExpression, type PagePropertyBinding,
 } from '../contracts/page-expression';
 
@@ -72,7 +73,15 @@ const same = (a: JsonValue, b: JsonValue): boolean => {
   return keys.length === Object.keys(b).length && keys.every((key) => Object.prototype.hasOwnProperty.call(b, key) && same((a as JsonObject)[key]!, (b as JsonObject)[key]!));
 };
 
-type EvaluationBudget = { operations: number; literals?: Map<PageExpression, JsonValue> };
+type EvaluationBudget = { operations: number; literals?: Map<PageExpression, JsonValue>; validated?: WeakSet<object> };
+
+const assertRuntimeValue = (value: JsonValue, budget: EvaluationBudget): void => {
+  if (value !== null && typeof value === 'object' && budget.validated?.has(value)) return;
+  assertPageExpressionValueBudget(value);
+  // Expressions cannot mutate inputs. Reuse validation only within this synchronous
+  // evaluation; the next call must recheck a refreshed or externally edited model.
+  if (value !== null && typeof value === 'object') (budget.validated ??= new WeakSet()).add(value);
+};
 
 const evaluateCompiled = (expression: PageExpression, context: PageExpressionContext, budget: EvaluationBudget): JsonValue => {
   const run = (node: PageExpression, current: PageExpressionContext): JsonValue => {
@@ -86,7 +95,7 @@ const evaluateCompiled = (expression: PageExpression, context: PageExpressionCon
     }
     if (node.kind === 'read') {
       const value = readPageValue(current[node.root], node.path) ?? null;
-      assertBudget(value);
+      assertRuntimeValue(value, budget);
       return value;
     }
     if (node.kind === 'conditional') return run(boolean(run(node.condition, current)) ? node.then : node.else, current);
@@ -95,7 +104,7 @@ const evaluateCompiled = (expression: PageExpression, context: PageExpressionCon
     if (node.kind === 'map' || node.kind === 'filter' || node.kind === 'sum') {
       const source = run(node.source, current);
       if (!Array.isArray(source)) return fail('PAGE_EXPRESSION_TYPE_ARRAY');
-      if (source.length > PAGE_EXPRESSION_LIMITS.collection) fail('PAGE_EXPRESSION_BUDGET');
+      if (source.length > PAGE_EXPRESSION_VALUE_LIMITS.collection) fail('PAGE_EXPRESSION_BUDGET');
       const values = source.map((item, index) => run(node.value, { ...current, scope: { item, index, parent: current.scope ?? null } }));
       if (node.kind === 'map') return values;
       if (node.kind === 'filter') return source.filter((_, index) => boolean(values[index]!));
@@ -130,7 +139,7 @@ const evaluateCompiled = (expression: PageExpression, context: PageExpressionCon
       case 'number': return typeof first === 'number' ? first : typeof first === 'string' && first.trim() && Number.isFinite(Number(first)) ? Number(first) : null;
       case 'concat': {
         const strings = values.map((value) => typeof value === 'string' ? value : fail('PAGE_EXPRESSION_TYPE_STRING'));
-        if (strings.reduce((bytes, value) => bytes + value.length * 2, 0) > PAGE_EXPRESSION_LIMITS.bytes) fail('PAGE_EXPRESSION_BUDGET');
+        if (strings.reduce((bytes, value) => bytes + value.length * 2, 0) > PAGE_EXPRESSION_VALUE_LIMITS.bytes) fail('PAGE_EXPRESSION_BUDGET');
         return strings.join('');
       }
       case 'length': return typeof first === 'string' || Array.isArray(first) ? first.length : fail('PAGE_EXPRESSION_TYPE_COLLECTION');
@@ -143,13 +152,13 @@ const evaluateCompiled = (expression: PageExpression, context: PageExpressionCon
       case 'merge': {
         const objects = values.map(object);
         const merged = Object.assign({}, ...objects) as JsonObject;
-        assertBudget(merged);
+        assertRuntimeValue(merged, budget);
         return merged;
       }
       case 'entries': return Object.entries(object(first));
       case 'from-entries': {
         const result: JsonObject = {};
-        if (!Array.isArray(first) || first.length > PAGE_EXPRESSION_LIMITS.collection) return fail('PAGE_EXPRESSION_TYPE_ARRAY');
+        if (!Array.isArray(first) || first.length > PAGE_EXPRESSION_VALUE_LIMITS.collection) return fail('PAGE_EXPRESSION_TYPE_ARRAY');
         for (const pair of first) {
           if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== 'string' || unsafe.has(pair[0])) return fail('PAGE_EXPRESSION_ENTRY');
           if (Object.prototype.hasOwnProperty.call(result, pair[0])) return fail('PAGE_EXPRESSION_DUPLICATE_KEY');
@@ -161,7 +170,7 @@ const evaluateCompiled = (expression: PageExpression, context: PageExpressionCon
         const result: JsonValue[] = [];
         for (const value of values) {
           if (!Array.isArray(value)) return fail('PAGE_EXPRESSION_TYPE_ARRAY');
-          if (result.length + value.length > PAGE_EXPRESSION_LIMITS.collection) return fail('PAGE_EXPRESSION_BUDGET');
+          if (result.length + value.length > PAGE_EXPRESSION_VALUE_LIMITS.collection) return fail('PAGE_EXPRESSION_BUDGET');
           result.push(...value);
         }
         return result;
@@ -192,7 +201,7 @@ const evaluateCompiled = (expression: PageExpression, context: PageExpressionCon
     }
   };
   const result = run(expression, context);
-  assertBudget(result);
+  assertRuntimeValue(result, budget);
   return result;
 };
 
