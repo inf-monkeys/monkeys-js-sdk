@@ -2285,6 +2285,23 @@ test('tenant application config exposes the canonical email registration switch'
   );
 });
 
+test('tenant application config accepts an optional bounded default login preference', () => {
+  for (const defaultLoginMethod of ['', 'password', 'phone', 'ldap', 'oidc', 'oauth-dingtalk', 'oauth-feishu', 'oauth-wework', 'future-provider']) {
+    const parsed = schemas.TenantApplicationConfigSchema.parse({
+      ...applicationConfig,
+      auth: { enabled: ['password'], defaultLoginMethod },
+    });
+    assert.equal(parsed.auth.defaultLoginMethod, defaultLoginMethod);
+  }
+  for (const defaultLoginMethod of [null, true, [], {}, 'x'.repeat(129)]) {
+    assert.equal(schemas.TenantApplicationConfigSchema.safeParse({
+      ...applicationConfig,
+      auth: { enabled: [], defaultLoginMethod },
+    }).success, false);
+  }
+  assert.equal(schemas.TenantApplicationConfigSchema.parse({ ...applicationConfig, auth: { enabled: [] } }).auth.defaultLoginMethod, undefined);
+});
+
 test('tenant application config exposes a strict optional registration approval policy', () => {
   for (const enabled of [true, false]) {
     const parsed = schemas.TenantApplicationConfigSchema.parse({

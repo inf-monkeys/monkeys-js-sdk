@@ -806,6 +806,7 @@ export const TenantApplicationConfigSchema = z
     auth: z
       .object({
         enabled: z.array(ContractIdentifierSchema).default([]),
+        defaultLoginMethod: z.string().max(128).optional(),
         oidc: z
           .object({
             buttonText: z.string().optional(),
