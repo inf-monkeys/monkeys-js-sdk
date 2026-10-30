@@ -231,6 +231,7 @@ test("type projection rejects unsupported schemas rather than emitting any", () 
 });
 test("generated TS and checkJs reject wrong IDs, argument types and result fields", () => {
   const typed = structuredClone(definition);
+  typed.effects = ['toast'];
   typed.dependencies = [
     {
       kind: "command",
@@ -251,7 +252,7 @@ test("generated TS and checkJs reject wrong IDs, argument types and result field
     fs.writeFileSync(path.join(dir, "program.d.ts"), declarations);
     fs.writeFileSync(
       path.join(dir, "valid.ts"),
-      `import type {Context} from './program'; async function main(c: Context) { const result = await c.command('favorite.set', {recordId:'one'}, {stepKey:'save:one'}); return result.recordId; }`,
+      `import type {Context} from './program'; async function main(c: Context) { await c.ui.toast('Saved', 'success'); await c.ui.toast('Working', 'loading', {key:'save'}); await c.ui.toast('Done', 'success', {key:'save'}); await c.ui.toast('', 'dismiss', {key:'save'}); const result = await c.command('favorite.set', {recordId:'one'}, {stepKey:'save:one'}); return result.recordId; }`,
     );
     const run = (file) =>
       spawnSync(
@@ -275,12 +276,14 @@ test("generated TS and checkJs reject wrong IDs, argument types and result field
     assert.equal(valid.status, 0, valid.stdout + valid.stderr);
     fs.writeFileSync(
       path.join(dir, "invalid.js"),
-      `/** @param {import('./program').Context} c */ async function main(c) { await c.command('missing', {}, {stepKey:'x'}); const r = await c.command('favorite.set', {recordId:123}, {stepKey:'x'}); return r.missing; }`,
+      `/** @param {import('./program').Context} c */ async function main(c) { await c.ui.toast('Working', 'loading'); await c.ui.toast('', 'dismiss', {id:'foreign'}); await c.command('missing', {}, {stepKey:'x'}); const r = await c.command('favorite.set', {recordId:123}, {stepKey:'x'}); return r.missing; }`,
     );
     const invalid = run("invalid.js");
     assert.notEqual(invalid.status, 0);
     assert.match(invalid.stdout, /missing/);
     assert.match(invalid.stdout, /number/);
+    assert.match(invalid.stdout, /loading/);
+    assert.match(invalid.stdout, /foreign|id/);
   } finally {
     for (const file of ["program.d.ts", "valid.ts", "invalid.js"]) {
       const target = path.join(dir, file);

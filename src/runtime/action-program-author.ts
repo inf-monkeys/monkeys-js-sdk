@@ -35,7 +35,9 @@ export interface ActionProgramContext<
       schemaId: K,
       value: F[K],
     ): Promise<{ status: "submitted"; value: F[K] } | { status: "cancelled" }>;
-    toast(message: string, tone: "success" | "error" | "info"): Promise<void>;
+    /** Keys are scoped to this program execution. Loading notices are cleaned up when it ends. */
+    toast(message: string, tone: "success" | "error" | "info", options?: { key: string }): Promise<void>;
+    toast(message: string, tone: "loading" | "dismiss", options: { key: string }): Promise<void>;
     refresh(alias: R): Promise<void>;
     download(handle: string): Promise<{ status: "started" }>;
   };

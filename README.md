@@ -81,6 +81,23 @@ The current `OntologyBindingSchema`, `PageRuntimeBundleSchema`, and `compilePage
 
 ## Action program authoring (candidate)
 
+The `toast` effect supports execution-scoped notifications on hosts implementing
+the loading-notification extension:
+
+```ts
+await ctx.ui.toast('Working…', 'loading', { key: 'operation' });
+await ctx.ui.toast('Done', 'success', { key: 'operation' }); // Updates the same notice.
+await ctx.ui.toast('', 'dismiss', { key: 'operation' });
+```
+
+Keys are local to one program execution; another execution using the same key
+cannot replace or dismiss its notices. Loading and dismissal require a key.
+Unfinished loading notices are dismissed when the execution ends or is cancelled.
+Existing two-argument success, error, and info calls remain supported. Programs
+choose their own messages, completion effects, and error handling; the transport
+does not supply business notifications. Deploy the compatible host before Pages
+using this extension.
+
 The additive ActionProgramDefinition and Page programActions contracts describe
 immutable, exact-version workflow programs; existing direct actions are unchanged.
 The native browser Worker and Page host implement the runtime program bridge.
