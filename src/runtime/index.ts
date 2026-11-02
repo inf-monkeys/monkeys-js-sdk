@@ -20,6 +20,7 @@ export * from './access-compiler';
 export { compileComponentAssemblyValidator } from "./component-assembly";
 
 export * from './page-expression';
+export * from './materialized-model';
 
 export * from './record-editor-draft';
 

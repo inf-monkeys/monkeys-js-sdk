@@ -31,6 +31,7 @@ export * from "./workflow-runtime";
 export * from "./component-assembly";
 
 export * from "./page-expression";
+export * from "./materialized-model";
 
 export * from "./record-editor-draft";
 

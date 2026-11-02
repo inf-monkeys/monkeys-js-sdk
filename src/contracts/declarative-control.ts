@@ -12,6 +12,7 @@ import {
   Sha256Schema,
 } from "./common";
 import { OntologyDefinitionSchema } from "./data";
+import { MaterializedModelProjectionSchema } from "./materialized-model";
 import { LegacyRoutePolicySchema } from "./legacy-route";
 import { FilePurposeSchema } from "./file";
 import {
@@ -1855,13 +1856,13 @@ export const QueryBindingSchema = z
       })
       .strict(),
     renderModelSchemaRevisionRef: RevisionRefSchema,
-    targetProjection: z
-      .object({
+    targetProjection: z.union([
+      z.object({
         expression: PageExpressionSchema,
         schemaRevisionRef: RevisionRefSchema,
-      })
-      .strict()
-      .optional(),
+      }).strict(),
+      z.object({ materialized: MaterializedModelProjectionSchema, schemaRevisionRef: RevisionRefSchema }).strict(),
+    ]).optional(),
     streamTargetProjection: z
       .object({
         expression: PageExpressionSchema,
@@ -1960,9 +1961,9 @@ export const QueryBindingSchema = z
           message:
             "Query target projections require an exact target schema revision.",
         });
-      for (const read of collectExternalPageExpressionReads(
+      for (const read of "expression" in value.targetProjection ? collectExternalPageExpressionReads(
         value.targetProjection.expression,
-      ))
+      ) : [])
         if (read.root !== "model")
           context.addIssue({
             code: "custom",
@@ -1970,6 +1971,11 @@ export const QueryBindingSchema = z
             message:
               "Query target projections may read only the validated raw model.",
           });
+      if ("materialized" in value.targetProjection) {
+        const config = value.targetProjection.materialized;
+        if (value.execution !== 'server' || value.cursorWindow || (config.kind === 'chunks' && config.pagination && value.pagination !== 'cursor'))
+          context.addIssue({ code: 'custom', path: ['targetProjection', 'materialized'], message: 'Materialized models require a Server query; complete cursor reads require cursor pagination without a cursor window.' });
+      }
     }
     if (value.streamTargetProjection) {
       const projection = value.streamTargetProjection;
@@ -2813,10 +2819,10 @@ export const PageDataSchema = QueryBindingSchema.omit({
   .extend({
     query: ContractIdentifierSchema,
     port: ContractIdentifierSchema,
-    targetProjection: z
-      .object({ expression: PageExpressionSchema })
-      .strict()
-      .optional(),
+    targetProjection: z.union([
+      z.object({ expression: PageExpressionSchema }).strict(),
+      z.object({ materialized: MaterializedModelProjectionSchema }).strict(),
+    ]).optional(),
     streamTargetProjection: z
       .object({ expression: PageExpressionSchema })
       .strict()
