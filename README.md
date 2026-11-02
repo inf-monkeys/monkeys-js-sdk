@@ -132,7 +132,15 @@ Page expression declarations use `PAGE_EXPRESSION_LIMITS`: 4,096 nodes, 1 MiB of
 
 The plan retains no row contexts or results. Source declaration edits do not change an existing plan: prepare a new one when the Page revision changes. Literal objects in returned models are isolated from the private snapshot. `projectPageProperties(base, bindings, context)` remains available for one-shot calls and observes declaration edits on each invocation. Hosts using older SDK releases can keep that path until the prepared API is installed.
 
-### Stable runtime contracts
+### Materialized target models
+
+Server query bindings may replace `targetProjection.expression` with `targetProjection.materialized` while keeping the exact target input-port `schemaRevisionRef`. `kind: 'value'` selects a JSON object at `path`. `kind: 'chunks'` declares `rowsPath`, per-row `valuePath`, `modelPath`, batch/index/count paths, and one or more collection paths with expected totals and optional unique item keys. Indexes are zero-based; every chunk must be present, batch identities and non-collection model headers must agree. Arrays merge in chunk order. Inputs and outputs remain isolated.
+
+Optional `pagination: { maxPages }` exhausts the binding's ordinary cursor query before publication. It retains the same authorization, parameters and abort signal, rejects repeated cursors, and never publishes a partial snapshot. Use binding `pagination: 'cursor'`, without a cursor window. Each response keeps the ordinary query verification; the assembled model also passes the exact target schema validator. No expression, script, aggregation, ranking, forecast or business filtering runs in this transport.
+
+`budget` independently configures `maxRows` (default 1,000; ceiling 10,000), `maxItems` per collection (10,000; ceiling 50,000), `maxNodes` (200,000; ceiling 1,000,000), and conservative `maxBytes` (8 MiB; ceiling 16 MiB). Depth is capped at 64; page count at 100. Unsafe paths and non-JSON values fail closed. Existing expression bindings and their execution budgets are unchanged. SDK readers/compilers and host runtimes must be upgraded before publishing this declaration.
+
+### Stable runtime contract validation
 
 `runtimeContractVersion` is a provider-owned public contract identifier, independent of implementation revisions. `resolvePage` and `compileWorkbenchRuntimeBundle` derive it from exact governed registrations. The Page compiler rejects user-supplied contract labels that disagree with those registrations. A compatible implementation can serve a previously compiled RenderNode without changing the published definition or its dependency hashes.
 

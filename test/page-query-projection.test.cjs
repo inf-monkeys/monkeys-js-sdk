@@ -6,6 +6,18 @@ const ref = (kind, id) => ({ kind, id, ownerRepo: 'monkeys-server', visibility: 
 const read = (root, ...path) => ({ kind: 'read', root, path });
 const binding = () => ({ bindingId: 'report', queryDefinitionRevisionRef: ref('domain-query-definition', 'report'), parameters: {}, target: { capabilityInstanceId: 'filters', port: 'model' }, renderModelSchemaRevisionRef: ref('schema', 'raw-report'), targetProjection: { expression: read('model', 'filters'), schemaRevisionRef: ref('schema', 'editor') }, execution: 'server', pagination: 'none', cache: 'none', cancelOnChange: true });
 
+test('materialized projection pins a target schema and requires bounded Server cursor semantics', () => {
+  const value = binding();
+  const materialized = { kind: 'chunks', rowsPath: ['rows'], valuePath: [], modelPath: ['model'], batchPath: ['batch'], indexPath: ['index'], countPath: ['count'], collections: [{ path: ['items'], totalPath: ['total'] }], pagination: { maxPages: 3 } };
+  value.pagination = 'cursor';
+  value.targetProjection = { materialized, schemaRevisionRef: ref('schema', 'chart') };
+  assert.equal(QueryBindingSchema.parse(value).targetProjection.materialized.budget.maxItems, 10000);
+  assert.equal(QueryBindingSchema.safeParse({ ...value, pagination: 'none' }).success, false);
+  assert.equal(QueryBindingSchema.safeParse({ ...value, execution: 'local' }).success, false);
+  assert.equal(QueryBindingSchema.safeParse({ ...value, targetProjection: { ...value.targetProjection, expression: read('model') } }).success, false);
+  assert.equal(QueryBindingSchema.safeParse({ ...value, targetProjection: { ...value.targetProjection, schemaRevisionRef: ref('page', 'wrong') } }).success, false);
+});
+
 test('query load timing is optional and accepts only supported scheduling hints', () => {
   assert.equal(Object.hasOwn(QueryBindingSchema.parse(binding()), 'loadTiming'), false);
   for (const loadTiming of ['page-start', 'component-mount']) {
