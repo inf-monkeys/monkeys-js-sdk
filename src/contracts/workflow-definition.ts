@@ -404,7 +404,7 @@ export const WorkflowDefinitionSchema = z.object({
   }),
   presentation: z.object({ iconUrl: z.string().optional(), thumbnail: z.string().optional(), canvas: WorkflowCanvasSchema.optional() }).strict(),
   ports: z.object({ inputs: z.array(ContractPortSchema).default([]), outputs: z.array(ContractPortSchema).default([]) }).strict(),
-  parameters: z.object({ variables: z.array(WorkflowParameterSchema).default([]), outputs: z.array(WorkflowOutputBindingSchema).default([]) }).strict(),
+  parameters: z.object({ recordDisplayField: ContractIdentifierSchema.optional(), variables: z.array(WorkflowParameterSchema).default([]), outputs: z.array(WorkflowOutputBindingSchema).default([]) }).strict(),
   graph: z.object({ nodes: z.array(WorkflowNodeSchema), edges: z.array(WorkflowEdgeSchema).default([]) }).strict(),
   execution: z.object({
     timeoutMs: z.number().int().positive().optional(), retries: z.number().int().nonnegative().default(0), concurrencyLimit: z.number().int().positive().optional(), idempotency: z.enum(['required', 'supported', 'none']),

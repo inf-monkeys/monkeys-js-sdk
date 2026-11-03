@@ -18,6 +18,7 @@ export interface CompileWorkflowDefinitionFromConductorInput {
   revision: WorkflowDefinition['revision'];
   presentation: WorkflowDefinition['presentation'];
   conductor: ConductorWorkflowDefinition;
+  recordDisplayField?: string;
   variables: readonly WorkflowParameter[];
   output: readonly WorkflowOutputBinding[];
   execution: Omit<WorkflowDefinition['execution'], 'timeoutMs' | 'conductor'>;
@@ -106,7 +107,7 @@ export const compileWorkflowDefinitionFromConductor = (
       inputs: variables.map((parameter) => parameterPort(input.metadata.id, parameter)),
       outputs: outputs.map((output) => outputPort(input.metadata.id, output)),
     },
-    parameters: { variables, outputs },
+    parameters: { variables, outputs, ...(input.recordDisplayField ? { recordDisplayField: input.recordDisplayField } : {}) },
     graph: { nodes, edges },
     execution: {
       ...input.execution,

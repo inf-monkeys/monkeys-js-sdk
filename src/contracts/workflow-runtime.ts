@@ -10,11 +10,42 @@ import {
 import { ApplicationRunSchema } from './continuity';
 import { LineageRecordSchema } from './data';
 
+export const WorkflowRecordOwnerSchema = z
+  .object({
+    kind: z.literal('recipe'),
+    creationHash: Sha256Schema,
+    recordId: ContractIdentifierSchema,
+    scopeId: ContractIdentifierSchema,
+  })
+  .strict();
+
+export const RecipeRecordSchema = z
+  .object({
+    contract: z.literal('RecipeRecord'),
+    id: ContractIdentifierSchema,
+    teamId: ContractIdentifierSchema,
+    scopeId: ContractIdentifierSchema,
+    workflowId: ContractIdentifierSchema,
+    sourceWorkflowId: ContractIdentifierSchema,
+    displayField: ContractIdentifierSchema,
+    creationHash: Sha256Schema,
+    lastCommandHash: Sha256Schema,
+    definitionRecordVersion: z.number().int().positive(),
+    formValues: JsonObjectSchema,
+    createdAt: IsoDateTimeSchema,
+    updatedAt: IsoDateTimeSchema,
+  })
+  .strict();
+
+export type RecipeRecord = z.infer<typeof RecipeRecordSchema>;
+export type WorkflowRecordOwner = z.infer<typeof WorkflowRecordOwnerSchema>;
+
 export const WorkflowCatalogEntrySchema = z
   .object({
     contract: z.literal('WorkflowCatalogEntry'),
     workflowId: ContractIdentifierSchema,
     teamId: ContractIdentifierSchema,
+    owner: WorkflowRecordOwnerSchema.optional(),
     creatorRef: EntityRefSchema,
     currentDefinitionRef: EntityRefSchema,
     lifecycle: z.enum(['ACTIVE', 'DELETED']),
@@ -34,6 +65,9 @@ export const WorkflowCatalogEntrySchema = z
   })
   .strict()
   .superRefine((entry, context) => {
+    if (entry.owner && (entry.asset.marketplacePublished || entry.asset.preset || entry.asset.notAuthorized)) {
+      context.addIssue({ code: 'custom', path: ['owner'], message: 'Record-owned workflows cannot be public, preset or unauthenticated.' });
+    }
     if (
       entry.creatorRef.kind !== 'user' &&
       entry.creatorRef.kind !== 'service'

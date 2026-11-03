@@ -367,6 +367,8 @@ export {
   WorkflowValidationIssueSchema,
 } from "../contracts/workflow-definition";
 export {
+  RecipeRecordSchema,
+  WorkflowRecordOwnerSchema,
   WorkflowCatalogEntrySchema,
   WorkflowCompletionCommitSchema,
   WorkflowCompletionReceiptSchema,
@@ -494,6 +496,8 @@ import {
   WorkflowDefinitionSchema,
 } from "../contracts/workflow-definition";
 import {
+  RecipeRecordSchema,
+  WorkflowRecordOwnerSchema,
   WorkflowCatalogEntrySchema,
   WorkflowCompletionCommitSchema,
   WorkflowCompletionReceiptSchema,
@@ -609,6 +613,8 @@ export const canonicalContractSchemas = {
   "workbench-release": WorkbenchReleaseSchema,
   "workbench-runtime-bundle": WorkbenchRuntimeBundleSchema,
   "workflow-definition": WorkflowDefinitionSchema,
+  "recipe-record": RecipeRecordSchema,
+  "workflow-record-owner": WorkflowRecordOwnerSchema,
   "workflow-catalog-entry": WorkflowCatalogEntrySchema,
   "workflow-publication": WorkflowPublicationSchema,
   "workflow-completion-commit": WorkflowCompletionCommitSchema,
