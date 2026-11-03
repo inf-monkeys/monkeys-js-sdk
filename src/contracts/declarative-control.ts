@@ -5203,6 +5203,67 @@ export const NavigationSeparatorNodeSchema = z
     kind: z.literal("separator"),
   })
   .strict();
+
+const NavigationHeadbarModeSchema = z
+  .object({
+    id: ContractIdentifierSchema,
+    label: I18nTextSchema,
+    icon: z.string().trim().min(1).max(16),
+    navigationVisible: z.boolean(),
+    targetNodeId: ContractIdentifierSchema.optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.id === "smart" && !value.targetNodeId) {
+      context.addIssue({
+        code: "custom",
+        path: ["targetNodeId"],
+        message: "The smart Headbar mode must identify a Navigation target node.",
+      });
+    }
+  });
+
+export const NavigationHeadbarModeSwitchSchema = z
+  .object({
+    defaultMode: z.enum(["professional", "smart"]),
+    storageKey: ContractIdentifierSchema,
+    modes: z.array(NavigationHeadbarModeSchema).length(2),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const ids = value.modes.map((mode) => mode.id);
+    if (new Set(ids).size !== ids.length || !ids.includes("professional") || !ids.includes("smart")) {
+      context.addIssue({
+        code: "custom",
+        path: ["modes"],
+        message: "Headbar mode switches must define exactly professional and smart modes once.",
+      });
+    }
+    const professional = value.modes.find((mode) => mode.id === "professional");
+    const smart = value.modes.find((mode) => mode.id === "smart");
+    if (professional && (!professional.navigationVisible || professional.targetNodeId)) {
+      context.addIssue({
+        code: "custom",
+        path: ["modes"],
+        message: "Professional mode must retain Navigation and cannot declare a route target.",
+      });
+    }
+    if (smart && smart.navigationVisible) {
+      context.addIssue({
+        code: "custom",
+        path: ["modes"],
+        message: "Smart mode must hide the declared Navigation.",
+      });
+    }
+    if (value.defaultMode === "smart" && !value.modes.find((mode) => mode.id === "smart")?.targetNodeId) {
+      context.addIssue({
+        code: "custom",
+        path: ["defaultMode"],
+        message: "A smart default requires an executable smart target.",
+      });
+    }
+  });
+
 export const NavigationNodeSchema = z.discriminatedUnion("kind", [
   NavigationGroupNodeSchema,
   NavigationTargetNodeSchema,
@@ -5280,6 +5341,7 @@ export const NavigationSchema = z
     placements: z.array(ContractIdentifierSchema).min(1),
     lifecycle: DeclarativeLifecycleSchema,
     nodes: z.array(NavigationNodeSchema),
+    headbarModeSwitch: NavigationHeadbarModeSwitchSchema.optional(),
     managementAccess: ManagementAccessSchema,
     performanceBudgetRef: RevisionRefSchema,
     observationPolicyRevisionRef: RevisionRefSchema,
@@ -5287,6 +5349,19 @@ export const NavigationSchema = z
   .strict()
   .superRefine((value, context) => {
     validateNavigationTree(value.nodes, context);
+    const smartTargetNodeId = value.headbarModeSwitch?.modes.find((mode) => mode.id === "smart")?.targetNodeId;
+    if (smartTargetNodeId) {
+      const target = value.nodes.find((node) => node.nodeId === smartTargetNodeId);
+      if (
+        !target || target.kind !== "target" || target.targetRef.kind !== "page"
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["headbarModeSwitch", "modes"],
+          message: "The smart Headbar mode must point to a Page target in the same Navigation.",
+        });
+      }
+    }
     value.nodes.forEach((node, index) => {
       if (
         node.kind === "target" &&
@@ -5923,6 +5998,7 @@ export const NavigationRuntimeBundleSchema = z
     surface: ProductSurfaceSchema,
     placement: ContractIdentifierSchema,
     nodes: z.array(CompiledNavigationNodeSchema),
+    headbarModeSwitch: NavigationHeadbarModeSwitchSchema.optional(),
     performanceBudgetRef: RevisionRefSchema,
     observationPolicyRevisionRef: RevisionRefSchema,
   })
@@ -5937,6 +6013,22 @@ export const NavigationRuntimeBundleSchema = z
       value.navigationId,
       context,
     );
+    const targetNodeId = value.headbarModeSwitch?.modes.find((mode) => mode.id === "smart")?.targetNodeId;
+    if (targetNodeId) {
+      const target = value.nodes.find((node) => node.nodeId === targetNodeId);
+      if (
+        target?.kind !== "target" ||
+        target.targetRef.kind !== "page" ||
+        target.resolvedTarget.kind !== "route" ||
+        target.disabled
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["headbarModeSwitch", "modes"],
+          message: "The smart Headbar mode must resolve to an enabled Page route in the compiled Navigation.",
+        });
+      }
+    }
   });
 export const DeclarativeControlOntologyDefinitionSchema =
   OntologyDefinitionSchema.extend({

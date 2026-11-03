@@ -1240,6 +1240,64 @@ test('compiles NavigationRuntimeBundle with exact active release targets and anc
   assert.equal(bundle.rebuildable, true);
 });
 
+test('compiles a declared Headbar mode switch only through its exact Page target node', () => {
+  const modeSwitch = {
+    defaultMode: 'professional',
+    storageKey: 'studio.headbar.mode',
+    modes: [
+      {
+        id: 'professional',
+        label: { defaultLocale: 'en-US', values: { 'en-US': 'Professional mode', 'zh-CN': '专业模式' } },
+        icon: '📽️',
+        navigationVisible: true,
+      },
+      {
+        id: 'smart',
+        label: { defaultLocale: 'en-US', values: { 'en-US': 'Smart mode', 'zh-CN': '智能模式' } },
+        icon: '🔮',
+        navigationVisible: false,
+        targetNodeId: 'gallery',
+      },
+    ],
+  };
+  const bundle = runtime.compileNavigationRuntimeBundle(navigationInput({
+    navigation: { ...navigation, headbarModeSwitch: modeSwitch },
+  }));
+  assert.deepEqual(bundle.headbarModeSwitch, modeSwitch);
+  assert.throws(
+    () => runtime.compileNavigationRuntimeBundle(navigationInput({
+      navigation: {
+        ...navigation,
+        headbarModeSwitch: modeSwitch,
+        nodes: navigation.nodes.map((node) => node.nodeId === 'gallery' ? { ...node, disabled: true } : node),
+      },
+    })),
+    /smart Headbar mode must resolve to an enabled Page route/,
+  );
+
+  assert.throws(
+    () => runtime.compileNavigationRuntimeBundle(navigationInput({
+      navigation: { ...navigation, headbarModeSwitch: {
+        ...modeSwitch,
+        modes: modeSwitch.modes.map((mode) => mode.id === 'smart' ? { ...mode, targetNodeId: 'separator' } : mode),
+      } },
+    })),
+    /smart Headbar mode must point to a Page target/,
+  );
+  assert.throws(
+    () => runtime.compileNavigationRuntimeBundle(navigationInput({
+      navigation: {
+        ...navigation,
+        headbarModeSwitch: {
+          ...modeSwitch,
+          modes: modeSwitch.modes.map((mode) => mode.id === 'professional' ? { ...mode, navigationVisible: false } : mode),
+        },
+      },
+    })),
+    /Professional mode must retain Navigation/,
+  );
+});
+
 test('compiles registered Menu Actions without inventing route claims and validates exact catalog input', () => {
   const menuActionRef = stable('menu-action', 'studio.action.set-theme', { visibility: 'global', ownerRepo: 'monkeys' });
   const menuActionRevisionRef = revision('menu-action', menuActionRef.id, { visibility: 'global', ownerRepo: 'monkeys', contentHash: 'c'.repeat(64) });

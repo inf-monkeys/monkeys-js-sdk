@@ -3855,6 +3855,7 @@ export const compileNavigationRuntimeBundle = (
     surface: release.target.surface,
     placement: release.target.placement,
     nodes,
+    ...(navigation.headbarModeSwitch ? { headbarModeSwitch: navigation.headbarModeSwitch } : {}),
     performanceBudgetRef: navigation.performanceBudgetRef,
     observationPolicyRevisionRef: navigation.observationPolicyRevisionRef,
   };
