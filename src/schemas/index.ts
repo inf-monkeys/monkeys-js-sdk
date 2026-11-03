@@ -508,8 +508,12 @@ export {
   WorkflowColumnFieldRefSchema,
 } from "../contracts/workflow-column";
 import { WorkflowColumnBindingSchema } from "../contracts/workflow-column";
+import { DesignBoardDocumentSchema, DesignBoardCommitCommandSchema } from '../contracts/design-board';
+export { DesignBoardDocumentSchema, DesignBoardCommitCommandSchema } from '../contracts/design-board';
 
 export const canonicalContractSchemas = {
+  'design-board-document': DesignBoardDocumentSchema,
+  'design-board-commit-command': DesignBoardCommitCommandSchema,
   "aggregate-commit-request": AggregateCommitRequestSchema,
   "workflow-column-binding": WorkflowColumnBindingSchema,
   "agent-session-command": AgentSessionCommandSchema,

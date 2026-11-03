@@ -15,6 +15,7 @@ export * from './declarative-runtime-contract';
 export * from './view-render-model';
 export * from './workflow-compiler';
 export * from './workflow-column';
+export * from './design-board';
 export * from './access-compiler';
 
 export { compileComponentAssemblyValidator } from "./component-assembly";

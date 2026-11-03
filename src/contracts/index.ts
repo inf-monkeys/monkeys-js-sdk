@@ -9,6 +9,7 @@ export * from "./common";
 export * from "./context";
 export * from "./continuity";
 export * from "./data";
+export * from "./design-board";
 export * from "./declarative-control";
 export * from "./declarative-control-http";
 export * from "./declarative-document-import";

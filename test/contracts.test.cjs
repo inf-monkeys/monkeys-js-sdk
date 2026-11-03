@@ -862,6 +862,14 @@ const actionProgramDefinition = {
 };
 
 const fixtures = {
+  'design-board-document': {
+    engine: 'excalidraw', schemaVersion: 1, document: { elements: [], files: {} },
+    domain: { schemaVersion: 1, boardId: 'board', pages: [{ id: 'page', name: 'Page', order: 0 }], nodes: [], connections: [], files: [] },
+  },
+  'design-board-commit-command': {
+    contract: 'DesignBoardCommitCommand', schemaVersion: 1, boardId: 'board', expectedRevision: 0, requestId: 'request',
+    changes: { scenes: [], nodes: [], removedNodeIds: [], connections: [], removedConnectionIds: [], files: [], removedFileUris: [] },
+  },
   'action-program-definition': actionProgramDefinition,
   'action-program-artifact': {
     definition: actionProgramDefinition,
@@ -2197,7 +2205,7 @@ const fixtures = {
 test("publishes one canonical schema and JSON Schema document for every contract", () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 96);
+  assert.equal(names.length, 98);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, "../lib/json-schema/index.json"), "utf8"),

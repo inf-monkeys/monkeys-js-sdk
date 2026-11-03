@@ -149,3 +149,7 @@ Optional `pagination: { maxPages }` exhausts the binding's ordinary cursor query
 `assertCompatibleCapabilityUpgrade` guards catalog activation and package publication. Compatible inputs accept every historical value; outputs must remain valid for historical consumers. Optional input properties, optional ports, enum widening and documentation annotations are supported; unknown Schema changes fail closed. Provider identity, lifecycle, effects, placement and access requirements remain protected. Breaking changes require a separate capability/provider identity with the existing implementation retained. Behavioral regression tests remain necessary alongside Schema checks.
 
 `sameSchemaContract` compares stable identity, tenant scope, Schema version and content hash, allowing a different metadata revision for identical Schema content. Raw query results, permissions, command validation and immutable snapshot verification must continue to use their owning validators.
+
+### Design Board documents
+
+`DesignBoardDocumentSchema` validates versioned Excalidraw scenes and their pages, nodes, connections and managed file references. `DesignBoardCommitCommandSchema` carries a board ID, expected revision, request ID and bounded changes; the consuming service owns authorization, conflict checks and persistence. `diffDesignBoardDocuments` and `applyDesignBoardChanges` preserve untouched pages and canvas preferences. Files use canonical `file://` references; inline binary file dictionaries are rejected.
