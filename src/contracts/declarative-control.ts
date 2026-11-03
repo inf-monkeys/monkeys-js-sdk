@@ -6016,16 +6016,16 @@ export const NavigationRuntimeBundleSchema = z
     const targetNodeId = value.headbarModeSwitch?.modes.find((mode) => mode.id === "smart")?.targetNodeId;
     if (targetNodeId) {
       const target = value.nodes.find((node) => node.nodeId === targetNodeId);
-      if (
+      if (target && (
         target?.kind !== "target" ||
         target.targetRef.kind !== "page" ||
         target.resolvedTarget.kind !== "route" ||
         target.disabled
-      ) {
+      )) {
         context.addIssue({
           code: "custom",
           path: ["headbarModeSwitch", "modes"],
-          message: "The smart Headbar mode must resolve to an enabled Page route in the compiled Navigation.",
+          message: "A visible smart Headbar target must resolve to an enabled Page route in the compiled Navigation.",
         });
       }
     }

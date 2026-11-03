@@ -1272,8 +1272,12 @@ test('compiles a declared Headbar mode switch only through its exact Page target
         nodes: navigation.nodes.map((node) => node.nodeId === 'gallery' ? { ...node, disabled: true } : node),
       },
     })),
-    /smart Headbar mode must resolve to an enabled Page route/,
+    /visible smart Headbar target must resolve to an enabled Page route/,
   );
+  assert.doesNotThrow(() => NavigationRuntimeBundleSchema.parse({
+    ...bundle,
+    nodes: bundle.nodes.filter((node) => node.nodeId !== 'gallery'),
+  }));
 
   assert.throws(
     () => runtime.compileNavigationRuntimeBundle(navigationInput({
