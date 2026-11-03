@@ -151,10 +151,6 @@ export const TenantAgentThemeConfigSchema = z
     brandDisplayMode: z.enum(['auto', 'logo-only', 'logo-name', 'name-only']).optional(),
     density: z.enum(['compact', 'default', 'comfortable']).optional(),
     sidebar: AgentWorkbenchSidebarConfigSchema.optional(),
-    /** @deprecated Use sidebar.navigationMode. */
-    navigationMode: z.enum(['default', 'session', 'trend']).optional(),
-    /** @deprecated Use sidebar.quickStartEnabled. */
-    quickStartEnabled: z.boolean().optional(),
   })
   .strict();
 

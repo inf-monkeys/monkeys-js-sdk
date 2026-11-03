@@ -1215,17 +1215,11 @@ export const DEFAULT_AGENT_WORKBENCH_SIDEBAR_SECTIONS = Object.freeze([
   'footer',
 ] as const);
 
-export interface AgentWorkbenchSidebarLegacyConfig {
-  navigationMode?: AgentWorkbenchSidebarNavigationMode;
-  quickStartEnabled?: boolean;
-}
-
 export function resolveAgentWorkbenchSidebarConfig(
   config?: AgentWorkbenchSidebarConfig,
-  legacy: AgentWorkbenchSidebarLegacyConfig = {},
 ): ResolvedAgentWorkbenchSidebarConfig {
   const parsed = AgentWorkbenchSidebarConfigSchema.parse(config ?? {});
-  const navigationMode = parsed.navigationMode ?? legacy.navigationMode ?? 'default';
+  const navigationMode = parsed.navigationMode ?? 'default';
   return {
     ...parsed,
     navigationMode,
@@ -1233,7 +1227,7 @@ export function resolveAgentWorkbenchSidebarConfig(
     widthPercent: parsed.widthPercent ?? 18,
     visibleSections: parsed.visibleSections ?? [...DEFAULT_AGENT_WORKBENCH_SIDEBAR_SECTIONS],
     groups: parsed.groups ?? [],
-    quickStartEnabled: parsed.quickStartEnabled ?? legacy.quickStartEnabled ?? false,
+    quickStartEnabled: parsed.quickStartEnabled ?? false,
     trendEntryEnabled: parsed.trendEntryEnabled ?? navigationMode === 'trend',
   };
 }

@@ -240,7 +240,13 @@ test('validates and resolves the Agent workbench sidebar configuration', () => {
     })),
   };
   assert.deepEqual(contracts.AgentWorkbenchSidebarConfigSchema.parse(staticReportSidebar), staticReportSidebar);
-  assert.deepEqual(contracts.resolveAgentWorkbenchSidebarConfig(undefined, {
+  assert.equal(contracts.resolveAgentWorkbenchSidebarConfig().navigationMode, 'default');
+  assert.equal(contracts.resolveAgentWorkbenchSidebarConfig().quickStartEnabled, false);
+  assert.equal(contracts.resolveAgentWorkbenchSidebarConfig({ quickStartEnabled: false }).quickStartEnabled, false);
+  for (const agent of [{ navigationMode: 'trend' }, { quickStartEnabled: true }, { sidebarStyle: 'trend' }, { sessionCentric: true }]) {
+    assert.equal(contracts.TenantAgentThemeConfigSchema.safeParse(agent).success, false);
+  }
+  assert.deepEqual(contracts.resolveAgentWorkbenchSidebarConfig({
     navigationMode: 'session',
     quickStartEnabled: true,
   }), {
