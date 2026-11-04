@@ -5204,65 +5204,83 @@ export const NavigationSeparatorNodeSchema = z
   })
   .strict();
 
-const NavigationHeadbarModeSchema = z
-  .object({
+const HeadbarActionConditionShape = { when: PageExpressionSchema.optional() };
+export const NavigationHeadbarActionSchema = z.discriminatedUnion("kind", [
+  z.object({
+    ...HeadbarActionConditionShape,
+    kind: z.literal("navigate"),
+    nodeId: ContractIdentifierSchema,
+    rememberLocation: ContractIdentifierSchema.optional(),
+  }).strict(),
+  z.object({
+    ...HeadbarActionConditionShape,
+    kind: z.literal("restore-location"),
+    key: ContractIdentifierSchema,
+  }).strict(),
+  z.object({
+    ...HeadbarActionConditionShape,
+    kind: z.literal("set-state"),
+    stateId: ContractIdentifierSchema,
+    value: PageExpressionSchema,
+  }).strict(),
+]);
+export const NavigationHeadbarSchema = z.object({
+  state: z.record(ContractIdentifierSchema, z.object({
+    defaultValue: z.union([z.string(), z.number().finite(), z.boolean(), z.null()]),
+    persistence: z.enum(["none", "user-preference"]),
+  }).strict()).default({}),
+  navigationVisible: PageExpressionSchema.optional(),
+  buttons: z.array(z.object({
     id: ContractIdentifierSchema,
     label: I18nTextSchema,
-    icon: z.string().trim().min(1).max(16),
-    navigationVisible: z.boolean(),
-    targetNodeId: ContractIdentifierSchema.optional(),
-  })
-  .strict()
-  .superRefine((value, context) => {
-    if (value.id === "smart" && !value.targetNodeId) {
-      context.addIssue({
-        code: "custom",
-        path: ["targetNodeId"],
-        message: "The smart Headbar mode must identify a Navigation target node.",
-      });
+    icon: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("text"), value: z.string().trim().min(1).max(16) }).strict(),
+      z.object({ kind: z.literal("design-icon"), name: ContractIdentifierSchema }).strict(),
+    ]),
+    presentation: z.enum(["icon", "icon-label"]).default("icon"),
+    when: PageExpressionSchema.optional(),
+    onPress: z.array(NavigationHeadbarActionSchema).min(1).max(8),
+  }).strict()).max(32),
+}).strict().superRefine((value, context) => {
+  if (Object.keys(value.state).length > 32) context.addIssue({ code: "custom", path: ["state"], message: "Headbar supports at most 32 state values." });
+  const ids = value.buttons.map(button => button.id);
+  if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", path: ["buttons"], message: "Headbar button identities must be unique." });
+  const checkExpression = (expression: z.infer<typeof PageExpressionSchema> | undefined, path: (string | number)[]) => {
+    if (!expression) return;
+    for (const read of collectExternalPageExpressionReads(expression)) {
+      if (read.root === "state" && read.path.length && Object.prototype.hasOwnProperty.call(value.state, read.path[0])) continue;
+      if (read.root === "scope" && read.path[0] === "targets") continue;
+      context.addIssue({ code: "custom", path, message: "Headbar expressions may read declared state and resolved navigation targets only." });
     }
+  };
+  checkExpression(value.navigationVisible, ["navigationVisible"]);
+  value.buttons.forEach((button, index) => {
+    checkExpression(button.when, ["buttons", index, "when"]);
+    button.onPress.forEach((action, actionIndex) => {
+      const path = ["buttons", index, "onPress", actionIndex];
+      checkExpression(action.when, [...path, "when"]);
+      if (action.kind === "set-state") {
+        if (!Object.prototype.hasOwnProperty.call(value.state, action.stateId)) context.addIssue({ code: "custom", path, message: "Headbar actions must update declared state." });
+        checkExpression(action.value, [...path, "value"]);
+      }
+    });
   });
-
-export const NavigationHeadbarModeSwitchSchema = z
-  .object({
-    defaultMode: z.enum(["professional", "smart"]),
-    storageKey: ContractIdentifierSchema,
-    modes: z.array(NavigationHeadbarModeSchema).length(2),
-  })
-  .strict()
-  .superRefine((value, context) => {
-    const ids = value.modes.map((mode) => mode.id);
-    if (new Set(ids).size !== ids.length || !ids.includes("professional") || !ids.includes("smart")) {
-      context.addIssue({
-        code: "custom",
-        path: ["modes"],
-        message: "Headbar mode switches must define exactly professional and smart modes once.",
-      });
+});
+export type NavigationHeadbar = z.infer<typeof NavigationHeadbarSchema>;
+export type NavigationHeadbarAction = z.infer<typeof NavigationHeadbarActionSchema>;
+const validateHeadbarTargets = (
+  headbar: NavigationHeadbar | undefined,
+  nodes: readonly { nodeId: string; kind: string; targetRef?: { kind: string } }[],
+  context: z.RefinementCtx,
+) => {
+  headbar?.buttons.forEach((button, index) => button.onPress.forEach((action, actionIndex) => {
+    if (action.kind !== "navigate") return;
+    const target = nodes.find(node => node.nodeId === action.nodeId);
+    if (!target || target.kind !== "target" || !["page", "workbench"].includes(target.targetRef?.kind ?? "")) {
+      context.addIssue({ code: "custom", path: ["headbar", "buttons", index, "onPress", actionIndex], message: "Headbar navigation requires a Page or Workbench target in this Navigation." });
     }
-    const professional = value.modes.find((mode) => mode.id === "professional");
-    const smart = value.modes.find((mode) => mode.id === "smart");
-    if (professional && (!professional.navigationVisible || professional.targetNodeId)) {
-      context.addIssue({
-        code: "custom",
-        path: ["modes"],
-        message: "Professional mode must retain Navigation and cannot declare a route target.",
-      });
-    }
-    if (smart && smart.navigationVisible) {
-      context.addIssue({
-        code: "custom",
-        path: ["modes"],
-        message: "Smart mode must hide the declared Navigation.",
-      });
-    }
-    if (value.defaultMode === "smart" && !value.modes.find((mode) => mode.id === "smart")?.targetNodeId) {
-      context.addIssue({
-        code: "custom",
-        path: ["defaultMode"],
-        message: "A smart default requires an executable smart target.",
-      });
-    }
-  });
+  }));
+};
 
 export const NavigationNodeSchema = z.discriminatedUnion("kind", [
   NavigationGroupNodeSchema,
@@ -5341,7 +5359,14 @@ export const NavigationSchema = z
     placements: z.array(ContractIdentifierSchema).min(1),
     lifecycle: DeclarativeLifecycleSchema,
     nodes: z.array(NavigationNodeSchema),
-    headbarModeSwitch: NavigationHeadbarModeSwitchSchema.optional(),
+    headbar: NavigationHeadbarSchema.optional(),
+    /** Historical releases retain this opaque payload for revision readback and rolling upgrades. New Headbar runtimes ignore it. */
+    headbarModeSwitch: JsonObjectSchema.optional(),
+    menuRef: z.object({
+      applicationId: ContractIdentifierSchema,
+      surface: ContractIdentifierSchema,
+      menuId: ContractIdentifierSchema,
+    }).strict().optional(),
     managementAccess: ManagementAccessSchema,
     performanceBudgetRef: RevisionRefSchema,
     observationPolicyRevisionRef: RevisionRefSchema,
@@ -5349,19 +5374,11 @@ export const NavigationSchema = z
   .strict()
   .superRefine((value, context) => {
     validateNavigationTree(value.nodes, context);
-    const smartTargetNodeId = value.headbarModeSwitch?.modes.find((mode) => mode.id === "smart")?.targetNodeId;
-    if (smartTargetNodeId) {
-      const target = value.nodes.find((node) => node.nodeId === smartTargetNodeId);
-      if (
-        !target || target.kind !== "target" || target.targetRef.kind !== "page"
-      ) {
-        context.addIssue({
-          code: "custom",
-          path: ["headbarModeSwitch", "modes"],
-          message: "The smart Headbar mode must point to a Page target in the same Navigation.",
-        });
-      }
-    }
+    validateHeadbarTargets(value.headbar, value.nodes, context);
+    if (value.headbar && value.headbarModeSwitch) context.addIssue({ code: "custom", path: ["headbar"], message: "Headbar controls replace the historical declaration; both cannot be authored together." });
+    if (value.menuRef && (value.nodes.length || value.headbar)) context.addIssue({
+      code: "custom", path: ["menuRef"], message: "A menu reference delegates menu ownership and cannot duplicate nodes or controls.",
+    });
     value.nodes.forEach((node, index) => {
       if (
         node.kind === "target" &&
@@ -5998,7 +6015,14 @@ export const NavigationRuntimeBundleSchema = z
     surface: ProductSurfaceSchema,
     placement: ContractIdentifierSchema,
     nodes: z.array(CompiledNavigationNodeSchema),
-    headbarModeSwitch: NavigationHeadbarModeSwitchSchema.optional(),
+    headbar: NavigationHeadbarSchema.optional(),
+    /** Historical releases retain this opaque payload for revision readback and rolling upgrades. New Headbar runtimes ignore it. */
+    headbarModeSwitch: JsonObjectSchema.optional(),
+    menuRef: z.object({
+      applicationId: ContractIdentifierSchema,
+      surface: ContractIdentifierSchema,
+      menuId: ContractIdentifierSchema,
+    }).strict().optional(),
     performanceBudgetRef: RevisionRefSchema,
     observationPolicyRevisionRef: RevisionRefSchema,
   })
@@ -6013,22 +6037,7 @@ export const NavigationRuntimeBundleSchema = z
       value.navigationId,
       context,
     );
-    const targetNodeId = value.headbarModeSwitch?.modes.find((mode) => mode.id === "smart")?.targetNodeId;
-    if (targetNodeId) {
-      const target = value.nodes.find((node) => node.nodeId === targetNodeId);
-      if (target && (
-        target?.kind !== "target" ||
-        target.targetRef.kind !== "page" ||
-        target.resolvedTarget.kind !== "route" ||
-        target.disabled
-      )) {
-        context.addIssue({
-          code: "custom",
-          path: ["headbarModeSwitch", "modes"],
-          message: "A visible smart Headbar target must resolve to an enabled Page route in the compiled Navigation.",
-        });
-      }
-    }
+
   });
 export const DeclarativeControlOntologyDefinitionSchema =
   OntologyDefinitionSchema.extend({

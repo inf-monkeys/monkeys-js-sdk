@@ -1240,66 +1240,41 @@ test('compiles NavigationRuntimeBundle with exact active release targets and anc
   assert.equal(bundle.rebuildable, true);
 });
 
-test('compiles a declared Headbar mode switch only through its exact Page target node', () => {
-  const modeSwitch = {
-    defaultMode: 'professional',
-    storageKey: 'studio.headbar.mode',
-    modes: [
-      {
-        id: 'professional',
-        label: { defaultLocale: 'en-US', values: { 'en-US': 'Professional mode', 'zh-CN': '专业模式' } },
-        icon: '📽️',
-        navigationVisible: true,
-      },
-      {
-        id: 'smart',
-        label: { defaultLocale: 'en-US', values: { 'en-US': 'Smart mode', 'zh-CN': '智能模式' } },
-        icon: '🔮',
-        navigationVisible: false,
-        targetNodeId: 'gallery',
-      },
-    ],
-  };
-  const bundle = runtime.compileNavigationRuntimeBundle(navigationInput({
-    navigation: { ...navigation, headbarModeSwitch: modeSwitch },
-  }));
-  assert.deepEqual(bundle.headbarModeSwitch, modeSwitch);
-  assert.throws(
-    () => runtime.compileNavigationRuntimeBundle(navigationInput({
-      navigation: {
-        ...navigation,
-        headbarModeSwitch: modeSwitch,
-        nodes: navigation.nodes.map((node) => node.nodeId === 'gallery' ? { ...node, disabled: true } : node),
-      },
-    })),
-    /visible smart Headbar target must resolve to an enabled Page route/,
-  );
-  assert.doesNotThrow(() => NavigationRuntimeBundleSchema.parse({
-    ...bundle,
-    nodes: bundle.nodes.filter((node) => node.nodeId !== 'gallery'),
-  }));
+test('preserves an explicit existing menu reference without inferring it from controls', () => {
+  const menuRef = { applicationId: 'studio', surface: 'headerbar', menuId: 'custom-menu' };
+  const bundle = runtime.compileNavigationRuntimeBundle(navigationInput({ navigation: { ...navigation, nodes: [], menuRef } }));
+  assert.deepEqual(bundle.menuRef, menuRef);
+  assert.deepEqual(bundle.nodes, []);
+  assert.throws(() => runtime.compileNavigationRuntimeBundle(navigationInput({ navigation: { ...navigation, menuRef } })), /cannot duplicate nodes or controls/);
+});
 
-  assert.throws(
-    () => runtime.compileNavigationRuntimeBundle(navigationInput({
-      navigation: { ...navigation, headbarModeSwitch: {
-        ...modeSwitch,
-        modes: modeSwitch.modes.map((mode) => mode.id === 'smart' ? { ...mode, targetNodeId: 'separator' } : mode),
-      } },
-    })),
-    /smart Headbar mode must point to a Page target/,
-  );
-  assert.throws(
-    () => runtime.compileNavigationRuntimeBundle(navigationInput({
-      navigation: {
-        ...navigation,
-        headbarModeSwitch: {
-          ...modeSwitch,
-          modes: modeSwitch.modes.map((mode) => mode.id === 'professional' ? { ...mode, navigationVisible: false } : mode),
-        },
-      },
-    })),
-    /Professional mode must retain Navigation/,
-  );
+test('compiles arbitrary declared Headbar buttons without business mode semantics', () => {
+  const headbar = {
+    state: { compact: { defaultValue: false, persistence: 'user-preference' } },
+    navigationVisible: { kind: 'operator', operator: 'not', arguments: [{ kind: 'read', root: 'state', path: ['compact'] }] },
+    buttons: [{
+      id: 'open-report',
+      label: { defaultLocale: 'en-US', values: { 'en-US': 'Open report' } },
+      icon: { kind: 'design-icon', name: 'chart-bar' },
+      presentation: 'icon',
+      onPress: [
+        { kind: 'navigate', nodeId: 'gallery', rememberLocation: 'previous' },
+        { kind: 'set-state', stateId: 'compact', value: { kind: 'literal', value: true } },
+      ],
+    }],
+  };
+  const compile = (value) => runtime.compileNavigationRuntimeBundle(navigationInput({ navigation: { ...navigation, headbar: value } }));
+  const bundle = compile(headbar);
+  assert.deepEqual(bundle.headbar, headbar);
+  assert.equal(runtime.compileNavigationRuntimeBundle(navigationInput()).headbar, undefined);
+  assert.doesNotThrow(() => NavigationRuntimeBundleSchema.parse({ ...bundle, nodes: [] }));
+  assert.throws(() => compile({ ...headbar, buttons: [...headbar.buttons, ...headbar.buttons] }), /identities must be unique/);
+  assert.throws(() => compile({ ...headbar, buttons: [{ ...headbar.buttons[0], onPress: [{ kind: 'navigate', nodeId: 'missing' }] }] }), /requires a Page or Workbench target/);
+  assert.throws(() => compile({ ...headbar, buttons: [{ ...headbar.buttons[0], onPress: [{ kind: 'set-state', stateId: 'missing', value: { kind: 'literal', value: true } }] }] }), /declared state/);
+  assert.throws(() => compile({ ...headbar, navigationVisible: { kind: 'read', root: 'queries', path: ['private'] } }), /declared state and resolved navigation targets/);
+  const historical = runtime.compileNavigationRuntimeBundle(navigationInput({ navigation: { ...navigation, headbarModeSwitch: { retired: true } } }));
+  assert.equal(historical.headbar, undefined);
+  assert.deepEqual(historical.headbarModeSwitch, { retired: true });
 });
 
 test('compiles registered Menu Actions without inventing route claims and validates exact catalog input', () => {
