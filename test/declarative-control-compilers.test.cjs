@@ -1272,9 +1272,10 @@ test('compiles arbitrary declared Headbar buttons without business mode semantic
   assert.throws(() => compile({ ...headbar, buttons: [{ ...headbar.buttons[0], onPress: [{ kind: 'navigate', nodeId: 'missing' }] }] }), /requires a Page or Workbench target/);
   assert.throws(() => compile({ ...headbar, buttons: [{ ...headbar.buttons[0], onPress: [{ kind: 'set-state', stateId: 'missing', value: { kind: 'literal', value: true } }] }] }), /declared state/);
   assert.throws(() => compile({ ...headbar, navigationVisible: { kind: 'read', root: 'queries', path: ['private'] } }), /declared state and resolved navigation targets/);
-  const historical = runtime.compileNavigationRuntimeBundle(navigationInput({ navigation: { ...navigation, headbarModeSwitch: { retired: true } } }));
-  assert.equal(historical.headbar, undefined);
-  assert.deepEqual(historical.headbarModeSwitch, { retired: true });
+  assert.throws(() => runtime.compileNavigationRuntimeBundle(navigationInput({
+    navigation: { ...navigation, unsupportedConfiguration: {} },
+  })), /Unrecognized key/);
+  assert.throws(() => NavigationRuntimeBundleSchema.parse({ ...bundle, unsupportedConfiguration: {} }), /Unrecognized key/);
 });
 
 test('compiles registered Menu Actions without inventing route claims and validates exact catalog input', () => {

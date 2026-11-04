@@ -5360,8 +5360,6 @@ export const NavigationSchema = z
     lifecycle: DeclarativeLifecycleSchema,
     nodes: z.array(NavigationNodeSchema),
     headbar: NavigationHeadbarSchema.optional(),
-    /** Historical releases retain this opaque payload for revision readback and rolling upgrades. New Headbar runtimes ignore it. */
-    headbarModeSwitch: JsonObjectSchema.optional(),
     menuRef: z.object({
       applicationId: ContractIdentifierSchema,
       surface: ContractIdentifierSchema,
@@ -5375,7 +5373,6 @@ export const NavigationSchema = z
   .superRefine((value, context) => {
     validateNavigationTree(value.nodes, context);
     validateHeadbarTargets(value.headbar, value.nodes, context);
-    if (value.headbar && value.headbarModeSwitch) context.addIssue({ code: "custom", path: ["headbar"], message: "Headbar controls replace the historical declaration; both cannot be authored together." });
     if (value.menuRef && (value.nodes.length || value.headbar)) context.addIssue({
       code: "custom", path: ["menuRef"], message: "A menu reference delegates menu ownership and cannot duplicate nodes or controls.",
     });
@@ -6016,8 +6013,6 @@ export const NavigationRuntimeBundleSchema = z
     placement: ContractIdentifierSchema,
     nodes: z.array(CompiledNavigationNodeSchema),
     headbar: NavigationHeadbarSchema.optional(),
-    /** Historical releases retain this opaque payload for revision readback and rolling upgrades. New Headbar runtimes ignore it. */
-    headbarModeSwitch: JsonObjectSchema.optional(),
     menuRef: z.object({
       applicationId: ContractIdentifierSchema,
       surface: ContractIdentifierSchema,
