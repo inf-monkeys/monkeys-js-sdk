@@ -2343,6 +2343,18 @@ test('tenant application config exposes a strict optional registration approval 
   }).success, false);
 });
 
+test("tenant application config preserves optional trend generation prompts and rejects malformed values", () => {
+  const parse = (generationPrompts) => schemas.TenantApplicationConfigSchema.safeParse({
+    ...applicationConfig,
+    dataManagement: { homeTrendAssistant: { generationPrompts } },
+  });
+  const generationPrompts = { singleCategory: 'Product photo', multipleCategories: 'Invisible mannequin' };
+  assert.deepEqual(parse(generationPrompts).data.dataManagement.homeTrendAssistant.generationPrompts, generationPrompts);
+  assert.equal(parse(undefined).success, true);
+  assert.equal(parse({ singleCategory: 42 }).success, false);
+  assert.equal(parse({ unknownTemplate: 'invalid' }).success, false);
+});
+
 test("tenant application config accepts Ontology data bindings and rejects retired Bucket aliases", () => {
   const canonical = {
     ...applicationConfig,

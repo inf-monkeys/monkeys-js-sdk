@@ -883,6 +883,13 @@ export const TenantApplicationConfigSchema = z
             viewName: z.string().optional(),
             teamId: ContractIdentifierSchema.optional(),
             designOptionsWorkflowId: ContractIdentifierSchema.optional(),
+            generationPrompts: z
+              .object({
+                singleCategory: z.string().optional(),
+                multipleCategories: z.string().optional(),
+              })
+              .strict()
+              .optional(),
             tep: z
               .object({
                 baseUrl: z.string().optional(),
