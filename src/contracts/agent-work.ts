@@ -75,6 +75,8 @@ export const AgentWorkSessionSchema = z.object({
   files: z.array(AgentWorkInputFileSchema).default([]),
   cliPackages: z.array(AgentWorkCliPackageSchema).default([]),
   cliAuthorization: z.string().optional(),
+  /** Short-lived provenance capability; kept in runtime credentials, never native transcripts. */
+  agentDataContext: z.string().max(4096).optional(),
   fileCapability: z.string().optional(),
   fileControlPlaneUrl: z.string().optional(),
   controlPlane: AgentWorkControlPlaneSchema.optional(),
