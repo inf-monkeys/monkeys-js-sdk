@@ -1,3 +1,4 @@
+import { FileReadInstructionSchema, FileUploadInstructionSchema } from './file';
 import { z } from "zod";
 import type {
   AskForApproval,
@@ -127,3 +128,18 @@ export type AgentWorkSession = z.infer<typeof AgentWorkSessionSchema>;
 export type AgentWorkTurnCommand = z.infer<typeof AgentWorkTurnCommandSchema>;
 export type AgentWorkDispatch = z.infer<typeof AgentWorkDispatchSchema>;
 export type AgentWorkErrorCode = z.infer<typeof AgentWorkErrorCodeSchema>;
+
+/** Storage transport is ephemeral; only the bucket and checkpoint revision are retained. */
+export const AgentCheckpointPrepareResponseSchema = z.object({
+  bucketId: z.string().min(1),
+  missing: z.array(z.string().regex(SHA256)),
+  chunkAccess: z.record(z.string().regex(SHA256), FileUploadInstructionSchema),
+  manifestAccess: FileUploadInstructionSchema,
+});
+export const AgentCheckpointReadResponseSchema = z.object({
+  bucketId: z.string().min(1),
+  chunkAccess: z.record(z.string().regex(SHA256), FileReadInstructionSchema),
+  manifestAccess: FileReadInstructionSchema,
+});
+export type AgentCheckpointPrepareResponse = z.infer<typeof AgentCheckpointPrepareResponseSchema>;
+export type AgentCheckpointReadResponse = z.infer<typeof AgentCheckpointReadResponseSchema>;

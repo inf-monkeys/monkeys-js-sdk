@@ -32,3 +32,4 @@ export * from './page-stream';
 export * from './action-program-author';
 export * from './runtime-definition-wire';
 export * from './page-composition';
+export * from './file-reference';

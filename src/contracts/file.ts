@@ -7,6 +7,7 @@ export const FILE_PURPOSES = [
   'agent-artifacts',
   'agent-edited-images',
   'agent-workbench',
+  'agent-skill-archives',
   'asset-screenshots',
   'data-exports',
   'data-feature-media',
@@ -61,6 +62,10 @@ export const FileStatusSchema = z.enum(['pending', 'ready', 'failed', 'deleted']
 export const FileVariantStatusSchema = z.enum(['queued', 'processing', 'ready', 'failed']);
 
 export const FILE_USAGE_OWNER_TYPES = [
+  'file-resource',
+  'agent-record',
+  'agent-message',
+  'agent-skill-archive',
   'data-asset',
   'data-export',
   'design-board',
@@ -80,6 +85,51 @@ export const FileUsageSchema = z
     field: ContractIdentifierSchema.optional(),
   })
   .strict();
+
+export const ManagedFileUriSchema = z.string().regex(/^file:\/\/[A-Za-z0-9][A-Za-z0-9_-]{0,127}(?:#[A-Za-z0-9_-]+)?$/);
+
+const TransferUrlSchema = z.string().min(1).max(16384).refine((value) => {
+  if (/^\/(?!\/)/.test(value)) return !/[\u0000-\u0020\\]/.test(value);
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password;
+  } catch { return false; }
+}, 'Expected an HTTP(S) URL or absolute same-origin path');
+
+const TransferHeadersSchema = z.record(
+  z.string().regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/),
+  z.string().refine((value) => !/[\u0000\r\n]/.test(value), 'Invalid header value'),
+);
+
+/** Ephemeral transport only. A business record retains its managed URI. */
+export const FileReadInstructionSchema = z.object({
+  mode: z.enum(['direct', 'proxy']),
+  url: TransferUrlSchema,
+  method: z.literal('GET'),
+  headers: TransferHeadersSchema,
+  expiresAt: IsoDateTimeSchema.nullable(),
+}).strict().superRefine((value, context) => {
+  if (value.mode === 'proxy' && !/^\/(?!\/)/.test(value.url))
+    context.addIssue({ code: 'custom', path: ['url'], message: 'A browser proxy must use a same-origin path' });
+});
+
+export const FileResourcePathSchema = z.string().min(1).max(1024).refine((path) => {
+  if (/^[\/\\]|[\\\u0000-\u001f:?#]/.test(path)) return false;
+  try {
+    const decoded = decodeURIComponent(path);
+    return !/^[\/\\]|[\\\u0000-\u001f:?#]/.test(decoded) && decoded.split('/').every((part) => part && part !== '.' && part !== '..');
+  }
+  catch { return false; }
+}, 'Expected a safe relative resource path');
+
+export const FileResourceManifestSchema = z.object({
+  version: z.literal(1),
+  entryPath: FileResourcePathSchema.optional(),
+  resources: z.array(z.object({ path: FileResourcePathSchema, uri: ManagedFileUriSchema }).strict()).max(1000),
+}).strict().superRefine((value, context) => {
+  if (new Set(value.resources.map((resource) => resource.path)).size !== value.resources.length)
+    context.addIssue({ code: 'custom', path: ['resources'], message: 'Resource paths must be unique' });
+});
 
 export const FileReferenceSchema = z
   .object({
@@ -131,6 +181,7 @@ export const FileRecordSchema = z
       })
       .strict(),
     variants: z.array(FileVariantSchema).default([]),
+    resourceManifest: FileResourceManifestSchema.optional(),
     createdAt: IsoDateTimeSchema,
     updatedAt: IsoDateTimeSchema,
   })
@@ -153,18 +204,18 @@ export const FileUploadCreateRequestSchema = z
     byteSize: z.number().int().nonnegative().optional(),
     sha256: Sha256Schema.optional(),
     usage: FileUsageSchema.optional(),
+    requestId: ContractIdentifierSchema.optional(),
+    forceProxy: z.boolean().optional(),
   })
   .strict();
 
 export const FileUploadInstructionSchema = z
   .object({
-    url: z.union([
-      z.string().url(),
-      z.string().trim().regex(/^\/(?!\/)/, 'Expected an absolute same-origin path'),
-    ]),
+    url: TransferUrlSchema,
     method: z.string().trim().min(1),
-    headers: z.record(z.string(), z.string()),
+    headers: TransferHeadersSchema,
     expiresAt: IsoDateTimeSchema,
+    mode: z.enum(['direct', 'proxy']).optional(),
   })
   .strict();
 
@@ -180,6 +231,7 @@ export const FileUploadCompleteRequestSchema = z
     byteSize: z.number().int().nonnegative().optional(),
     sha256: Sha256Schema.optional(),
     etag: z.string().trim().min(1).max(512).optional(),
+    resourceManifest: FileResourceManifestSchema.optional(),
   })
   .strict();
 
@@ -189,6 +241,10 @@ export const ResolvedFileSchema = z
     status: FileStatusSchema.optional(),
     originalUri: z.string().trim().min(1).optional(),
     thumbnailUri: z.string().trim().min(1).optional(),
+    version: z.number().int().positive().optional(),
+    resourceManifest: FileResourceManifestSchema.optional(),
+    originalAccess: FileReadInstructionSchema.optional(),
+    thumbnailAccess: FileReadInstructionSchema.optional(),
     mimeType: z.string().trim().min(1).max(128).optional(),
     byteSize: z.number().int().nonnegative().optional(),
     sha256: Sha256Schema.optional(),
@@ -201,6 +257,8 @@ export const FileResolveBatchRequestSchema = z
     references: z.array(FileReferenceSchema).min(1).max(1000),
     includeOriginal: z.boolean().default(false),
     includeThumbnail: z.boolean().default(true),
+    includeAccessInstructions: z.boolean().default(false),
+    forceProxy: z.boolean().default(false),
   })
   .strict();
 
@@ -271,6 +329,8 @@ export type FileVariant = z.infer<typeof FileVariantSchema>;
 export type FileRecord = z.infer<typeof FileRecordSchema>;
 export type FileUploadCreateRequest = z.infer<typeof FileUploadCreateRequestSchema>;
 export type FileUploadInstruction = z.infer<typeof FileUploadInstructionSchema>;
+export type FileReadInstruction = z.infer<typeof FileReadInstructionSchema>;
+export type FileResourceManifest = z.infer<typeof FileResourceManifestSchema>;
 export type FileUploadCreateResponse = z.infer<typeof FileUploadCreateResponseSchema>;
 export type FileUploadCompleteRequest = z.infer<typeof FileUploadCompleteRequestSchema>;
 export type ResolvedFile = z.infer<typeof ResolvedFileSchema>;
