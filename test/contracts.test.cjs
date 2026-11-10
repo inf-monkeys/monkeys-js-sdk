@@ -862,6 +862,29 @@ const actionProgramDefinition = {
 };
 
 const fixtures = {
+  'declarative-publication-verification-request': {
+    resourceKind: 'page',
+    resourceId: declarativeControl.page.pageId,
+    releaseSlotId: declarativeControl.pageRelease.releaseSlotId,
+    expectedReleaseRevisionRef: declarativeControl.pageReleaseRevisionRef,
+    expectedDefinitionRevisionRef: declarativeControl.pageRevisionRef,
+  },
+  'declarative-publication-verification': {
+    contract: 'DeclarativePublicationVerification',
+    schemaVersion: 1,
+    resourceKind: 'page',
+    resourceId: declarativeControl.page.pageId,
+    scope: { kind: 'team', teamId: declarativeControl.tenantScope.teamRef.id },
+    publication: 'committed',
+    activation: 'active',
+    integrity: 'verified',
+    runtime: 'not-requested',
+    retryable: false,
+    releaseRevisionRef: declarativeControl.pageReleaseRevisionRef,
+    definitionRevisionRef: declarativeControl.pageRevisionRef,
+    runtimeContentHash: declarativePageBundle.contentHash,
+    diagnostics: [],
+  },
   'design-board-document': {
     engine: 'excalidraw', schemaVersion: 1, document: { elements: [], files: {} },
     domain: { schemaVersion: 1, boardId: 'board', pages: [{ id: 'page', name: 'Page', order: 0 }], nodes: [], connections: [], files: [] },
@@ -2205,7 +2228,7 @@ const fixtures = {
 test("publishes one canonical schema and JSON Schema document for every contract", () => {
   const names = Object.keys(schemas.canonicalContractSchemas).sort();
   assert.deepEqual(names, Object.keys(fixtures).sort());
-  assert.equal(names.length, 98);
+  assert.equal(names.length, 100);
 
   const index = JSON.parse(
     readFileSync(resolve(__dirname, "../lib/json-schema/index.json"), "utf8"),

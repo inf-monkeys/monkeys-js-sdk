@@ -1,3 +1,4 @@
+import { DeclarativePublicationVerificationRequestSchema, DeclarativePublicationVerificationSchema } from "../contracts/declarative-publication-verification";
 import {
   ActionProgramDefinitionSchema,
   ActionProgramArtifactSchema,
@@ -512,6 +513,8 @@ import { DesignBoardDocumentSchema, DesignBoardCommitCommandSchema } from '../co
 export { DesignBoardDocumentSchema, DesignBoardCommitCommandSchema } from '../contracts/design-board';
 
 export const canonicalContractSchemas = {
+  "declarative-publication-verification-request": DeclarativePublicationVerificationRequestSchema,
+  "declarative-publication-verification": DeclarativePublicationVerificationSchema,
   'design-board-document': DesignBoardDocumentSchema,
   'design-board-commit-command': DesignBoardCommitCommandSchema,
   "aggregate-commit-request": AggregateCommitRequestSchema,

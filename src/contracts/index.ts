@@ -13,6 +13,7 @@ export * from "./data";
 export * from "./design-board";
 export * from "./declarative-control";
 export * from "./declarative-control-http";
+export * from "./declarative-publication-verification";
 export * from "./declarative-document-import";
 export * from "./declarative-diagnostic";
 export * from "./declarative-publication-job";

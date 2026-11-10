@@ -68,6 +68,8 @@ export type DeclarativeAuthoringAction = z.infer<
 const encodePath = (value: string): string => encodeURIComponent(value);
 
 export const declarativeControlRoutes = {
+  publicationVerify: (): string =>
+    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/publications/verify`,
   prepareDocumentImport: (kind: "page" | "navigation"): string =>
     `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/documents/${kind}/prepare`,
   importDocument: (kind: "page" | "navigation"): string =>
