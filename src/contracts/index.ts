@@ -18,6 +18,7 @@ export * from "./declarative-document-import";
 export * from "./declarative-diagnostic";
 export * from "./declarative-publication-job";
 export * from "./file";
+export * from "./markdown-document";
 export * from "./legacy-route";
 export * from "./menu";
 export * from "./page";

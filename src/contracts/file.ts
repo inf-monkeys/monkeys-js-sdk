@@ -69,6 +69,7 @@ export const FILE_USAGE_OWNER_TYPES = [
   'data-asset',
   'data-export',
   'design-board',
+  'markdown-document',
   'external-delivery',
   'kernel-runtime',
   'llm-generated-media',

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ContractIdentifierSchema, IsoDateTimeSchema, JsonObjectSchema, JsonValueSchema } from './common';
+import { ManagedFileUriSchema } from './file';
 
 export const StudioAgentModeSchema = z.enum(['chat', 'work']);
 
@@ -745,6 +746,7 @@ export const AgentSessionEventSchema = z.discriminatedUnion('eventType', [
     status: z.enum(['pending', 'ready', 'failed']),
     mimeType: z.string().optional(),
     url: z.string().url().optional(),
+    fileUri: ManagedFileUriSchema.optional(),
     size: z.number().int().nonnegative().optional(),
     sourceEventId: ContractIdentifierSchema.optional(),
   }),
