@@ -1973,8 +1973,8 @@ export const QueryBindingSchema = z
           });
       if ("materialized" in value.targetProjection) {
         const config = value.targetProjection.materialized;
-        if (value.execution !== 'server' || value.cursorWindow || (config.kind === 'chunks' && config.pagination && value.pagination !== 'cursor'))
-          context.addIssue({ code: 'custom', path: ['targetProjection', 'materialized'], message: 'Materialized models require a Server query; complete cursor reads require cursor pagination without a cursor window.' });
+        if (value.cursorWindow || (config.kind === 'chunks' && (value.execution !== 'server' || (config.pagination && value.pagination !== 'cursor'))))
+          context.addIssue({ code: 'custom', path: ['targetProjection', 'materialized'], message: 'Chunked models require a Server query; complete cursor reads require cursor pagination without a cursor window.' });
       }
     }
     if (value.streamTargetProjection) {

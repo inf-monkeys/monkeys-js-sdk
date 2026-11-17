@@ -3,9 +3,29 @@ const assert = require('node:assert/strict');
 const { prepareMaterializedModelProjection: prepare, collectMaterializedModelPages: collect } = require('../lib/runtime/materialized-model');
 const { MaterializedModelProjectionSchema: schema } = require('../lib/contracts/materialized-model');
 const { evaluatePageExpression } = require('../lib/runtime/page-expression');
+const { QueryBindingSchema } = require('../lib/contracts/declarative-control');
+const { revision } = require('./declarative-control-fixtures.cjs');
 const config = () => ({ kind: 'chunks', rowsPath: ['rows'], valuePath: ['cell'], modelPath: ['model'], batchPath: ['batch'], indexPath: ['index'], countPath: ['count'], collections: [{ path: ['series', 'values'], totalPath: ['total'], keyPath: ['id'] }], pagination: { maxPages: 4 } });
 const chunk = (index, values = [{ id: index, value: index * 2 }]) => ({ cell: { batch: 'snapshot', index, count: 2, total: 2, model: { title: 'Generic series', series: { values } } } });
 const raw = () => ({ rows: [chunk(1), chunk(0)] });
+
+test('local page-state transport accepts bounded value projections while keeping chunk and pagination restrictions', () => {
+  const binding = {
+    bindingId: 'chart.state', queryDefinitionRevisionRef: revision('domain-query-definition', 'query.chart.state'),
+    parameters: { props: { kind: 'page-state', stateId: 'model' } },
+    target: { capabilityInstanceId: 'chart', port: 'props' },
+    renderModelSchemaRevisionRef: revision('schema', 'query.chart.result'),
+    execution: 'local-state', pagination: 'none', cache: 'none', cancelOnChange: true,
+    targetProjection: { schemaRevisionRef: revision('schema', 'chart.input'), materialized: { kind: 'value', path: [] } },
+  };
+  const parsed = QueryBindingSchema.parse(binding);
+  const model = { props: { points: Array.from({length:1131}, (_,id)=>({id,x:50,y:70})) } };
+  assert.deepEqual(prepare(parsed.targetProjection.materialized)(model), model);
+  assert.equal(QueryBindingSchema.safeParse({...binding, pagination:'cursor'}).success, false);
+  assert.equal(QueryBindingSchema.safeParse({...binding, targetProjection:{...binding.targetProjection,materialized:config()}}).success, false);
+  assert.equal(QueryBindingSchema.safeParse({...binding, execution:'server', pagination:'cursor',targetProjection:{...binding.targetProjection,materialized:config()}}).success, true);
+  assert.throws(()=>prepare({...parsed.targetProjection.materialized,budget:{maxItems:100}})(model), /BUDGET/);
+});
 
 test('merges configured nested arrays in chunk order without changing inputs or sharing output', () => {
   const input = raw(), before = structuredClone(input), project = prepare(config());
