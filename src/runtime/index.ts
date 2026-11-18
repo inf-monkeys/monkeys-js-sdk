@@ -3,6 +3,7 @@ export * from './agent-session-projector';
 export * from './declaration-compiler';
 export * from './declarative-control-compiler';
 export * from './navigation-availability';
+export * from './declarative-reference-normalization';
 export * from './menu-compiler';
 export * from './page-compiler';
 export * from './product-runtime';

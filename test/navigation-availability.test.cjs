@@ -22,12 +22,12 @@ const input = () => ({
   limits: { maxNavigationNodes: 1024, maxNavigationDepth: 16 },
 });
 
+// A Navigation release can no longer describe a Page it did not verify, so a
+// missing Page is simply an unreleased target reference.
 const missingInput = () => {
   const value = input();
-  const target = value.release.resolvedTargets.shift();
+  value.release.resolvedTargets.shift();
   value.targetRegistry.shift();
-  value.release.unavailableTargets = [{ nodeId: target.nodeId, stableTargetRef: target.stableTargetRef,
-    reason: 'page-missing', accessPolicy: structuredClone(f.page.pageAccessPolicy) }];
   return value;
 };
 
@@ -41,90 +41,48 @@ test('replays the BSD three-root topology without deleting any of its 33 targets
   value.release.resolvedTargets=leaves.map(node=>({nodeId:node.nodeId,stableTargetRef:node.targetRef,targetRevisionRef:f.revision('page',node.targetRef.id)}));
   value.targetRegistry=value.release.resolvedTargets.map((target,index)=>({ ...target,kind:'route',surface:'studio',accessPolicy:f.access(),routeClaim:{kind:'canonical',surface:'studio',routeSpaceRevisionRef:f.routeSpaceRevisionRef,pathTemplate:`/fixture/${index}`,normalizedPath:`/fixture/${index}`,matcher:{...f.routeMatcher,surface:'studio'}} }));
   value.release.dependencySnapshot.push(...value.release.resolvedTargets.map(target=>({role:'page',revisionRef:target.targetRevisionRef})));
-  const missing=value.release.resolvedTargets.shift();
-  value.targetRegistry.shift();
-  value.release.unavailableTargets=[{nodeId:missing.nodeId,stableTargetRef:missing.stableTargetRef,reason:'page-missing',accessPolicy:f.access()}];
   const before=structuredClone(value.navigation);
   const bundle=sdk.compileNavigationRuntimeBundle(value);
   assert.equal(bundle.nodes.filter(node=>node.parentNodeId===null).length,3);
   assert.equal(bundle.nodes.filter(node=>node.kind==='target').length,33);
-  assert.equal(bundle.nodes.filter(node=>node.kind==='target'&&node.resolvedTarget.kind==='unavailable').length,1);
+  assert.equal(bundle.nodes.filter(node=>node.kind==='target'&&node.resolvedTarget.kind==='route').length,33);
   assert.deepEqual(value.navigation,before);
 });
 
-test('isolates a missing Page without mutating source or inventing executable bindings', () => {
+test('NavigationRelease rejects an available-target list and cannot describe a missing Page', () => {
+  const value = input();
+  value.release.unavailableTargets = [];
+  assert.equal(sdk.NavigationReleaseSchema.safeParse(value.release).success, false);
+});
+
+test('a Navigation target whose Page is not released blocks compilation', () => {
   const value = missingInput();
   const before = structuredClone(value);
-  const bundle = sdk.compileNavigationRuntimeBundle(value);
-  const missing = bundle.nodes.find((node) => node.nodeId === f.resolvedPageTarget.nodeId);
-  assert.equal(missing.disabled, true);
-  assert.equal(missing.resolvedTarget.kind, 'unavailable');
-  assert.deepEqual(missing.parameterMapping, {});
-  assert.equal('targetRevisionRef' in missing.resolvedTarget, false);
-  assert.equal(bundle.nodes.find((node) => node.nodeId === f.resolvedWorkbenchTarget.nodeId).resolvedTarget.kind, 'route');
+  assert.throws(() => sdk.compileNavigationRuntimeBundle(value), /NAV_TARGET_UNRELEASED|unreleased/i);
   assert.deepEqual(value, before);
 });
 
-test('unknown target with no trusted policy remains explicitly untrusted', () => {
-  const value = missingInput();
-  value.release.unavailableTargets[0].accessPolicy = null;
-  const node = sdk.compileNavigationRuntimeBundle(value).nodes.find((node) => node.nodeId === f.resolvedPageTarget.nodeId);
-  assert.equal(node.resolvedTarget.accessPolicy, null);
-});
-
-test('rejects unmatched unavailable records and cross-tenant references', () => {
-  const value = missingInput();
-  value.release.unavailableTargets[0].nodeId = 'not-a-source-node';
-  assert.throws(() => sdk.compileNavigationRuntimeBundle(value), /source Page node/);
-  const crossTenant = missingInput();
-  const ref = crossTenant.navigation.nodes.find((node) => node.nodeId === f.resolvedPageTarget.nodeId).targetRef;
-  ref.tenantScope.tenantRef.id = 'another-tenant';
-  crossTenant.release.unavailableTargets[0].stableTargetRef = ref;
-  assert.throws(() => sdk.compileNavigationRuntimeBundle(crossTenant), /tenant/i);
-});
-
-test('missing pages do not relax duplicate, action, audience, or tree validation', () => {
-  const duplicate = missingInput();
+test('missing pages do not relax duplicate, action, or tree validation', () => {
+  const duplicate = input();
   duplicate.targetRegistry.push(duplicate.targetRegistry[0]);
   assert.throws(() => sdk.compileNavigationRuntimeBundle(duplicate));
-  const action = missingInput();
-  action.release.unavailableTargets[0].stableTargetRef.kind = 'menu-action';
-  assert.throws(() => sdk.compileNavigationRuntimeBundle(action));
-  const audience = missingInput();
-  audience.release.unavailableTargets[0].accessPolicy.permissionAllOf.push('ungranted.permission');
-  assert.throws(() => sdk.compileNavigationRuntimeBundle(audience), /audience/i);
-  const tree = missingInput();
+  const tree = input();
   tree.navigation.nodes[0].parentNodeId = 'missing-parent';
   assert.throws(() => sdk.compileNavigationRuntimeBundle(tree));
 });
 
 test('restoration follows a current Page identity and preserves manual disabled', () => {
-  const unresolved = missingInput();
-  unresolved.targetRegistry = input().targetRegistry;
-  assert.equal(sdk.compileNavigationRuntimeBundle(unresolved).nodes.find(node => node.nodeId === f.resolvedPageTarget.nodeId).resolvedTarget.kind, 'route');
   const restored = input();
+  const target = restored.release.resolvedTargets.find((entry) => entry.nodeId === f.resolvedPageTarget.nodeId);
+  target.targetRevisionRef = { ...target.targetRevisionRef, revision: 4, contentHash: '4'.repeat(64) };
+  restored.targetRegistry[0].targetRevisionRef = target.targetRevisionRef;
+  // The release evidence must name the same Page revision the registry serves.
+  const evidence = restored.release.dependencySnapshot.find((entry) => entry.role === 'page' && entry.revisionRef.id === target.targetRevisionRef.id);
+  if (evidence) evidence.revisionRef = target.targetRevisionRef;
+  const bundle = sdk.compileNavigationRuntimeBundle(restored);
+  assert.equal(bundle.nodes.find(node => node.nodeId === f.resolvedPageTarget.nodeId).resolvedTarget.targetRevisionRef.revision, 4);
   restored.navigation.nodes.find((node) => node.nodeId === f.resolvedPageTarget.nodeId).disabled = true;
   assert.equal(sdk.compileNavigationRuntimeBundle(restored).nodes.find((node) => node.nodeId === f.resolvedPageTarget.nodeId).disabled, true);
-});
-
-test('old readers receive only representable nodes with a matching content hash', () => {
-  const bundle = sdk.compileNavigationRuntimeBundle(missingInput());
-  assert.equal(sdk.projectNavigationCompatibility(bundle, true), bundle);
-  const legacy = sdk.projectNavigationCompatibility(bundle, false);
-  assert.equal(legacy.nodes.some((node) => node.nodeId === f.resolvedPageTarget.nodeId), false);
-  assert.equal(legacy.nodes.some((node) => node.nodeId === f.resolvedWorkbenchTarget.nodeId), true);
-  const { contentHash, ...unsigned } = legacy;
-  assert.equal(contentHash, sdk.canonicalContentHash(unsigned));
-});
-
-test('wire validation rejects executable or identity-swapped unavailable nodes', () => {
-  const bundle = structuredClone(sdk.compileNavigationRuntimeBundle(missingInput()));
-  const node = bundle.nodes.find((node) => node.nodeId === f.resolvedPageTarget.nodeId);
-  node.disabled = false;
-  assert.equal(sdk.NavigationRuntimeBundleSchema.safeParse(bundle).success, false);
-  node.disabled = true;
-  node.resolvedTarget.nodeId = 'other-node';
-  assert.equal(sdk.NavigationRuntimeBundleSchema.safeParse(bundle).success, false);
 });
 
 test('Page links follow current releases and rollback without changing Navigation release evidence', () => {
@@ -144,18 +102,10 @@ test('Page links follow current releases and rollback without changing Navigatio
   }
 });
 
-test('cold Navigation rebuild tolerates a previously published Page being unavailable', () => {
+test('cold Navigation rebuild fails when a previously published Page is unreleased', () => {
   const value = input();
   value.targetRegistry.shift();
-  const bundle = sdk.compileNavigationRuntimeBundle(value);
-  assert.equal(bundle.nodes.find(n => n.nodeId === f.resolvedPageTarget.nodeId).resolvedTarget.kind, 'unavailable');
-});
-
-test('restored Page identities resolve after a missing-page publication', () => {
-  const value = missingInput();
-  value.targetRegistry = input().targetRegistry;
-  const bundle = sdk.compileNavigationRuntimeBundle(value);
-  assert.equal(bundle.nodes.find(n => n.nodeId === f.resolvedPageTarget.nodeId).resolvedTarget.kind, 'route');
+  assert.throws(() => sdk.compileNavigationRuntimeBundle(value), /NAV_TARGET_UNRELEASED|unreleased/i);
 });
 
 test('Page revision independence never relaxes Workbench exact bindings', () => {

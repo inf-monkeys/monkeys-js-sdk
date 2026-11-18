@@ -182,14 +182,13 @@ test('all public module subpaths resolve through ESM import conditions', async (
   assert.equal(typeof root.parseExactProductDeclarativeCapabilityRegistration, 'function');
 });
 
-test('unavailable navigation target schema is consistent across public CJS and ESM entries', async () => {
-  const { navigation, page } = require('./declarative-control-fixtures.cjs');
-  const target = navigation.nodes.find((node) => node.kind === 'target' && node.targetRef.kind === 'page');
-  const value = { nodeId: target.nodeId, stableTargetRef: target.targetRef, reason: 'page-missing', accessPolicy: page.pageAccessPolicy };
+test('authored reference input schemas agree across public CJS and ESM entries', async () => {
+  const value = { id: 'page-a', kind: 'page', revision: 3 };
   for (const entry of [PACKAGE_NAME, `${PACKAGE_NAME}/contracts`, `${PACKAGE_NAME}/schemas`]) {
     for (const module of [require(entry), await import(entry)]) {
-      assert.deepEqual(module.UnavailableNavigationTargetSchema.parse(value), value);
-      assert.equal(module.UnavailableNavigationTargetSchema.safeParse({ ...value, href: '/executable' }).success, false);
+      assert.deepEqual(module.ReferenceInputSchema.parse(value), value);
+      assert.equal(module.ReferenceInputSchema.safeParse({ id: 'page-a', ownerRepo: 'monkeys' }).success, false);
+      assert.equal(module.UnavailableNavigationTargetSchema, undefined);
     }
   }
 });
