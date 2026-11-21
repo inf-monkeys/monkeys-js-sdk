@@ -184,3 +184,109 @@ test("declarative diagnostics preserve validation ownership and recovery", () =>
     planHash: "a".repeat(64),
   }).success, true);
 });
+
+const authoredPage = {
+  contract: "Page",
+  pageId: "page.authored",
+  identity: fixtures.page.identity,
+  route: "/authored",
+  body: { id: "authored", component: fixtures.capabilityRevisionRef.id },
+  access: fixtures.page.pageAccessPolicy,
+};
+
+test("authoring envelopes carry only what the author expresses", () => {
+  assert.equal(
+    sdk.DeclarativeAuthoringEnvelopeSchema.safeParse({ document: authoredPage })
+      .success,
+    true,
+  );
+  assert.equal(
+    sdk.DeclarativeAuthoringEnvelopeSchema.safeParse({
+      document: authoredPage,
+      surface: "studio",
+      environmentId: "test",
+    }).success,
+    true,
+  );
+  assert.equal(
+    sdk.DeclarativeAuthoringEnvelopeSchema.safeParse({
+      document: authoredPage,
+      tenantId: "override",
+    }).success,
+    false,
+  );
+  assert.equal(
+    sdk.DeclarativeAuthoringEnvelopeSchema.safeParse({
+      document: fixtures.navigation,
+    }).success,
+    true,
+  );
+  // A complete declaration stays acceptable; explicit values are never rewritten.
+  assert.equal(
+    sdk.DeclarativeAuthoringEnvelopeSchema.safeParse({ document: page }).success,
+    true,
+  );
+});
+
+test("authoring import intents keep the preflight fence", () => {
+  const intent = {
+    document: authoredPage,
+    surface: "studio",
+    expectedVersion: 0,
+    expectedPlanHash: "a".repeat(64),
+    idempotencyKey: "authoring-import",
+  };
+  assert.equal(
+    sdk.DeclarativeAuthoringImportIntentSchema.safeParse(intent).success,
+    true,
+  );
+  for (const change of [
+    { expectedVersion: -1 },
+    { expectedPlanHash: "not-a-hash" },
+    { idempotencyKey: "" },
+  ]) {
+    assert.equal(
+      sdk.DeclarativeAuthoringImportIntentSchema.safeParse({
+        ...intent,
+        ...change,
+      }).success,
+      false,
+    );
+  }
+});
+
+test("authoring publish envelopes carry an optional placement and route index", () => {
+  assert.equal(
+    sdk.DeclarativeAuthoringPublishEnvelopeSchema.safeParse({
+      document: authoredPage,
+    }).success,
+    true,
+  );
+  assert.equal(
+    sdk.DeclarativeAuthoringPublishEnvelopeSchema.safeParse({
+      document: authoredPage,
+      surface: "studio",
+      placement: "studio.headbar.primary",
+      routeClaimIndex: 0,
+    }).success,
+    true,
+  );
+  assert.equal(
+    sdk.DeclarativeAuthoringPublishEnvelopeSchema.safeParse({
+      document: authoredPage,
+      routeClaimIndex: -1,
+    }).success,
+    false,
+  );
+});
+
+test("the import-publish route follows the authoring document endpoints", () => {
+  assert.equal(
+    sdk.declarativeControlRoutes.importPublishDocument("page"),
+    "/api/declarative-control/authoring/documents/page/import-publish",
+  );
+  assert.equal(
+    sdk.declarativeControlRoutes.importPublishDocument("navigation"),
+    "/api/declarative-control/authoring/documents/navigation/import-publish",
+  );
+});

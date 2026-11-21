@@ -61,6 +61,33 @@ export const DeclarativeDocumentImportIntentSchema = z
     message: "The document does not support the selected surface.",
   });
 
+/**
+ * The authored boundary carries less than a persisted declaration: the target
+ * fills schemaVersion, lifecycle, surface, tenantScope and managementAccess, and
+ * the Server validates the document against the contract once it has done so.
+ */
+export const DeclarativeAuthoringEnvelopeSchema = z
+  .object({
+    document: z.record(z.string(), z.unknown()),
+    surface: ProductSurfaceSchema.optional(),
+    environmentId: ContractIdentifierSchema.optional(),
+  })
+  .strict();
+
+export const DeclarativeAuthoringImportIntentSchema =
+  DeclarativeAuthoringEnvelopeSchema.extend({
+    expectedPlanHash: Sha256Schema,
+    expectedVersion: z.number().int().nonnegative(),
+    idempotencyKey: z.string().trim().min(1).max(256),
+  }).strict();
+
+/** One request that saves the authored document and publishes it. */
+export const DeclarativeAuthoringPublishEnvelopeSchema =
+  DeclarativeAuthoringEnvelopeSchema.extend({
+    placement: ContractIdentifierSchema.optional(),
+    routeClaimIndex: z.number().int().nonnegative().optional(),
+  }).strict();
+
 export const DeclarativeDocumentImportPlanSchema = z
   .object({
     contract: z.literal("DeclarativeDocumentImportPlan"),
@@ -155,6 +182,15 @@ export type DeclarativeDocumentImportRequest = z.infer<
 >;
 export type DeclarativeDocumentImportIntent = z.infer<
   typeof DeclarativeDocumentImportIntentSchema
+>;
+export type DeclarativeAuthoringEnvelope = z.infer<
+  typeof DeclarativeAuthoringEnvelopeSchema
+>;
+export type DeclarativeAuthoringImportIntent = z.infer<
+  typeof DeclarativeAuthoringImportIntentSchema
+>;
+export type DeclarativeAuthoringPublishEnvelope = z.infer<
+  typeof DeclarativeAuthoringPublishEnvelopeSchema
 >;
 export type DeclarativeDocumentImportPlan = z.infer<
   typeof DeclarativeDocumentImportPlanSchema

@@ -74,6 +74,8 @@ export const declarativeControlRoutes = {
     `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/documents/${kind}/prepare`,
   importDocument: (kind: "page" | "navigation"): string =>
     `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/documents/${kind}/import`,
+  importPublishDocument: (kind: "page" | "navigation"): string =>
+    `${DECLARATIVE_CONTROL_API_PREFIX}/authoring/documents/${kind}/import-publish`,
   validate: (kind: DeclarativeResourceKind, resourceId: string): string =>
     `${DECLARATIVE_CONTROL_API_PREFIX}/resources/${kind}/${encodePath(resourceId)}/validate`,
   preview: (kind: DeclarativeResourceKind, resourceId: string): string =>
